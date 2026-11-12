@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Room to grow</title>
+  <desc id="desc">A leafy sprout grows beside three ascending steps under a warm sun.</desc>
+  <metadata>Original Westmere Careers artwork, 2026. CC0 1.0 Universal public domain dedication: https://creativecommons.org/publicdomain/zero/1.0/</metadata>
+  <circle cx="170" cy="44" r="24" fill="#F0CF8E"/>
+  <path d="M44 152H198" stroke="#143F36" stroke-width="3" stroke-linecap="round"/>
+  <path d="M106 150V122H134V94H162V66H190V150H106Z" fill="#C8D9C5"/>
+  <path d="M134 150V122H162V94H190V150H134Z" fill="#0D6659"/>
+  <path d="M76 142C74 105 76 77 87 54" stroke="#0D6659" stroke-width="3" stroke-linecap="round"/>
+  <path d="M75 107C48 110 35 90 39 72C62 74 75 87 75 107Z" fill="#88B397"/>
+  <path d="M77 87C103 87 115 68 110 50C87 52 76 67 77 87Z" fill="#0D6659"/>
+  <path d="M64 137H88L84 152H68L64 137Z" fill="#D4C4E3"/>
+  <path d="M34 45L37 52L45 53L39 58L40 66L34 62L27 66L29 58L23 53L31 52L34 45Z" fill="#9D8BB1"/>
+</svg>

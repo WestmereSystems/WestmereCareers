@@ -1,0 +1,2 @@
+-- Intentionally empty. No fictional employers or jobs are seeded into a live database.
+-- Local development uses the visibly labelled fixtures in src/lib/jobs.ts when Supabase is unconfigured.

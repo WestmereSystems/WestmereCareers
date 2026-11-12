@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">A new chapter</title>
+  <desc id="desc">An open notebook with a leafy bookmark and a small sun conveys a fresh beginning.</desc>
+  <metadata>Original Westmere Careers artwork, 2026. CC0 1.0 Universal public domain dedication: https://creativecommons.org/publicdomain/zero/1.0/</metadata>
+  <circle cx="168" cy="49" r="27" fill="#F0CF8E"/>
+  <path d="M37 54C66 42 95 44 120 57V148C94 133 64 132 37 142V54Z" fill="#EFE9FA"/>
+  <path d="M120 57C145 44 174 42 203 54V142C176 132 146 133 120 148V57Z" fill="#E5ECE0"/>
+  <path d="M37 54C66 42 95 44 120 57C145 44 174 42 203 54V142C176 132 146 133 120 148C94 133 64 132 37 142V54Z" stroke="#0D6659" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M120 59V146" stroke="#0D6659" stroke-width="3"/>
+  <path d="M57 77C70 73 84 74 99 80M57 94C70 90 84 91 99 97M57 111C70 107 84 108 99 114" stroke="#A99AB9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M145 80C159 74 173 73 185 77M145 97C159 91 173 90 185 94" stroke="#9EB69F" stroke-width="3" stroke-linecap="round"/>
+  <path d="M160 122C162 100 165 85 172 72" stroke="#0D6659" stroke-width="3" stroke-linecap="round"/>
+  <path d="M164 105C148 105 142 92 145 83C159 85 165 93 164 105Z" fill="#83AE91"/>
+  <path d="M167 90C181 91 190 79 186 68C174 70 167 78 167 90Z" fill="#0D6659"/>
+</svg>
