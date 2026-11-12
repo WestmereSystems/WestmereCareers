@@ -36,17 +36,17 @@ npm start
 - Organisation-scoped job publishing and intentional application opens, with candidate-facing activity events.
 - Careers+ server entitlement checks; named-skill overlap filter; OpenAI CV improvement and role-specific tailoring with explicit consent, goals and editable text exports.
 - Stripe Checkout, Customer Portal, verified webhooks, a fixed AUD25 monthly inclusive-price check and atomic AI usage accounting.
-- SQL row-level security, local database execution tests, route/security tests, CI and Vercel Sydney configuration.
+- SQL row-level security, database execution tests, route/security tests, CI and Vercel compute colocated with the selected Tokyo database.
 
 Premium features are implemented but require your dedicated Supabase project and service credentials before they can run against live accounts. The initial Studio allowance is **30 requests per billing period**. Interview rehearsal, richer document imports/exports and remaining proposal features are later milestones; they are not advertised as available in this release.
 
 ## Service setup
 
-1. Create a **dedicated Westmere Careers** Supabase project in Sydney; do not point this app at another product’s database. Follow [backend setup](docs/backend.md) to apply the reviewed migration and configure Auth redirect URLs and email.
+1. Connect the dedicated **WestmereCareers** Supabase project authorised for this app: Tokyo, inside the OrderWard organisation. Never use the separate OrderWard DB or restore-drill databases. Follow [backend setup](docs/backend.md) and the [staging setup record](docs/staging-setup.md).
 2. Add the Supabase URL and publishable key, and keep the service-role key server-only. Never put a secret key in a `NEXT_PUBLIC_` variable.
 3. In Stripe test mode, create a price of **AUD 25.00 monthly**, tax-inclusive if applicable, configure Checkout/Portal and route signed events to `/api/billing/webhook`. Follow [premium setup](docs/premium.md).
 4. Configure an OpenAI project API key and model. CV processing requires explicit consent and a verified active Careers+ subscription. No ChatGPT subscription credential is assumed to include API access.
-5. Import this GitHub repository into your Vercel team as a Next.js project. `vercel.json` sets Sydney compute. Set `NEXT_PUBLIC_SITE_URL` to the actual deployment URL, keep indexing disabled, and configure separate test/staging secrets.
+5. The dedicated Vercel project is connected to this repository. `vercel.json` sets Tokyo compute, matching the selected database. Use the exact deployment origin, keep indexing disabled, and scope staging credentials to Preview branch `codex/staging`.
 6. Complete the [release checklist](docs/release-status.md) before accepting real applications, payments or public employer response reports.
 
 Never paste credentials into GitHub issues, source files or screenshots. This repository is public; only synthetic fixtures, sample CVs and non-secret setup names belong in it.

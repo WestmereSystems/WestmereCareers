@@ -4,11 +4,11 @@ This is the first executable implementation of the approved Westmere Careers pro
 
 ## Current integrations
 
-The application contains real Supabase, Stripe and OpenAI integration code, with access controls and clear unconfigured states. A dedicated `westmere-careers` Vercel project now hosts the [public development preview](https://westmere-careers.vercel.app), inside the existing OrderWard Vercel team with explicit user approval. No existing OrderWard project or database was changed. Dedicated Supabase, Stripe and OpenAI setup remains pending. Private credentials are not committed. See [deployment status](deployment.md) for the deployed commit and hosted checks.
+The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. With explicit user approval, protected staging uses the separate WestmereCareers Supabase project inside OrderWard, in Tokyo. Both migrations and hosted advisor checks are complete. The dedicated Westmere Stripe test account contains Careers+ at AUD25/month and a cancellation-enabled portal. Server credentials, webhook delivery and provider end-to-end verification remain pending. No live charges or real applications have been submitted. See [staging setup](staging-setup.md).
 
 ## Critical staging verification
 
-- Provision the dedicated Sydney database and apply migrations. Confirm its real grants/RLS and Supabase advisors, rather than relying solely on isolated PostgreSQL execution tests.
+- Maintain the verified hosted grants/RLS and advisor checks as migrations change; complete signed-in account isolation tests against the selected Tokyo project.
 - Verify email-link sign-in, redirect allowlists, session refresh, logout and account isolation against the hosted project.
 - Test live-query listing expiry, filters, full text, pagination and access controls with realistic data volume.
 - Verify candidate submission, snapshot immutability, duplicate protection, withdrawals, employer membership revocation and intentional opens end to end.

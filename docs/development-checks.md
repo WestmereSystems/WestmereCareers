@@ -1,12 +1,14 @@
 # Development milestone verification
 
-Verified locally on 12 November 2026.
+Verified locally on 12 November 2026; database hardening and Checkout retry checks added on 13 November 2026.
 
 - TypeScript check passed.
 - Optimised Next.js production build passed.
-- 85 automated tests passed across 11 files.
+- 87 automated tests passed across 12 files after hosted hardening and Checkout retry fixes.
 - Production dependency audit reported zero known vulnerabilities at the time of the check.
 - The actual database migration executed against isolated PostgreSQL (PGlite), including access boundaries, application snapshots, withdrawal, intentional opens, stage updates, reports, precise pay amounts, AI quotas and billing leases.
+- The migration runner now executes every checked-in SQL migration; the hosted hardening preserves candidate/recruiter access boundaries.
+- Checkout retry tests verify identical idempotent parameters after a lost provider response and a valid minimum session lifetime at the retry-window boundary.
 
 Browser checks used the local production build:
 

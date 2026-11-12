@@ -92,10 +92,13 @@ export async function POST(request: Request) {
           { headers: { "Cache-Control": "no-store" } },
         );
       assertBillingLeaseFresh(lease);
+      // Retries in one idempotency window must send identical Stripe parameters.
+      const checkoutWindow = Math.floor(Date.now() / 300000);
       const session = await stripe.checkout.sessions.create(
         {
           customer,
           mode: "subscription",
+          integration_identifier: "westmere_careers_klvobqoq",
           line_items: [{ price: price.id, quantity: 1 }],
           client_reference_id: user.id,
           metadata: { westmere_price_id: price.id },
@@ -103,7 +106,7 @@ export async function POST(request: Request) {
           success_url: `${origin}/careers-plus?checkout=complete`,
           cancel_url: `${origin}/careers-plus?checkout=canceled`,
           locale: "en",
-          expires_at: Math.floor(Date.now() / 1000) + 1800,
+          expires_at: (checkoutWindow + 1) * 300 + 1800,
           custom_text: {
             submit: {
               message:
@@ -112,7 +115,7 @@ export async function POST(request: Request) {
           },
         },
         {
-          idempotencyKey: `westmere-checkout-${user.id}-${Math.floor(Date.now() / 300000)}`,
+          idempotencyKey: `westmere-checkout-${user.id}-${price.id}-${checkoutWindow}`,
         },
       );
       if (!session.url)

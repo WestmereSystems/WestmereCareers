@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 
 // Execute the real migration in isolated PostgreSQL/WASM. auth/storage fixtures model Supabase-owned schemas.
 // This does not establish hosted Supabase configuration or test its HTTP gateway.
@@ -29,15 +29,12 @@ beforeEach(async () => {
     create schema storage;
     create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
   `);
-  await db.exec(
-    await readFile(
-      new URL(
-        "../supabase/migrations/20261112101551_westmere_foundation.sql",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-  );
+  const migrations = new URL("../supabase/migrations/", import.meta.url);
+  for (const name of (await readdir(migrations))
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    await db.exec(await readFile(new URL(name, migrations), "utf8"));
+  }
   await db.exec(`
     insert into auth.users values('${candidate}'),('${otherCandidate}'),('${employer}'),('${otherEmployer}');
     insert into public.profiles(id,cv_text) values('${candidate}','Private candidate CV'),('${otherCandidate}','Other private CV');

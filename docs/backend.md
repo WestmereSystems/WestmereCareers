@@ -1,12 +1,12 @@
 # Westmere Careers backend foundation
 
-This checkout contains a Supabase schema and real server integration routes. Hosted migration and security verification remain pending. Existing OrderWard databases are unrelated and must not receive these migrations; confirm the dedicated Westmere target in [deployment status](deployment.md) before linking or applying SQL.
+This checkout contains the Supabase schema and real server integration routes. The foundation and hosted hardening migrations have been applied to the expressly authorised `WestmereCareers` project (`ldmwqupidlgrkkjjpcvn`), in Tokyo inside OrderWard. The separate OrderWard DB and restore-drill projects are unrelated and were not changed. See [staging setup](staging-setup.md).
 
 ## Setup
 
-Use the pinned Supabase CLI in this repository. The checked-in migration was created with `supabase migration new westmere_foundation`, using CLI 3.1.0. Read `supabase <command> --help` before operating: v3 targets local development by default and separately confirms hosted changes.
+Use the pinned Supabase CLI in this repository. Migration files were created with `supabase migration new`, using CLI 3.1.0. After MCP application, filenames were aligned to the actual hosted migration versions (`20261112121006` and `20261112121431`), preventing a later CLI push from treating the same SQL as unapplied. Read `supabase <command> --help` before operating: v3 targets local development by default and separately confirms hosted changes.
 
-1. Start an isolated local Supabase stack or provision a dedicated **Westmere Careers** project in Sydney. Never link to an existing unrelated app.
+1. Start an isolated local Supabase stack or use the dedicated, authorised **WestmereCareers** project. The current hosted database and Vercel functions use Tokyo. Never link to an unrelated app.
 2. Inspect the target's tables and Data API exposure configuration, then apply the reviewed migration through the normal staging workflow. `private` must never be an exposed API schema.
 3. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_SITE_URL`. Use the public publishable key in browser settings, never the secret/service key.
 4. Add the exact `/auth/callback` URL for the application origin to Supabase Auth's redirect allowlist. Configure production SMTP, sender-domain verification, email templates and abuse limits. The local configuration uses the local email viewer.
@@ -66,7 +66,7 @@ The schema has no client write policy for billing state or usage records. The se
 
 `tests/backend-security.test.ts` verifies origin checks, safe redirects, bounded/malformed JSON and the trusted subscription window. TypeScript checks cover the route and helper interfaces.
 
-This verification does not establish hosted Supabase gateway settings, email delivery, real Stripe/OpenAI access, cloud infrastructure readiness, load performance or an end-to-end user journey with a configured hosted project. No hosted advisors were run because no Westmere project is linked.
+Hosted verification additionally confirms RLS on all 12 application tables, blocked anonymous profile reads, an unexposed private schema and no security/performance WARN or ERROR findings after hardening. Informational notices for intentionally closed billing tables, unused indexes in the empty database and the default Auth connection allocation remain documented in [staging setup](staging-setup.md). Email delivery, signed-in browser journeys, real Stripe/OpenAI processing, scale and complete security/accessibility review remain unverified.
 
 ## Before accepting real applications
 
