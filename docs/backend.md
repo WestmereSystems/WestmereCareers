@@ -1,6 +1,6 @@
 # Westmere Careers backend foundation
 
-This checkout contains a Supabase schema and real server integration routes. No hosted database has been created or changed. Existing OrderWard projects are unrelated and must not receive these migrations.
+This checkout contains a Supabase schema and real server integration routes. Hosted migration and security verification remain pending. Existing OrderWard databases are unrelated and must not receive these migrations; confirm the dedicated Westmere target in [deployment status](deployment.md) before linking or applying SQL.
 
 ## Setup
 
