@@ -106,7 +106,8 @@ export async function POST(request: Request) {
           success_url: `${origin}/careers-plus?checkout=complete`,
           cancel_url: `${origin}/careers-plus?checkout=canceled`,
           locale: "en",
-          expires_at: (checkoutWindow + 1) * 300 + 1800,
+          // Allow a minute for clock skew and the bounded provider request.
+          expires_at: (checkoutWindow + 1) * 300 + 1860,
           custom_text: {
             submit: {
               message:

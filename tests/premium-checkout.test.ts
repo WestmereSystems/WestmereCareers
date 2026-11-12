@@ -65,8 +65,8 @@ describe("Checkout retries", () => {
     mocks.create.mockResolvedValue({ url: "https://checkout.stripe.com/test" });
     expect((await POST(request())).status).toBe(200);
     const [params] = mocks.create.mock.calls[0];
-    const remaining = params.expires_at - now.getTime() / 1000;
+    const remaining = params.expires_at - now.getTime() / 1000 - 8;
     expect(remaining).toBeGreaterThanOrEqual(1800);
-    expect(remaining).toBeLessThanOrEqual(2100);
+    expect(remaining).toBeLessThanOrEqual(2160);
   });
 });
