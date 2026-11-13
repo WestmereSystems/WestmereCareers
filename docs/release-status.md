@@ -4,7 +4,7 @@ This is the first executable implementation of the approved Westmere Careers pro
 
 ## Current integrations
 
-The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. With explicit user approval, protected staging uses the separate WestmereCareers Supabase project inside OrderWard, in Tokyo. Both migrations and hosted advisor checks are complete. The dedicated Westmere Stripe test account contains Careers+ at AUD25/month and a cancellation-enabled portal. Server credentials, webhook delivery and provider end-to-end verification remain pending. No live charges or real applications have been submitted. See [staging setup](staging-setup.md).
+The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. With explicit user approval, protected staging uses the separate WestmereCareers Supabase project inside OrderWard, in Tokyo. Both migrations and hosted advisor checks are complete. The dedicated Stripe test account contains Careers+ at AUD25/month and a cancellation-enabled portal. Server credentials and the signed test-webhook endpoint are configured; signed probing and reconciliation passed. Resend delivery, successful browser sign-in, provider test Checkout and actual AI evaluation remain in progress. No live charges or real applications have been submitted. See [staging setup](staging-setup.md).
 
 ## Critical staging verification
 

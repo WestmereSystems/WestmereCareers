@@ -73,6 +73,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
   useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("auth") !== "expired") return;
+    setStatus(
+      "That sign-in link couldn’t be completed. Request a fresh link below.",
+    );
+    setAuthOpen(true);
+    url.searchParams.delete("auth");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      url.pathname + url.search + url.hash,
+    );
+  }, []);
+  useEffect(() => {
     if (!authOpen) return;
     const previous = authTriggerRef.current;
     const oldOverflow = document.body.style.overflow;
