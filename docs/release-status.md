@@ -4,16 +4,16 @@ This is the first executable implementation of the approved Westmere Careers pro
 
 ## Current integrations
 
-The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. With explicit user approval, protected staging uses the separate WestmereCareers Supabase project inside OrderWard, in Tokyo. Both migrations and hosted advisor checks are complete. The dedicated Stripe test account contains Careers+ at AUD25/month and a cancellation-enabled portal. Server credentials and the signed test-webhook endpoint are configured; signed probing and reconciliation passed. Resend authentication email delivery from `hello@westmere.com.au` and persistent browser sign-in passed. iCloud inbox placement, completed provider test Checkout and actual AI evaluation remain open. No live charges or real applications have been submitted. See [staging setup](staging-setup.md).
+The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. Protected staging uses the explicitly selected WestmereCareers Supabase project inside OrderWard, in Tokyo. Migrations/advisor checks, Resend authentication email and persistent sign-in passed. Careers+ Sandbox Checkout, actual webhook delivery/retry, paid entitlement and portal cancellation passed. Two real OpenAI reviews passed on synthetic data: general improvement and role tailoring with an adversarial job-description check. Private profile persistence/cleanup and the premium filter's empty-catalogue flow also passed. See [hosted verification](staging-verification.md) for evidence and limits. No live charges or real applications have been submitted.
 
 ## Critical staging verification
 
 - Maintain the verified hosted grants/RLS and advisor checks as migrations change; complete signed-in account isolation tests against the selected Tokyo project.
-- Verify email-link sign-in, redirect allowlists, session refresh, logout and account isolation against the hosted project.
+- Extend the successful email sign-in check to logout, refresh expiry, multi-account isolation and broader mailbox-provider/inbox-placement testing.
 - Test live-query listing expiry, filters, full text, pagination and access controls with realistic data volume.
 - Verify candidate submission, snapshot immutability, duplicate protection, withdrawals, employer membership revocation and intentional opens end to end.
-- Configure Stripe in test mode; test purchase, renewal, payment failure, cancellation, re-subscription, refund, dispute, duplicate/out-of-order events and scheduled reconciliation.
-- Run OpenAI requests on synthetic CVs; evaluate factualness, prompt injection, refusal, quota restoration, maximum spend and output quality. Actual provider calls are not covered by mocked tests.
+- Extend the successful test purchase/cancellation to renewal, payment failure, re-subscription, refund, dispute, duplicate/out-of-order events, final expiry and scheduled reconciliation. Surface the actual scheduled cancellation date in the app.
+- Expand the two successful OpenAI samples into a varied evaluation set covering factualness, prompt injection, refusal, quota restoration, concurrency, maximum spend and output quality.
 - Test dedicated service secrets, environment separation, origin checks and protected deployment access.
 
 ## Proposal features still to complete
