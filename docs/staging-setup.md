@@ -29,7 +29,7 @@ In [Vercel environment settings](https://vercel.com/order-ward/westmere-careers/
 
 ## Authentication and email
 
-The approved Site URL and exact `/auth/callback` are saved and verified. No wildcard callbacks are allowed. Both cross-browser token-hash email templates are saved. Resend confirms the owner's `westmere.com.au` domain is verified in Tokyo; the approved outgoing sender is `Westmere Careers <hello@westmere.com.au>`. The owner privately saved the SMTP key, and enabled settings persisted after reload. See [email setup](email.md) for remaining delivery/sign-in verification. No sign-in email has been sent by the setup agent.
+The approved Site URL and exact `/auth/callback` are saved and verified. No wildcard callbacks are allowed. Both cross-browser token-hash email templates are saved. Resend confirms the owner's `westmere.com.au` domain is verified in Tokyo; the approved outgoing sender is `Westmere Careers <hello@westmere.com.au>`. The owner privately saved the SMTP key, and enabled settings persisted after reload. A fresh owner-requested email was delivered through Resend and established a persistent Chrome session. iCloud placed the first message in Junk; DNS checks found the required records present, while inbox-placement testing remains open. See [email setup](email.md). No sign-in email has been sent by the setup agent.
 
 ## Required webhook routing
 
