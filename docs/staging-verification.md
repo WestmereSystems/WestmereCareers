@@ -1,6 +1,6 @@
 # Development verification
 
-The current application passes TypeScript checks, 108 automated tests across 14 files, Deno checking for the email worker, and the production build. GitHub application checks have passed on both development branches.
+The current application passes TypeScript checks, 131 automated tests across 17 files, Deno checking for the email worker, and the production build. GitHub application checks have passed on both development branches using Node 24. Each build also checks the compiled PDF reader using only the files included in each upload route's deployment trace.
 
 ## Product workflows checked
 
@@ -10,6 +10,11 @@ The current application passes TypeScript checks, 108 automated tests across 14 
 - One explicitly approved preview email: provider acceptance, signed delivery confirmation and a delivered state in the website. Receiving-server delivery does not establish inbox placement or reading.
 - Unsubscribe: opening the confirmation page left preferences enabled; submitting unsubscribe paused alerts, cleared consent and the next schedule, and left no queued delivery. The disposable test search and its application-side delivery records were removed.
 - Larger typography, cream light and system dark appearance, a 390px phone layout without horizontal overflow, filtering and saved-search navigation, and the Careers+ globe/ribbon artwork with pause/play controls.
+- A real Google sign-in returned to the profile with the named greeting and invited sample workspace available. Google and Microsoft are enabled; the interactive Microsoft sign-in remains to be checked with an owner's Microsoft account.
+- Live synthetic PDF and Word uploads, history, base-CV selection and attachment downloads. Both downloaded files matched their original SHA-256 digests. The approved test files, history entries and synthetic base text were then removed; the profile name remained intact.
+- A private sample role, synthetic application, first-view and interview stages, and a deliberately requested site-only interview notification. The sample was not published to the genuine job board and no sample preview email was requested.
+- One new-account welcome was recorded as delivered through Resend. Secure email changes require confirmation in both the current and proposed inboxes. Email-code and email-change templates contain codes, the Westmere wordmark and useful links; actual mailbox/code-entry and email-change journeys still require interactive owner checks.
+- The About page, two self-hosted CC0 photographs, public-domain Australia icon and adapted privacy policy. The published privacy and email support contact is hello@westmere.com.au.
 
 Public inventory is explicitly labelled as fictional development content. It is not imported as genuine vacancies or candidate experiences.
 
