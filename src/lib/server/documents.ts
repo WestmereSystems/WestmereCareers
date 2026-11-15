@@ -68,7 +68,8 @@ export async function readDocument(file: File, requireText = true) {
       const worker = new Worker(
         path.join(process.cwd(), "src/lib/server/pdf-text-worker.mjs"),
         {
-          workerData: data,
+          // Turbopack adds worker metadata by spreading this object. Nest bytes so their length is preserved.
+          workerData: { bytes: data },
           resourceLimits: { maxOldGenerationSizeMb: 128, stackSizeMb: 4 },
         },
       );

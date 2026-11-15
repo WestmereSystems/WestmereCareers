@@ -17,7 +17,7 @@ GlobalWorkerOptions.workerSrc = path.join(
 );
 const task = getDocument({
   standardFontDataUrl,
-  data: new Uint8Array(workerData),
+  data: new Uint8Array(workerData.bytes),
   useWasm: false,
   useSystemFonts: false,
   disableFontFace: true,
