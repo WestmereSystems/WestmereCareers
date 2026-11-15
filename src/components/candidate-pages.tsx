@@ -623,7 +623,7 @@ function AccountForUser() {
           setMessage("Your profile couldn’t be loaded.");
       });
     return () => controller.abort();
-  }, [session.user?.id]);
+  }, [session.user?.id, session.user?.fullName]);
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -802,7 +802,7 @@ function AccountForUser() {
           </section>
           <p className="fineprint" style={{ marginTop: 20 }}>
             Request an account copy, correction or deletion through our Privacy
-            Officer at support@westmere.com.au. See our privacy policy for
+            Officer at hello@westmere.com.au. See our privacy policy for
             details.
           </p>
         </div>
