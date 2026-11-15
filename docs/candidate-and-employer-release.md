@@ -28,6 +28,6 @@ The privacy page adapts the supplied policy to these implemented data flows. Pro
 
 ## Verification and limits
 
-Automated checks cover document parsing, code authentication, private history, saved-role ownership, first-view events, notification preferences, welcome idempotency, sample access, sample email limits, upload leases and document-review invalidation. Production builds and the email-worker type check are also required.
+Automated checks cover document parsing, code authentication, private history, saved-role ownership, first-view events, notification preferences, welcome idempotency, sample access, sample email limits, upload leases and document-review invalidation. Production builds execute the compiled PDF worker for both upload routes against a synthetic PDF fixture, catching bundler-specific failures. The email-worker type check is also required.
 
 Real provider OAuth sign-ins require owner-entered credentials and an interactive account test. End-to-end mailbox tests and real-candidate/employer pilot testing remain distinct from isolated automated tests. Uploaded originals are offered as attachments, never embedded as executable page content; a broader independent security and malware-processing review remains part of public-launch preparation.

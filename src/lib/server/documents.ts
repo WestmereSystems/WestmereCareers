@@ -99,7 +99,16 @@ export async function readDocument(file: File, requireText = true) {
       };
       const timer = setTimeout(() => finish("TIMEOUT"), 15000);
       worker.once("message", (message) => finish(message.error, message.text));
-      worker.once("error", () => finish("UNREADABLE"));
+      worker.once("error", (error) => {
+        const code = (error as Error & { code?: string }).code;
+        console.warn("Westmere PDF worker failed", {
+          code: code && /^[A-Z0-9_]{1,64}$/.test(code) ? code : "WORKER_ERROR",
+          name: ["Error", "TypeError", "RangeError"].includes(error.name)
+            ? error.name
+            : "Error",
+        });
+        finish("UNREADABLE");
+      });
       worker.once("exit", () => {
         if (!finished) finish("UNREADABLE");
       });

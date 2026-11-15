@@ -1,9 +1,19 @@
 // Fixed application code. Uploaded bytes are data; no scripts, links or document actions are executed.
 import { parentPort, workerData } from "node:worker_threads";
-import { fileURLToPath } from "node:url";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-const standardFontDataUrl = fileURLToPath(
-  new URL("./standard_fonts/", import.meta.resolve("pdfjs-dist/package.json")),
+import path from "node:path";
+import {
+  getDocument,
+  GlobalWorkerOptions,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
+// These package files are explicitly included in the deployment trace. Resolve them
+// from the deployment root, avoiding bundler-specific module-ID resolution.
+const packageRoot = path.join(process.cwd(), "node_modules", "pdfjs-dist");
+const standardFontDataUrl = path.join(packageRoot, "standard_fonts") + path.sep;
+GlobalWorkerOptions.workerSrc = path.join(
+  packageRoot,
+  "legacy",
+  "build",
+  "pdf.worker.mjs",
 );
 const task = getDocument({
   standardFontDataUrl,

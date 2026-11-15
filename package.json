@@ -6,12 +6,13 @@
   "description": "Your career starts with Westmere. An Australian careers marketplace.",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
-    "build": "next build",
+    "build": "next build && npm run test:built-documents",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "test:built-documents": "node scripts/verify-built-pdf.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
