@@ -350,30 +350,42 @@ type Application = {
     occurred_at: string;
   }[];
 };
-export function Applications() {
+export function Applications({ compact = false }: { compact?: boolean }) {
   const session = useSession();
-  return <ApplicationsForUser key={session.user?.id ?? "signed-out"} />;
+  return (
+    <ApplicationsForUser
+      key={session.user?.id ?? "signed-out"}
+      compact={compact}
+    />
+  );
 }
-function ApplicationsForUser() {
+function ApplicationsForUser({ compact }: { compact: boolean }) {
   const session = useSession();
   const [apps, setApps] = useState<Application[]>([]);
   const [reportId, setReportId] = useState<string | null>(null);
   const [responded, setResponded] = useState(false);
   const [responseDate, setResponseDate] = useState("");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(Boolean(session.user));
+  const [loadError, setLoadError] = useState(false);
   async function load(signal?: AbortSignal) {
     setBusy(true);
+    setLoadError(false);
     try {
       const r = await fetch("/api/applications", { cache: "no-store", signal });
       const data = await r.json();
       if (r.ok) setApps(data.applications);
-      else setMessage(data.error);
+      else {
+        setMessage(data.error);
+        setLoadError(true);
+      }
     } catch {
-      if (!signal?.aborted)
+      if (!signal?.aborted) {
+        setLoadError(true);
         setMessage("Your applications couldn’t be loaded. Please try again.");
+      }
     } finally {
-      setBusy(false);
+      if (!signal?.aborted) setBusy(false);
     }
   }
   useEffect(() => {
@@ -429,6 +441,7 @@ function ApplicationsForUser() {
       setBusy(false);
     }
   }
+  if (session.loading) return <p role="status">Loading your applications…</p>;
   if (!session.user)
     return (
       <div className="panel">
@@ -446,6 +459,66 @@ function ApplicationsForUser() {
         </button>
       </div>
     );
+  if (compact)
+    return (
+      <section
+        className="panel profile-applications"
+        aria-labelledby="profile-applications-heading"
+      >
+        <div className="section-heading">
+          <h2 id="profile-applications-heading">Your applications</h2>
+          <Link className="text-link" href="/applications">
+            View application history <ArrowRight size={17} />
+          </Link>
+        </div>
+        {busy ? (
+          <p role="status">Loading your applications…</p>
+        ) : loadError ? (
+          <div>
+            <p role="alert">Your applications couldn’t be loaded.</p>
+            <button className="button secondary" onClick={() => void load()}>
+              Try again
+            </button>
+          </div>
+        ) : apps.length ? (
+          <>
+            <p className="fineprint">
+              Your five most recent Westmere applications. Open your history for
+              timelines, response reports and application controls.
+            </p>
+            {apps.slice(0, 5).map((app) => (
+              <article className="application-row" key={app.id}>
+                <div>
+                  <h3>{app.job_title_snapshot}</h3>
+                  <p>
+                    {app.company_snapshot} · {app.location_snapshot}
+                  </p>
+                  <p>
+                    Applied{" "}
+                    {new Date(app.created_at).toLocaleDateString("en-AU")}
+                  </p>
+                </div>
+                <span className="badge">
+                  {app.withdrawn_at
+                    ? "Withdrawn"
+                    : app.status.replaceAll("_", " ")}
+                </span>
+              </article>
+            ))}
+          </>
+        ) : (
+          <div>
+            <p>
+              Your submitted Westmere applications will appear here, with the
+              role, employer and current status.
+            </p>
+            <Link className="button secondary" href="/jobs">
+              Find your next role <ArrowRight size={17} />
+            </Link>
+          </div>
+        )}
+      </section>
+    );
   return (
     <>
       {message && (
@@ -455,6 +528,10 @@ function ApplicationsForUser() {
       )}
       {busy ? (
         <p role="status">Loading your applications…</p>
+      ) : loadError ? (
+        <button className="button secondary" onClick={() => void load()}>
+          Try loading applications again
+        </button>
       ) : apps.length ? (
         <div className="panel">
           {apps.map((app) => (
@@ -655,6 +732,7 @@ function AccountForUser() {
       setMessage("Billing is temporarily unavailable.");
     }
   }
+  if (session.loading) return <p role="status">Loading your profile…</p>;
   if (!session.user)
     return (
       <EmptyState
@@ -664,15 +742,19 @@ function AccountForUser() {
     );
   return (
     <>
+      <div className="actions-row" style={{ marginBottom: 24 }}>
+        <Link className="button secondary" href="/applications">
+          My applications
+        </Link>
+        <Link className="button secondary" href="/saved-searches">
+          Saved searches & email alerts
+        </Link>
+        <Link className="button secondary" href="/trust-activity">
+          Reports & trust activity
+        </Link>
+      </div>
+      <Applications compact />
       <div className="account-grid">
-        <div className="actions-row" style={{ marginBottom: 24 }}>
-          <Link className="button secondary" href="/saved-searches">
-            Saved searches & email alerts
-          </Link>
-          <Link className="button secondary" href="/trust-activity">
-            Reports & trust activity
-          </Link>
-        </div>
         <form className="panel" onSubmit={save}>
           <h2>Your private profile</h2>
           <p>

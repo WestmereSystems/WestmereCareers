@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { applicationOrigin, safeReturnPath } from "@/lib/server/http";
+import { applicationOrigin } from "@/lib/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -43,9 +43,7 @@ export async function GET(request: Request) {
     // Do not log URLs, bearer tokens, email addresses or raw provider messages.
     console.warn("Westmere sign-in callback unavailable");
   }
-  const destination = signedIn
-    ? safeReturnPath(url.searchParams.get("next"))
-    : "/?auth=expired";
+  const destination = signedIn ? "/account" : "/?auth=expired";
   return NextResponse.redirect(new URL(destination, origin), {
     headers: {
       "Cache-Control": "private, no-store",

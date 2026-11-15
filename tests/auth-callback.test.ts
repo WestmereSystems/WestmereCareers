@@ -41,15 +41,26 @@ describe("email authentication callback", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   });
-  it("keeps existing PKCE links working and rejects external return destinations", async () => {
+  it("keeps existing PKCE links working and sends users to their profile", async () => {
     const response = await GET(
       new Request(
         `${origin}/auth/callback?code=test-code&next=https://untrusted.test`,
       ),
     );
     expect(mocks.exchange).toHaveBeenCalledWith("test-code");
-    expect(response.headers.get("location")).toBe(`${origin}/`);
+    expect(response.headers.get("location")).toBe(`${origin}/account`);
   });
+  it.each(["", "&next=/jobs", "&next=//untrusted.test"])(
+    "lands email sign-ins on the profile regardless of return parameters: %s",
+    async (next) => {
+      const response = await GET(
+        new Request(
+          `${origin}/auth/callback?token_hash=${hash}&type=email${next}`,
+        ),
+      );
+      expect(response.headers.get("location")).toBe(`${origin}/account`);
+    },
+  );
   it("does not send mixed or unsupported credentials to the provider", async () => {
     for (const query of [
       `token_hash=${hash}&type=recovery`,

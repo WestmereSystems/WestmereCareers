@@ -166,6 +166,37 @@ describe("database security boundaries", () => {
     ).rejects.toMatchObject({ code: "42501" });
   });
 
+  it("keeps a candidate's applied-job history visible after the listing closes", async () => {
+    await asUser(candidate);
+    await db.query(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,$3)",
+      [
+        job,
+        candidate,
+        "My actual experience and skills recorded in a sufficiently detailed CV.",
+      ],
+    );
+    await db.exec("reset role");
+    await db.query("update public.jobs set status='closed' where id=$1", [job]);
+    await asUser(candidate);
+    expect(
+      (
+        await db.query(
+          "select job_title_snapshot,company_snapshot from public.applications",
+        )
+      ).rows,
+    ).toEqual([
+      {
+        job_title_snapshot: "Product Designer",
+        company_snapshot: "Fern Studio",
+      },
+    ]);
+    await asUser(otherCandidate);
+    expect(
+      (await db.query("select id from public.applications")).rows,
+    ).toHaveLength(0);
+  });
+
   it("preserves cents in hourly salary ranges", async () => {
     await asUser(employer);
     await db.query(

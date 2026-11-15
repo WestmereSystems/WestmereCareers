@@ -8,12 +8,12 @@ Westmere Careers is an executable implementation of the approved proposal, avail
 - Job-title/location suggestions, sorting, quick filters, device-saved roles, private saved searches and optional daily/weekly Resend alerts.
 - Employer identity/authority intake, independent listing review, editing, feedback, concerns, appeals and administrative suspension/reinstatement.
 - Candidate-reported response aggregation with unique mature cohorts, sample suppression, recent silence confirmation, late corrections and a published methodology.
-- Candidate applications, frozen application snapshots, first-open tracking and employer communication controls.
+- Profile landing after sign-in, recent applied jobs on the profile, application history, frozen application snapshots, first-open tracking and employer communication controls.
 - Careers+ at A$25/month, CV skill-overlap filters and OpenAI-assisted general improvements and role-specific tailoring with explicit user consent.
 - Test subscription purchase/cancellation, paid entitlement and real AI reviews on synthetic CV material.
 - Faster navigation feedback, independent public inventory reads, removal of the duplicate initial search fetch, and prerendered Careers+ marketing.
 
-TypeScript, 104 automated tests, the email worker check and the production build pass. An explicitly approved preview email, signed delivery, unsubscribe and disposable-test cleanup were verified. See [verification](staging-verification.md).
+TypeScript, 108 automated tests, the email worker check and the production build pass. An explicitly approved preview email, signed delivery, unsubscribe and disposable-test cleanup were verified. See [verification](staging-verification.md).
 
 ## Remaining launch work
 

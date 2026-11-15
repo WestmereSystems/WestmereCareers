@@ -82,7 +82,7 @@ export function Header() {
             </span>
           ) : session.user ? (
             <Link href="/account" className="button small secondary">
-              My account
+              My profile
             </Link>
           ) : (
             <button

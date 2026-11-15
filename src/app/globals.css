@@ -259,10 +259,6 @@ li {
   font-weight: 700;
   font-size: 15px;
 }
-.text-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 .icon-button {
   display: inline-flex;
   justify-content: center;
@@ -370,15 +366,6 @@ li {
 .main-nav a:hover,
 .main-nav a.active {
   color: var(--primary);
-}
-.main-nav a.active:after {
-  content: "";
-  height: 2px;
-  position: absolute;
-  bottom: 18px;
-  left: 0;
-  right: 0;
-  background: var(--primary);
 }
 .main-nav .premium-link {
   color: var(--purple);
@@ -1129,10 +1116,10 @@ li {
 .footer-links a {
   font-size: 14px;
   color: var(--muted);
+  align-self: flex-start;
 }
 .footer-links a:hover {
   color: var(--primary);
-  text-decoration: underline;
 }
 .footer-flower {
   align-self: center;
@@ -2042,9 +2029,6 @@ li {
     padding: 12px;
     font-size: 15px;
   }
-  .main-nav a.active:after {
-    display: none;
-  }
   .brand {
     font-size: 18px;
   }
@@ -2508,6 +2492,9 @@ textarea {
   transform-origin: left;
   transition: transform 0.2s ease;
   pointer-events: none;
+}
+.main-nav a::after {
+  bottom: 0;
 }
 .main-nav a:hover::after,
 .main-nav a:focus-visible::after,
