@@ -3,6 +3,19 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["pdfjs-dist"],
+  outputFileTracingIncludes: {
+    "/api/profile/cvs": [
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/@napi-rs/canvas*/**/*",
+      "./src/lib/server/pdf-text-worker.mjs",
+    ],
+    "/api/employers/assets": [
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/@napi-rs/canvas*/**/*",
+      "./src/lib/server/pdf-text-worker.mjs",
+    ],
+  },
   async headers() {
     return [
       {

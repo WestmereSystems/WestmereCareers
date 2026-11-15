@@ -24,6 +24,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { SavedCVButton } from "./profile-tools";
 import { useSession } from "@/components/providers";
 import type { Job } from "@/lib/jobs";
 import type { StudioResult } from "@/lib/premium/contracts";
@@ -168,6 +169,33 @@ function CareersPlusContent() {
           </p>
         </div>
         <AnimatedArt variant="premium" />
+      </section>
+      <section className="container human-story premium-human-story">
+        <figure className="people-photo">
+          <img
+            src="/images/focused-work.webp"
+            alt="A person working thoughtfully on a laptop by a window"
+            width="1260"
+            height="840"
+            loading="lazy"
+          />
+        </figure>
+        <div>
+          <p className="eyebrow">Make room for your next move</p>
+          <h2>
+            You bring the experience.
+            <br />
+            We help you find the words.
+          </h2>
+          <p>
+            Bring your PDF or Word CV into your private profile. In the studio,
+            choose when to get suggestions, tailor an application or explore
+            roles with skills that match your experience.
+          </p>
+          <Link className="text-link" href="/account">
+            Build your private CV library →
+          </Link>
+        </div>
       </section>
       <div className="container pricing-grid" id="careers-plus-plan">
         <section
@@ -736,6 +764,7 @@ function StudioEditor({
                 aria-label="Import a plain-text CV"
                 hidden
               />
+              <SavedCVButton onLoad={setCv} maxLength={24000} />
               <textarea
                 id="studio-cv"
                 value={cv}

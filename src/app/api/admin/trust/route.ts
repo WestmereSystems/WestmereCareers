@@ -1,3 +1,4 @@
+import { premiumAdmin } from "@/lib/premium/providers";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
 import {
@@ -72,6 +73,24 @@ export async function GET(request: Request) {
       p_all: params.get("all") === "1",
     });
     checkRpc(error);
+    if (k.data === "job" && Array.isArray(data?.items) && data.items.length) {
+      const ids = data.items.map((item: { id: string }) => item.id);
+      const documents = await premiumAdmin()
+        .from("listing_documents")
+        .select("id,job_id,filename,bytes")
+        .in("job_id", ids);
+      if (documents.error)
+        throw new ApiError(
+          503,
+          "Listing documents could not be loaded for review.",
+        );
+      data.items = data.items.map((item: { id: string }) => ({
+        ...item,
+        listing_documents: (documents.data || []).filter(
+          (d) => d.job_id === item.id,
+        ),
+      }));
+    }
     return json(data);
   } catch (error) {
     return apiError(error);

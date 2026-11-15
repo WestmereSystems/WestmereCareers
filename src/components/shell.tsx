@@ -1,14 +1,8 @@
 "use client";
+import { AustraliaIcon } from "@/components/australia-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ArrowUpRight,
-  ArrowRight,
-  Menu,
-  X,
-  Sparkles,
-  Leaf,
-} from "lucide-react";
+import { ArrowUpRight, ArrowRight, Menu, X, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle, useSession } from "./providers";
 
@@ -67,7 +61,7 @@ export function Header() {
             aria-current={
               pathname.startsWith("/employers") ? "page" : undefined
             }
-            className={pathname === "/employers" ? "active" : ""}
+            className={pathname.startsWith("/employers") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
             For employers
@@ -81,9 +75,22 @@ export function Header() {
               Checking account…
             </span>
           ) : session.user ? (
-            <Link href="/account" className="button small secondary">
-              My profile
-            </Link>
+            <>
+              <span className="header-greeting">
+                Hello,{" "}
+                {session.user.fullName?.trim().split(/\s+/)[0] || "there"}
+              </span>
+              <Link
+                href="/notifications"
+                className="header-notifications"
+                aria-label="Notifications"
+              >
+                Updates
+              </Link>
+              <Link href="/account" className="button small secondary">
+                My profile
+              </Link>
+            </>
           ) : (
             <button
               className="button small secondary"
@@ -117,7 +124,7 @@ export function Footer() {
             <br />A world of possibility.
           </p>
           <span className="footer-note">
-            <Leaf size={14} />
+            <AustraliaIcon />
             Made for the Australian working world.
           </span>
         </div>
@@ -135,6 +142,7 @@ export function Footer() {
             <h3>A better experience</h3>
             <Link href="/employers">For employers</Link>
             <Link href="/careers-plus">Careers+</Link>
+            <Link href="/about">About Westmere</Link>
             <Link href="/transparency">Our transparency promise</Link>
             <Link href="/privacy">Your privacy</Link>
             <StaffLink />

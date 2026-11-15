@@ -19,6 +19,10 @@ export type Job = {
   postedAt: string;
   source: "direct" | "external";
   externalUrl?: string;
+  contactEmail?: string;
+  avatarPath?: string;
+  bannerPath?: string;
+  documents?: { id: string; filename: string; bytes: number }[];
   description: string;
   responsibilities: string[];
   requirements: string[];

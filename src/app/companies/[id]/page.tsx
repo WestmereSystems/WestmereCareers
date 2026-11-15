@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ContactEmail } from "@/components/contact-email";
+import { RichText } from "@/components/rich-text";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
 import { getCompany } from "@/lib/companies-server";
@@ -42,11 +44,29 @@ export default async function Company({
       )}
       <div className="detail-grid">
         <article className="detail-card">
+          {company.banner_path && (
+            <img
+              className="employer-banner"
+              src={`/api/employer-image?id=${company.id}&kind=banner`}
+              alt=""
+              width="1200"
+              height="400"
+            />
+          )}
           <span
             className="company-monogram tone-0"
             style={{ width: 60, height: 60, fontSize: 32, marginBottom: 20 }}
           >
-            {company.name[0]}
+            {company.avatar_path ? (
+              <img
+                src={`/api/employer-image?id=${company.id}&kind=avatar`}
+                alt=""
+                width="60"
+                height="60"
+              />
+            ) : (
+              company.name[0]
+            )}
           </span>
           <p className="eyebrow">Meet the employer</p>
           <h1 style={{ fontSize: 38 }}>{company.name}</h1>
@@ -58,14 +78,22 @@ export default async function Company({
                 : "Business verification not complete"}
           </p>
           <h2>A little about us</h2>
-          <p>
-            {company.description ||
-              "This employer has not added an introduction yet."}
-          </p>
+          <RichText
+            text={
+              company.description ||
+              "This employer has not added an introduction yet."
+            }
+          />
           <p className="fineprint">
             Business verification is not an endorsement of workplace quality or
             a guarantee about a role.
           </p>
+          {company.careers_email && (
+            <ContactEmail
+              email={company.careers_email}
+              label="Careers enquiries"
+            />
+          )}
           <h2>What candidates have reported</h2>
           {insight?.is_unresponsive && enough && (
             <p className="notice">

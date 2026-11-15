@@ -21,7 +21,8 @@ import {
 
 type Profile = {
   configured: boolean;
-  user: { id: string; email?: string } | null;
+  user: { id: string; email?: string; fullName?: string } | null;
+  sampleWorkspace?: boolean;
   isPremium: boolean;
   loading: boolean;
   staffRole: "reviewer" | "admin" | null;
@@ -29,6 +30,8 @@ type Profile = {
 type SessionValue = Profile & {
   openAuth: () => void;
   refresh: () => Promise<void>;
+  savedIds: string[];
+  toggleSaved: (id: string) => Promise<void>;
 };
 const SessionContext = createContext<SessionValue>({
   configured: false,
@@ -38,6 +41,8 @@ const SessionContext = createContext<SessionValue>({
   staffRole: null,
   openAuth: () => {},
   refresh: async () => {},
+  savedIds: [],
+  toggleSaved: async () => {},
 });
 export const useSession = () => useContext(SessionContext);
 
@@ -50,6 +55,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     staffRole: null,
   });
   const [authOpen, setAuthOpen] = useState(false);
+  const [newAccount, setNewAccount] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [authProviders, setAuthProviders] = useState({
+    google: false,
+    azure: false,
+  });
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -63,6 +77,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setProfile({
           configured: Boolean(data.configured),
           user: data.user ?? null,
+          sampleWorkspace: data.sampleWorkspace === true,
           isPremium: data.isPremium === true,
           loading: false,
           staffRole: ["reviewer", "admin"].includes(data.staffRole)
@@ -94,7 +109,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const url = new URL(window.location.href);
     if (url.searchParams.get("auth") !== "expired") return;
     setStatus(
-      "That sign-in link couldn’t be completed. Request a fresh link below.",
+      "That sign-in couldn’t be completed. Request an email code below.",
     );
     setAuthOpen(true);
     url.searchParams.delete("auth");
@@ -134,24 +149,100 @@ export function Providers({ children }: { children: React.ReactNode }) {
       previous?.focus();
     };
   }, [authOpen]);
+  useEffect(() => {
+    if (!authOpen) return;
+    const c = new AbortController();
+    fetch("/api/auth/options", { signal: c.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!c.signal.aborted)
+          setAuthProviders({
+            google: d.google === true,
+            azure: d.azure === true,
+          });
+      })
+      .catch(() => {});
+    return () => c.abort();
+  }, [authOpen]);
   async function signIn(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setStatus("");
     try {
-      const r = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await r.json();
-      setStatus(
-        r.ok
-          ? "Check your email for your secure sign-in link."
-          : data.error || "Sign-in is temporarily unavailable.",
+      const r = await fetch(
+        codeSent ? "/api/auth/verify" : "/api/auth/sign-in",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            ...(codeSent ? { code } : {}),
+            ...(newAccount ? { fullName } : {}),
+          }),
+        },
       );
+      const data = await r.json();
+      if (r.ok && codeSent) {
+        window.location.assign("/account");
+        return;
+      }
+      if (r.ok) {
+        setCodeSent(true);
+        setStatus("Enter the newest sign-in code from your inbox.");
+      } else setStatus(data.error || "Sign-in is temporarily unavailable.");
     } catch {
       setStatus("We couldn’t connect. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (!profile.user) {
+      setSavedIds([]);
+      return;
+    }
+    const c = new AbortController();
+    fetch("/api/jobs/saved?idsOnly=1", { cache: "no-store", signal: c.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && !c.signal.aborted) setSavedIds(d.ids || []);
+      })
+      .catch(() => {});
+    return () => c.abort();
+  }, [profile.user?.id]);
+  async function toggleSaved(id: string) {
+    if (!profile.user) {
+      setAuthOpen(true);
+      return;
+    }
+    const saved = !savedIds.includes(id);
+    const r = await fetch("/api/jobs/saved", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, saved }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "This role could not be saved.");
+    setSavedIds((previous) =>
+      saved
+        ? [...new Set([...previous, id])]
+        : previous.filter((x) => x !== id),
+    );
+    window.dispatchEvent(new Event("westmere-saved"));
+  }
+  async function oauth(provider: "google" | "azure") {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/auth/oauth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
+      const d = await r.json();
+      if (r.ok && d.url) window.location.assign(d.url);
+      else setStatus(d.error);
+    } catch {
+      setStatus("Sign-in could not be started. Try an email code.");
     } finally {
       setBusy(false);
     }
@@ -166,9 +257,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
           setAuthOpen(true);
         },
         refresh,
+        savedIds,
+        toggleSaved,
       }}
     >
       {children}
+      {profile.user && !profile.user.fullName && !profile.loading && (
+        <NameOnboarding onComplete={refresh} />
+      )}
       {authOpen && (
         <div className="modal-backdrop" onClick={() => setAuthOpen(false)}>
           <section
@@ -192,10 +288,56 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <p className="eyebrow">A little closer to your next chapter</p>
             <h2 id="signin-title">Welcome to Westmere.</h2>
             <p className="muted">
-              Sign in or create an account with a secure email link. No password
-              to remember.
+              Sign in with a one-time email code. No password to remember.
             </p>
+            {!codeSent && (
+              <>
+                <div className="auth-options">
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || !authProviders.google}
+                    onClick={() => void oauth("google")}
+                  >
+                    Continue with Google
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || !authProviders.azure}
+                    onClick={() => void oauth("azure")}
+                  >
+                    Continue with Microsoft
+                  </button>
+                </div>
+                <p className="fineprint">
+                  {!authProviders.google && !authProviders.azure
+                    ? "Google and Microsoft sign-in are being connected. Email codes are available below."
+                    : "Or use your email"}
+                </p>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={newAccount}
+                    onChange={(e) => setNewAccount(e.target.checked)}
+                  />
+                  I’m creating a new account
+                </label>
+              </>
+            )}
             <form onSubmit={signIn}>
+              {newAccount && !codeSent && (
+                <label className="field-label">
+                  Your name
+                  <input
+                    autoComplete="name"
+                    required
+                    maxLength={120}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </label>
+              )}
               <label className="field-label" htmlFor="signin-email">
                 Email address
               </label>
@@ -205,20 +347,53 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 autoComplete="email"
                 required
                 autoFocus
+                readOnly={codeSent}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
+              {codeSent && (
+                <label className="field-label" htmlFor="signin-code">
+                  Sign-in code
+                  <input
+                    id="signin-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6,8}"
+                    minLength={6}
+                    maxLength={8}
+                    required
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  />
+                </label>
+              )}
               <button className="button primary full" disabled={busy}>
                 {busy ? (
                   <LoaderCircle className="spin" size={18} />
                 ) : (
                   <Mail size={18} />
                 )}
-                Email me a sign-in link
+                {codeSent
+                  ? "Verify code and sign in"
+                  : "Email me a sign-in code"}
                 <ArrowRight size={17} />
               </button>
             </form>
+            {codeSent && (
+              <button
+                className="text-button"
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setCodeSent(false);
+                  setCode("");
+                  setStatus("");
+                }}
+              >
+                Change email or request a new code
+              </button>
+            )}
             {status && (
               <p role="status" className="message">
                 {status}
@@ -278,32 +453,33 @@ export function SaveButton({
   id: string;
   compact?: boolean;
 }) {
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
+  const session = useSession();
+  const [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  const saved = session.user ? session.savedIds.includes(id) : false;
+  async function toggle() {
+    if (!session.user) {
+      session.openAuth();
+      return;
+    }
+    setBusy(true);
+    setMessage("");
     try {
-      setSaved(
-        (
-          JSON.parse(localStorage.getItem("westmere-saved") || "[]") as string[]
-        ).includes(id),
+      await session.toggleSaved(id);
+    } catch (e) {
+      setMessage(
+        e instanceof Error ? e.message : "We couldn’t save this role.",
       );
-    } catch {}
-  }, [id]);
-  function toggle() {
-    let ids: string[] = [];
-    try {
-      ids = JSON.parse(localStorage.getItem("westmere-saved") || "[]");
-    } catch {}
-    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-    try {
-      localStorage.setItem("westmere-saved", JSON.stringify(next));
-      setSaved(next.includes(id));
-      window.dispatchEvent(new Event("westmere-saved"));
-    } catch {}
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <button
       className={compact ? "save-icon" : "button secondary"}
-      aria-label={saved ? "Remove saved role" : "Save role on this device"}
+      aria-label={saved ? "Remove saved role" : "Save role to your account"}
+      title={message || undefined}
+      disabled={busy || session.loading}
       aria-pressed={saved}
       onClick={toggle}
       type="button"
@@ -324,6 +500,120 @@ export function SaveButton({
         </svg>
       )}
       {!compact && (saved ? "Saved" : "Save role")}
+      {message && (
+        <span className="sr-only" role="alert">
+          {message}
+        </span>
+      )}
     </button>
+  );
+}
+
+function NameOnboarding({ onComplete }: { onComplete: () => Promise<void> }) {
+  const [name, setName] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector("input")?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const nodes = ref.current?.querySelectorAll<HTMLElement>(
+        "input,button,a[href]",
+      );
+      if (!nodes?.length) return;
+      const first = nodes[0],
+        last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
+    return () => {
+      document.removeEventListener("keydown", trap);
+      before?.focus();
+    };
+  }, []);
+  return (
+    <div className="modal-backdrop">
+      <section
+        ref={ref}
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+      >
+        <p className="eyebrow">Make yourself at home</p>
+        <h2 id="onboarding-title">What should we call you?</h2>
+        <p>
+          Add your name to finish your profile. Your profile stays private; it
+          is shared only when you choose to apply.
+        </p>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              const r = await fetch("/api/profile", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fullName: name }),
+                }),
+                d = await r.json();
+              if (!r.ok) throw new Error(d.error);
+              await onComplete();
+            } catch (e) {
+              setMessage(
+                e instanceof Error
+                  ? e.message
+                  : "Your name could not be saved.",
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label className="field-label" htmlFor="onboarding-name">
+            Your name
+            <input
+              id="onboarding-name"
+              autoComplete="name"
+              required
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <button className="button primary full" disabled={busy}>
+            Continue to Westmere <ArrowRight size={17} />
+          </button>
+        </form>
+        {message && (
+          <p role="alert" className="message">
+            {message}
+          </p>
+        )}
+        <p className="fineprint">
+          New accounts receive one welcome email. Job alerts are a separate
+          choice.
+        </p>
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={async () => {
+            const r = await fetch("/api/auth/sign-out", { method: "POST" });
+            if (r.ok) await onComplete();
+            else setMessage("We couldn’t sign you out. Please try again.");
+          }}
+        >
+          Sign out
+        </button>
+      </section>
+    </div>
   );
 }

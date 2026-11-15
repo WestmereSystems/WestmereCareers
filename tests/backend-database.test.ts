@@ -980,3 +980,295 @@ describe("consented saved-search outbox", () => {
     ).toEqual({ n: 0 });
   });
 });
+
+describe("candidate and employer release", () => {
+  beforeEach(async () => {
+    await db.exec(
+      "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.example','https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe',false)",
+    );
+  });
+  it("isolates private CV history and rejects another candidate’s selected CV", async () => {
+    await db.exec(
+      `insert into public.candidate_cvs(id,user_id,filename,storage_path,media_type,bytes,extracted_text) values('50000000-0000-4000-8000-000000000001','${candidate}','CV.pdf','own/cv.pdf','application/pdf',100,'A sufficiently detailed CV with real supported skills and experience.'),('50000000-0000-4000-8000-000000000002','${otherCandidate}','Other.docx','other/cv.docx','application/vnd.openxmlformats-officedocument.wordprocessingml.document',100,'Another sufficiently detailed CV, private to the other candidate account.');`,
+    );
+    await asUser(candidate);
+    expect(
+      (await db.query("select filename from public.candidate_cvs")).rows,
+    ).toEqual([{ filename: "CV.pdf" }]);
+    await expect(
+      db.query("update public.profiles set active_cv_id=$1 where id=$2", [
+        "50000000-0000-4000-8000-000000000002",
+        candidate,
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query(
+        "insert into public.candidate_cvs(user_id,filename,storage_path,media_type,bytes,extracted_text) values($1,'Fake.pdf','x','application/pdf',100,repeat('x',60))",
+        [candidate],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("requires sign-in and ownership for server-side saved roles", async () => {
+    await asUser(candidate);
+    await db.query(
+      "insert into public.saved_jobs(user_id,job_id) values($1,$2)",
+      [candidate, job],
+    );
+    await asUser(otherCandidate);
+    expect(
+      (await db.query("select * from public.saved_jobs")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query("insert into public.saved_jobs(user_id,job_id) values($1,$2)", [
+        candidate,
+        job,
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser("", "anon");
+    await expect(
+      db.query("select * from public.saved_jobs"),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("queues a welcome once after a new account adds a name", async () => {
+    await asUser(candidate);
+    await db.query("update public.profiles set full_name='Alex' where id=$1", [
+      candidate,
+    ]);
+    await db.query(
+      "update public.profiles set full_name='Alex Candidate' where id=$1",
+      [candidate],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from private.alert_outbox where user_id=$1 and event_key='welcome'",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  });
+  it("records candidate activity emails and groups employer site updates without employer email", async () => {
+    await asUser(candidate);
+    await db.query(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,repeat('Supported experience. ',5))",
+      [job, candidate],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from public.notifications where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from private.alert_outbox where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from private.alert_outbox where user_id=$1",
+          [employer],
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    await asUser(otherCandidate);
+    await db.query(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,repeat('Other real experience. ',5))",
+      [job, otherCandidate],
+    );
+    await asUser(employer);
+    expect(
+      (await db.query("select title from public.notifications")).rows,
+    ).toEqual([{ title: "New applications to review" }]);
+    await expect(
+      db.query("update public.notifications set user_id=$1", [candidate]),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("supports email opt-out while retaining site receipts", async () => {
+    await asUser(candidate);
+    await db.query(
+      "update public.profiles set application_email_enabled=false where id=$1",
+      [candidate],
+    );
+    await db.query(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,repeat('Supported experience. ',5))",
+      [job, candidate],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from private.alert_outbox where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from public.notifications where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  });
+  it("keeps sample vacancies separate and limits access to the verified invited email", async () => {
+    await db.query(
+      "insert into private.sample_employer_invites(email) values('candidate@example.test')",
+    );
+    await asUser(candidate);
+    expect(
+      (await db.query("select public.my_sample_workspace() as allowed")).rows,
+    ).toEqual([{ allowed: true }]);
+    await db.query(
+      "insert into public.sample_jobs(user_id,title,description) values($1,'Sample role',repeat('Synthetic only. ',5))",
+      [candidate],
+    );
+    await asUser(otherCandidate);
+    expect(
+      (await db.query("select * from public.sample_jobs")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query(
+        "insert into public.sample_jobs(user_id,title,description) values($1,'Forged role',repeat('Synthetic only. ',5))",
+        [otherCandidate],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser("", "anon");
+    expect((await db.query("select title from public.jobs")).rows).toEqual([
+      { title: "Product Designer" },
+    ]);
+  });
+});
+
+describe("notification delivery controls", () => {
+  beforeEach(async () => {
+    await db.exec(
+      "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.example','https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe',true)",
+    );
+  });
+  it("notifies one first view, an interview update and a vacancy closure", async () => {
+    await asUser(candidate);
+    const inserted = await db.query<{ id: string }>(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,repeat('Supported experience. ',5)) returning id",
+      [job, candidate],
+    );
+    const id = inserted.rows[0].id;
+    await asUser(employer);
+    await db.query("select public.open_application($1)", [id]);
+    await db.query("select public.open_application($1)", [id]);
+    await db.query(
+      "select public.update_application_stage($1,'interview','We would like to arrange an interview with you.')",
+      [id],
+    );
+    await db.query("update public.jobs set status='closed' where id=$1", [job]);
+    await asUser(candidate);
+    const notices = await db.query<{ title: string }>(
+      "select title from public.notifications order by created_at,id",
+    );
+    expect(
+      notices.rows.filter((x) => x.title === "Application opened"),
+    ).toHaveLength(1);
+    expect(notices.rows.map((x) => x.title)).toEqual(
+      expect.arrayContaining([
+        "Application received",
+        "Interview selection update",
+        "Vacancy closed",
+      ]),
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as count from private.alert_outbox where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ count: 4 }]);
+  });
+  it("rate-limits explicitly requested sample email previews and checks verified invitation", async () => {
+    await db.exec(
+      `insert into private.sample_employer_invites(email) values('candidate@example.test');insert into public.sample_jobs(id,user_id,title,description) values('60000000-0000-4000-8000-000000000001','${candidate}','Private sample role',repeat('Synthetic role. ',5));insert into public.sample_applications(id,job_id,user_id) values('70000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001','${candidate}');`,
+    );
+    await asUser(candidate);
+    for (let i = 0; i < 3; i++)
+      await db.query(
+        "select public.request_sample_notification('70000000-0000-4000-8000-000000000001',true)",
+      );
+    await expect(
+      db.query(
+        "select public.request_sample_notification('70000000-0000-4000-8000-000000000001',true)",
+      ),
+    ).rejects.toMatchObject({ code: "P0001" });
+    await db.query(
+      "select public.request_sample_notification('70000000-0000-4000-8000-000000000001',false)",
+    );
+    await asUser(otherCandidate);
+    await expect(
+      db.query(
+        "select public.request_sample_notification('70000000-0000-4000-8000-000000000001',true)",
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("returns a listing to review atomically when a supporting document changes", async () => {
+    await db.query(
+      "insert into public.listing_documents(job_id,uploaded_by,filename,storage_path,media_type,bytes) values($1,$2,'Role pack.pdf','employer/role-pack.pdf','application/pdf',100)",
+      [job, employer],
+    );
+    expect(
+      (
+        await db.query(
+          "select status,moderation_status from public.jobs where id=$1",
+          [job],
+        )
+      ).rows,
+    ).toEqual([{ status: "draft", moderation_status: "pending" }]);
+    await asUser("", "anon");
+    expect(
+      (await db.query("select id from public.listing_documents")).rows,
+    ).toHaveLength(0);
+  });
+});
+
+describe("bounded upload processing", () => {
+  it("allows one server-reserved upload at a time and keeps leases private", async () => {
+    await asUser(candidate);
+    await expect(
+      db.query("select public.reserve_document_upload($1)", [candidate]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(candidate, "service_role");
+    const r = await db.query<{ token: string }>(
+      "select public.reserve_document_upload($1) as token",
+      [candidate],
+    );
+    await expect(
+      db.query("select public.reserve_document_upload($1)", [candidate]),
+    ).rejects.toMatchObject({ code: "P0001" });
+    await db.query(
+      "select public.release_document_upload($1,'80000000-0000-4000-8000-000000000001')",
+      [candidate],
+    );
+    await expect(
+      db.query("select public.reserve_document_upload($1)", [candidate]),
+    ).rejects.toMatchObject({ code: "P0001" });
+    await db.query("select public.release_document_upload($1,$2)", [
+      candidate,
+      r.rows[0].token,
+    ]);
+    expect(
+      (
+        await db.query("select public.reserve_document_upload($1) as token", [
+          candidate,
+        ])
+      ).rows[0],
+    ).toHaveProperty("token");
+  });
+});

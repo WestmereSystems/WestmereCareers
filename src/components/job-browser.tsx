@@ -24,6 +24,7 @@ import {
 } from "@/lib/search";
 import { SearchBar } from "./search-bar";
 import { JobCard } from "./job-card";
+import { SavedCVButton } from "./profile-tools";
 import { useSession } from "./providers";
 
 type Result = {
@@ -561,6 +562,7 @@ export function JobBrowser({
               <label className="field-label" htmlFor="cv-match-text">
                 Your CV text
               </label>
+              <SavedCVButton onLoad={setCv} maxLength={20000} />
               <textarea
                 id="cv-match-text"
                 maxLength={20000}

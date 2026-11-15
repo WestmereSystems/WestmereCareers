@@ -37,3 +37,27 @@ The site uses the `lucide-react` dependency. Its full ISC licence and the MIT no
 ## Demo content
 
 All employers, vacancies, salaries, response counts and response times in `src/lib/jobs.ts` are fictional fixtures. They are marked as demo data in the UI and must not be imported as genuine public job listings, employer endorsements or market salary research.
+
+## Real-human photography — CC0 1.0
+
+Two self-hosted photographs were downloaded and visually reviewed on 15 November 2026. Each individual Nappy source page explicitly identifies the photograph as **public domain**. The publisher's [Nappy licence page](https://nappy.co/license) states that its photographs are released under [Creative Commons Zero 1.0](https://creativecommons.org/publicdomain/zero/1.0/), including commercial use and modification without required attribution. These are the actual listed photo assets, not the separately advertised iStock images on those pages.
+
+| Production asset                                                     | Photograph and credited contributor                                                                                               | Primary source                                                                                                           | Downloaded source image                                                           |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `public/images/creative-colleagues.webp` — 1,260 × 709, 59,016 bytes | “Two Black Woman with white clothes”, **thirdandwonder**; two creative-production colleagues preparing together behind the scenes | [Individual public-domain photo page](https://nappy.co/photo/two-black-woman-with-white-clothes%2Besl0dKo3oxKSVeQj58q_o) | [Nappy image](https://images.nappy.co/photo/esl0dKo3oxKSVeQj58q_o.jpg?width=1260) |
+| `public/images/focused-work.webp` — 1,260 × 840, 50,566 bytes        | “Work”, **NappyStock**; a person working on a laptop beside a window                                                              | [Individual public-domain photo page](https://nappy.co/photo/work%2BzGrbhlx8mgBqyAaItdwny)                               | [Nappy image](https://images.nappy.co/photo/zGrbhlx8mgBqyAaItdwny.jpg?width=1260) |
+
+Changes: JPEG sources were converted to WebP at quality 80 for local delivery, with metadata removed. The composition and depicted people were not altered. No request to Nappy is needed when the site displays these files.
+
+Use these as illustrative photographs of people and work. The subjects are not represented as Westmere employees, customers, job applicants, testimonial authors, or endorsers. Their nationality, job-search circumstances and relationship to Westmere are unknown; do not invent those details or use the images as evidence of Australian customers. CC0 addresses copyright; it does not create a subject's endorsement or transfer personality/privacy/trademark rights. No independent model-release document was supplied with these downloads. Nappy asks that its images not be used to insult or degrade the people pictured, resold unchanged, or reposted to another stock-photo service.
+
+## Australia silhouette — public-domain Natural Earth geography
+
+`public/icons/australia.svg` is a 24-unit, `currentColor` silhouette derived from the **Australia (`ADM0_A3 = AUS`)** feature in Natural Earth **v5.1.2, 1:110m Admin 0 – Countries**. It retains mainland Australia and Tasmania as two separate paths. It is a geographic icon, not a flag or a claim to government affiliation.
+
+- [Exact versioned source GeoJSON](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_admin_0_countries.geojson), downloaded 15 November 2026.
+- Download SHA-256: `6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f`.
+- [Natural Earth terms of use](https://www.naturalearthdata.com/about/terms-of-use/) declare all versions of its vector/raster data **public domain**, permit commercial use and modification, and require no attribution. The geography is not covered by the Lucide icon licence or described as an original guessed outline.
+- Changes: longitude was scaled by `cos(27°)`, latitude inverted for SVG coordinates, both polygons uniformly fitted to a 24 × 24 viewbox with margins, and coastlines simplified at a 0.08-unit tolerance. Geographic islands absent from this small-scale source have not been invented. The result was rendered and visually checked with Tasmania preserved, and includes source/licence metadata without scripts or remote resources.
+
+The Westmere email wordmark SVG and rendered PNG are original Westmere artwork, dedicated to CC0 alongside the original illustration set. The React Australia icon uses the same documented Natural Earth geometry as `public/icons/australia.svg`.

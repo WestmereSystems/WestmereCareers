@@ -2895,3 +2895,298 @@ summary {
 .brand-careers {
   font-size: 10px;
 }
+
+/* Private career tools and a more human employer workspace. */
+.auth-options {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.auth-options .button {
+  width: 100%;
+}
+.header-greeting {
+  font-size: 15px;
+  max-width: 145px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-notifications {
+  font-size: 14px;
+  color: var(--primary);
+  text-decoration: none;
+}
+.cv-library {
+  margin: 28px 0;
+}
+.cv-library input[type="file"],
+.brand-editor input[type="file"],
+.listing-documents input[type="file"] {
+  padding: 14px;
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  max-width: 100%;
+}
+.cv-history,
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+.cv-history li,
+.notification-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+.cv-history strong {
+  overflow-wrap: anywhere;
+}
+.notification-list li.unread {
+  border-left: 3px solid var(--primary);
+  padding-left: 18px;
+}
+.notification-list h3 {
+  margin: 12px 0 8px;
+}
+.account-email,
+.brand-editor,
+.listing-documents {
+  margin: 22px 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.account-email summary,
+.brand-editor summary,
+.listing-documents summary {
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+}
+.account-email form,
+.brand-editor form {
+  margin: 20px 0;
+}
+.account-email input,
+.brand-editor input {
+  width: 100%;
+}
+.document-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 0;
+}
+.document-row a {
+  overflow-wrap: anywhere;
+}
+.saved-cv-control {
+  margin: 14px 0;
+}
+.sample-role-list {
+  display: grid;
+  gap: 24px;
+  margin-top: 30px;
+}
+.rich-text ul {
+  list-style: disc;
+  padding-left: 24px;
+}
+.rich-text p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rich-text h3 {
+  margin: 24px 0 12px;
+}
+.contact-email {
+  margin: 25px 0;
+}
+.employer-banner {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 28px;
+}
+.company-monogram img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.people-photo {
+  margin: 0;
+  min-width: 0;
+}
+.people-photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 30px;
+}
+.people-photo figcaption {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.human-story {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: clamp(28px, 5vw, 74px);
+  margin-top: 74px;
+  margin-bottom: 74px;
+}
+.human-story h2 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.18;
+}
+.human-story p:not(.eyebrow) {
+  margin: 22px 0;
+}
+.premium-human-story .people-photo img {
+  border-radius: 90px 28px 90px 28px;
+  aspect-ratio: 1.45;
+}
+.about-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  padding-top: 80px;
+  padding-bottom: 70px;
+}
+.about-hero h1 {
+  font-size: clamp(40px, 4vw, 64px);
+  line-height: 1.08;
+}
+.about-hero p {
+  margin: 24px 0;
+}
+.about-hero .lead {
+  font-size: 21px;
+}
+.mission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+.mission-grid h3 {
+  margin: 20px 0 12px;
+}
+.about-note {
+  margin-bottom: 80px;
+  padding: clamp(28px, 5vw, 64px);
+}
+.about-note > div {
+  max-width: 850px;
+}
+.about-note p {
+  margin: 22px 0;
+}
+.policy-contents {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 28px;
+  margin: 35px 0;
+}
+.policy-contents ol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 30px;
+  padding-left: 24px;
+}
+.legal section {
+  scroll-margin-top: 110px;
+}
+@media (max-width: 1100px) {
+  .header-greeting {
+    display: none;
+  }
+  .header-notifications {
+    font-size: 14px;
+  }
+}
+@media (max-width: 760px) {
+  .human-story,
+  .about-hero,
+  .mission-grid {
+    grid-template-columns: 1fr;
+  }
+  .about-hero {
+    padding-top: 45px;
+    gap: 30px;
+  }
+  .human-story {
+    gap: 30px;
+    margin: 48px auto;
+  }
+  .cv-history li,
+  .notification-list li {
+    flex-direction: column;
+  }
+  .cv-history .inline-actions {
+    flex-wrap: wrap;
+  }
+  .policy-contents ol {
+    grid-template-columns: 1fr;
+  }
+  .header-notifications {
+    display: none;
+  }
+}
+@media print {
+  .site-header,
+  .site-footer,
+  .policy-contents {
+    display: none;
+  }
+  .legal {
+    max-width: none;
+    padding: 0;
+  }
+  .legal section {
+    break-inside: auto;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .header-greeting {
+    display: inline;
+    max-width: 85px;
+    font-size: 14px;
+  }
+  .header-notifications {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .header-greeting {
+    display: inline;
+    max-width: 78px;
+    font-size: 14px;
+  }
+  .header-actions {
+    gap: 9px;
+  }
+}
+
+.page-main {
+  padding-top: 55px;
+  padding-bottom: 80px;
+  min-height: 65vh;
+}
+.page-main > h1 {
+  margin-bottom: 32px;
+}

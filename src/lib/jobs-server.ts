@@ -13,7 +13,7 @@ export type PublicJobsResult = {
   error?: string;
 };
 const columns =
-  "id,organisation_id,response_snapshot_at,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description";
+  "id,organisation_id,response_snapshot_at,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description,contact_email,organisations(avatar_path,banner_path),listing_documents(id,filename,bytes)";
 const strings = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -54,6 +54,23 @@ export function jobFromRecord(row: Record<string, unknown>): Job {
     postedAt: text(row.published_at, text(row.created_at)),
     source: row.source === "external" ? "external" : "direct",
     ...(row.external_url ? { externalUrl: text(row.external_url) } : {}),
+    contactEmail: text(row.contact_email) || undefined,
+    avatarPath:
+      text(
+        (row.organisations as Record<string, unknown> | null)?.avatar_path,
+      ) || undefined,
+    bannerPath:
+      text(
+        (row.organisations as Record<string, unknown> | null)?.banner_path,
+      ) || undefined,
+    documents: Array.isArray(row.listing_documents)
+      ? row.listing_documents.filter(
+          (d): d is { id: string; filename: string; bytes: number } =>
+            typeof d?.id === "string" &&
+            typeof d?.filename === "string" &&
+            typeof d?.bytes === "number",
+        )
+      : [],
     description: text(row.description),
     responsibilities: strings(row.responsibilities),
     requirements: strings(row.requirements),

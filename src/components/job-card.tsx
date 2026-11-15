@@ -52,7 +52,17 @@ export function JobCard({
           href={`/companies/${job.organisationId ?? job.id}`}
           aria-label={`${job.company} profile`}
         >
-          {job.companyInitial}
+          {job.avatarPath && job.organisationId ? (
+            <img
+              src={`/api/employer-image?id=${job.organisationId}&kind=avatar`}
+              alt=""
+              width="48"
+              height="48"
+              loading="lazy"
+            />
+          ) : (
+            job.companyInitial
+          )}
         </Link>
         <span className="job-type-label">
           {job.source === "direct" ? (

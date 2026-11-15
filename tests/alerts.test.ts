@@ -67,7 +67,8 @@ describe("Resend alert boundary", () => {
       ],
     });
     expect(result.html).not.toContain("<script>");
-    expect(result.html).not.toContain("<img");
+    expect(result.html).not.toContain("<img onerror");
+    expect(result.html).toContain('alt="Westmere Careers"');
     expect(result.html).toContain("&lt;img");
     expect(result.text).toContain("Fern & Co");
     expect(result.headers["List-Unsubscribe-Post"]).toBe(

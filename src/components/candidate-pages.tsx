@@ -13,6 +13,7 @@ import {
   Download,
 } from "lucide-react";
 import { useSession } from "./providers";
+import { CVHistory, ChangeEmail, SavedCVButton } from "./profile-tools";
 import { JobCard } from "./job-card";
 import { EmptyState } from "./shell";
 import type { Job } from "@/lib/jobs";
@@ -135,6 +136,7 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
               ? "Sample role: nothing entered here is submitted or persisted."
               : "Share your CV and optional cover letter with this employer. You’ll be able to track application activity."}
           </p>
+          {!isDemo && <SavedCVButton onLoad={setCv} />}
           <label className="field-label" htmlFor="application-cv">
             Your CV text
           </label>
@@ -195,140 +197,68 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
 }
 
 export function SavedRoles({ source }: { source: string }) {
-  const [saved, setSaved] = useState<string[] | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [resolvedSource, setResolvedSource] = useState(source);
-  const [unavailable, setUnavailable] = useState(0);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(true);
-  const [retry, setRetry] = useState(0);
+  const session = useSession();
+  const [jobs, setJobs] = useState<Job[]>([]),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(true);
   useEffect(() => {
-    function refresh() {
-      try {
-        const stored: unknown = JSON.parse(
-          localStorage.getItem("westmere-saved") || "[]",
-        );
-        setSaved(
-          Array.isArray(stored)
-            ? [
-                ...new Set(
-                  stored.filter(
-                    (id): id is string =>
-                      typeof id === "string" && id.length <= 100,
-                  ),
-                ),
-              ]
-            : [],
-        );
-      } catch {
-        setSaved([]);
-      }
-    }
-    refresh();
-    window.addEventListener("westmere-saved", refresh);
-    return () => window.removeEventListener("westmere-saved", refresh);
-  }, []);
-  useEffect(() => {
-    if (saved === null) return;
-    const controller = new AbortController();
-    if (!saved.length) {
+    if (!session.user) {
       setJobs([]);
-      setUnavailable(0);
       setBusy(false);
-      setMessage("");
       return;
     }
+    const c = new AbortController();
     setBusy(true);
-    setMessage("");
-    const params = new URLSearchParams({ ids: saved.slice(0, 100).join(",") });
-    fetch(`/api/jobs/saved?${params}`, {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok)
-          throw new Error(data.error || "Your saved roles couldn’t be loaded.");
-        if (!controller.signal.aborted) {
-          setJobs(data.jobs);
-          setUnavailable(data.unavailableIds?.length ?? 0);
-          setResolvedSource(data.source);
+    fetch("/api/jobs/saved", { cache: "no-store", signal: c.signal })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        if (!c.signal.aborted) {
+          setJobs(d.jobs || []);
+          setMessage("");
         }
       })
-      .catch((error) => {
-        if (!controller.signal.aborted) {
-          setJobs([]);
-          setUnavailable(0);
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : "Your saved roles couldn’t be loaded.",
-          );
-        }
+      .catch((e) => {
+        if (!c.signal.aborted)
+          setMessage(e.message || "Saved roles are unavailable.");
       })
       .finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
+        if (!c.signal.aborted) setBusy(false);
       });
-    return () => controller.abort();
-  }, [saved, retry]);
+    return () => c.abort();
+  }, [session.user?.id, session.savedIds.join(",")]);
+  if (session.loading || busy)
+    return <p role="status">Loading your saved roles…</p>;
+  if (!session.user)
+    return (
+      <div className="panel">
+        <h2>Your shortlist, all in one place.</h2>
+        <p>Sign in to save roles privately across your devices.</p>
+        <button className="button primary" onClick={session.openAuth}>
+          Sign in to save roles
+        </button>
+      </div>
+    );
   return (
     <>
-      <p className="notice">
-        Saved roles are kept on this device. Your CV is never stored in browser
-        storage.{" "}
-        {resolvedSource === "demo" ? "These are fictional sample roles." : ""}
-      </p>
-      {saved && saved.length > 100 && (
-        <p className="notice">
-          Showing the first 100 saved roles. You have {saved.length} saved on
-          this device.
+      {message && (
+        <p role="alert" className="message">
+          {message}
         </p>
       )}
-      {busy ? (
-        <p role="status">Finding your saved possibilities…</p>
-      ) : message ? (
-        <div className="panel">
-          <p role="alert">{message}</p>
-          <button
-            type="button"
-            className="button secondary small"
-            onClick={() => setRetry((value) => value + 1)}
-            style={{ marginTop: 15 }}
-          >
-            Try again
-          </button>
+      {jobs.length ? (
+        <div className="job-list">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} />
+          ))}
         </div>
       ) : (
-        <>
-          {unavailable > 0 && (
-            <p className="notice" role="status">
-              {unavailable} saved {unavailable === 1 ? "role is" : "roles are"}{" "}
-              closed or unavailable. Available roles are shown below.
-            </p>
-          )}
-          {jobs.length ? (
-            <div className="job-grid">
-              {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title={
-                unavailable
-                  ? "There’s still possibility ahead."
-                  : "Keep a little possibility close."
-              }
-              description={
-                unavailable
-                  ? "Your saved roles are currently closed or unavailable. Explore fresh opportunities for your next move."
-                  : "Save a role as you browse and find it here when you’re ready for another look."
-              }
-              action="Explore opportunities"
-              href="/jobs"
-            />
-          )}
-        </>
+        <EmptyState
+          title="A little room for possibility."
+          description="Save a role when it catches your eye. Closed or unavailable listings may no longer appear here."
+          action="Find a role"
+          href="/jobs"
+        />
       )}
     </>
   );
@@ -408,6 +338,7 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
       });
       const data = await r.json();
       setMessage(data.message || data.error);
+      if (r.ok) await session.refresh();
       if (r.ok) await load();
     } catch {
       setMessage("We couldn’t withdraw your application. Please try again.");
@@ -668,6 +599,7 @@ export function Account() {
 }
 function AccountForUser() {
   const session = useSession();
+  const [applicationEmails, setApplicationEmails] = useState(true);
   const [name, setName] = useState("");
   const [cv, setCv] = useState("");
   const [message, setMessage] = useState("");
@@ -684,6 +616,7 @@ function AccountForUser() {
         if (controller.signal.aborted) return;
         setName(data.profile?.full_name || "");
         setCv(data.profile?.cv_text || "");
+        setApplicationEmails(data.profile?.application_email_enabled !== false);
       })
       .catch(() => {
         if (!controller.signal.aborted)
@@ -698,10 +631,15 @@ function AccountForUser() {
       const r = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: name, cvText: cv }),
+        body: JSON.stringify({
+          fullName: name,
+          cvText: cv,
+          applicationEmailEnabled: applicationEmails,
+        }),
       });
       const data = await r.json();
       setMessage(data.message || data.error);
+      if (r.ok) await session.refresh();
     } catch {
       setMessage("Your profile wasn’t saved. Please try again.");
     } finally {
@@ -743,6 +681,9 @@ function AccountForUser() {
   return (
     <>
       <div className="actions-row" style={{ marginBottom: 24 }}>
+        <Link className="button secondary" href="/notifications">
+          Notifications
+        </Link>
         <Link className="button secondary" href="/applications">
           My applications
         </Link>
@@ -753,7 +694,20 @@ function AccountForUser() {
           Reports & trust activity
         </Link>
       </div>
+      {session.sampleWorkspace && (
+        <p className="notice">
+          <Link className="text-link" href="/employers/sample">
+            Open your sample hiring workspace →
+          </Link>
+        </p>
+      )}
+      {!session.user.fullName && (
+        <p className="notice">
+          Welcome. Add your name below to finish setting up your profile.
+        </p>
+      )}
       <Applications compact />
+      <CVHistory onSelect={setCv} />
       <div className="account-grid">
         <form className="panel" onSubmit={save}>
           <h2>Your private profile</h2>
@@ -766,6 +720,8 @@ function AccountForUser() {
           </label>
           <input
             id="profile-name"
+            required
+            autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={120}
@@ -801,6 +757,19 @@ function AccountForUser() {
             </span>
             <h2 style={{ marginTop: 20 }}>Your account</h2>
             <p>{session.user.email}</p>
+            <ChangeEmail />
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={applicationEmails}
+                onChange={(e) => setApplicationEmails(e.target.checked)}
+              />
+              Email me application activity and employer updates
+            </label>
+            <p className="fineprint">
+              Save your profile to apply this preference. Site notifications
+              remain available. Job-alert preferences are separate.
+            </p>
             <p>
               {session.isPremium
                 ? "Careers+ · Active membership"
@@ -832,9 +801,9 @@ function AccountForUser() {
             </button>
           </section>
           <p className="fineprint" style={{ marginTop: 20 }}>
-            Account export and deletion workflows are required before public
-            launch. See our privacy information for the current development
-            status.
+            Request an account copy, correction or deletion through our Privacy
+            Officer at support@westmere.com.au. See our privacy policy for
+            details.
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { RichText } from "./rich-text";
 import { useSession } from "./providers";
 import { sendJson } from "./trust-workflows";
 type Item = {
@@ -192,7 +193,12 @@ function ModerationWorkspaceForUser() {
               {Object.entries(item)
                 .filter(
                   ([k, v]) =>
-                    !["id", "search_vector", "cv_text_snapshot"].includes(k) &&
+                    ![
+                      "id",
+                      "search_vector",
+                      "cv_text_snapshot",
+                      "listing_documents",
+                    ].includes(k) &&
                     v !== null &&
                     v !== "" &&
                     v !== undefined,
@@ -206,6 +212,32 @@ function ModerationWorkspaceForUser() {
                   </div>
                 ))}
             </dl>
+            {kind === "job" && (
+              <>
+                <h3>Candidate-facing description</h3>
+                <RichText text={String(item.description || "")} />
+                {Array.isArray(item.listing_documents) &&
+                  item.listing_documents.length > 0 && (
+                    <section>
+                      <h3>Supporting documents to review</h3>
+                      <ul>
+                        {(
+                          item.listing_documents as {
+                            id: string;
+                            filename: string;
+                          }[]
+                        ).map((d) => (
+                          <li key={d.id}>
+                            <a href={`/api/listing-documents?id=${d.id}`}>
+                              {d.filename}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+              </>
+            )}
             {kind !== "audit" && (
               <form
                 className="form-stack"

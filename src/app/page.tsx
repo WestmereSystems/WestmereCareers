@@ -1,3 +1,4 @@
+import { AustraliaIcon } from "@/components/australia-icon";
 import { Suspense } from "react";
 import { AnimatedArt } from "@/components/animated-art";
 import Link from "next/link";
@@ -46,7 +47,7 @@ export default function Home() {
                   Free to find your next role
                 </span>
                 <span>
-                  <Check size={15} />
+                  <AustraliaIcon />
                   Made for Australia
                 </span>
               </div>
@@ -74,6 +75,28 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+      <section className="container human-story">
+        <figure className="people-photo">
+          <img
+            src="/images/creative-colleagues.webp"
+            alt="Creative colleagues working together"
+            width="1260"
+            height="709"
+            loading="lazy"
+          />
+        </figure>
+        <div>
+          <p className="eyebrow">Behind every application is a person</p>
+          <h2>Your next chapter deserves a human touch.</h2>
+          <p>
+            Clearer opportunities. More useful updates. A place to bring your
+            experience and find a little more possibility.
+          </p>
+          <Link href="/about" className="text-link">
+            Why Westmere exists <ArrowRight size={17} />
+          </Link>
         </div>
       </section>
       <section className="trust-strip">

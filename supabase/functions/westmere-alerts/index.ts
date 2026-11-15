@@ -1,3 +1,4 @@
+import { renderAccountEmail } from "../_shared/account-email.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import {
   alertEvents,
@@ -170,7 +171,9 @@ Deno.serve(async (req: Request) => {
       try {
         body =
           item.provider_request ??
-          renderAlert(item.id, item.recipient, item.kind, item.snapshot);
+          (item.kind === "account"
+            ? renderAccountEmail(item.id, item.recipient, item.snapshot)
+            : renderAlert(item.id, item.recipient, item.kind, item.snapshot));
       } catch {
         await db.rpc("settle_job_alert", {
           p_id: item.id,

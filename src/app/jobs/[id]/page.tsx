@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { RichText } from "@/components/rich-text";
+import { ContactEmail } from "@/components/contact-email";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -62,16 +64,37 @@ export default async function JobDetail({
       )}
       <div className="detail-grid">
         <article className="detail-card">
+          {job.bannerPath && job.organisationId && (
+            <img
+              className="employer-banner"
+              src={`/api/employer-image?id=${job.organisationId}&kind=banner`}
+              alt=""
+              width="1200"
+              height="400"
+            />
+          )}
           <div className="detail-header">
             <Link
               className="company-monogram tone-0"
               href={`/companies/${job.organisationId ?? job.id}`}
             >
-              {job.companyInitial}
+              {job.avatarPath && job.organisationId ? (
+                <img
+                  src={`/api/employer-image?id=${job.organisationId}&kind=avatar`}
+                  alt=""
+                  width="64"
+                  height="64"
+                />
+              ) : (
+                job.companyInitial
+              )}
             </Link>
             <div>
               <h1>{job.title}</h1>
-              <Link className="company-name" href={`/companies/${job.organisationId ?? job.id}`}>
+              <Link
+                className="company-name"
+                href={`/companies/${job.organisationId ?? job.id}`}
+              >
                 {job.company} ↗
               </Link>
             </div>
@@ -94,7 +117,7 @@ export default async function JobDetail({
           </div>
           <ResponseInsight job={job} />
           <h2>A little about the opportunity</h2>
-          <p>{job.description}</p>
+          <RichText text={job.description} />
           <h2>What you’ll be doing</h2>
           <ul>
             {job.responsibilities.map((item) => (
@@ -113,6 +136,27 @@ export default async function JobDetail({
               <span key={skill}>{skill}</span>
             ))}
           </div>
+          {job.documents?.length ? (
+            <section>
+              <h2>More about this role</h2>
+              <ul>
+                {job.documents.map((d) => (
+                  <li key={d.id}>
+                    <a
+                      className="text-link"
+                      href={`/api/listing-documents?id=${d.id}`}
+                    >
+                      {d.filename} · {Math.ceil(d.bytes / 1024)} KB
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="fineprint">
+                Employer-provided documents. Download only what you need.
+              </p>
+            </section>
+          ) : null}
+          {job.contactEmail && <ContactEmail email={job.contactEmail} />}
           <div className="detail-actions">
             <SaveButton id={job.id} />
             <Link className="button secondary" href={`/studio?job=${job.id}`}>
@@ -133,7 +177,10 @@ export default async function JobDetail({
             <p className="fineprint">
               {job.companySize} · {job.city}
             </p>
-            <Link className="text-link" href={`/companies/${job.organisationId ?? job.id}`}>
+            <Link
+              className="text-link"
+              href={`/companies/${job.organisationId ?? job.id}`}
+            >
               Explore employer profile
               <ArrowRight size={16} />
             </Link>

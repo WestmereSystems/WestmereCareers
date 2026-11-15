@@ -9,6 +9,8 @@ import {
   Eye,
   MessageCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { EmployerBranding, ListingDocuments } from "./employer-branding";
 import { useSession } from "./providers";
 import { VerificationIntake, TrustCaseForm, sendJson } from "./trust-workflows";
 
@@ -33,6 +35,8 @@ type Role = {
   responsibilities: string[];
   requirements: string[];
   skills: string[];
+  contact_email?: string | null;
+  listing_documents?: { id: string; filename: string; bytes: number }[];
   listing_review_feedback: { message: string } | null;
 };
 type Membership = {
@@ -43,6 +47,10 @@ type Membership = {
     name: string;
     is_verified: boolean;
     suspended_at: string | null;
+    description?: string;
+    careers_email?: string | null;
+    avatar_path?: string | null;
+    banner_path?: string | null;
   };
 };
 type Applicant = {
@@ -147,6 +155,7 @@ function EmployerWorkspaceForUser() {
             .split(",")
             .map((x) => x.trim())
             .filter(Boolean),
+          contactEmail: String(data.get("contactEmail") || ""),
           publish: data.get("publish") === "on",
         }),
       });
@@ -291,6 +300,18 @@ function EmployerWorkspaceForUser() {
           </p>
         </div>
       ) : null}
+      <p>
+        <Link className="text-link" href="/notifications">
+          View hiring notifications →
+        </Link>
+      </p>
+      {session.sampleWorkspace && (
+        <p className="notice">
+          <Link href="/employers/sample">
+            Open your private sample hiring workspace
+          </Link>
+        </p>
+      )}
       <VerificationIntake />
       {members.map((m) => (
         <div key={m.organisation_id} className="panel">
@@ -302,6 +323,14 @@ function EmployerWorkspaceForUser() {
                 ? "Business identity and hiring authority checked."
                 : "Business verification pending."}
           </p>
+          {m.organisations.is_verified &&
+            !m.organisations.suspended_at &&
+            ["owner", "admin"].includes(m.role) && (
+              <EmployerBranding
+                organisation={m.organisations}
+                onSaved={() => void load()}
+              />
+            )}
           <TrustCaseForm organisationId={m.organisation_id} />
         </div>
       ))}
@@ -437,14 +466,32 @@ function EmployerWorkspaceForUser() {
             These amounts include superannuation
           </label>
           <label className="field-label">
-            The opportunity
+            The opportunity · rich text
             <textarea
+              placeholder="Use ## for headings, - for bullet points and **bold** for emphasis."
               name="description"
               defaultValue={editing?.description}
               required
               minLength={20}
               maxLength={20000}
             />
+          </label>
+          <p className="fineprint">
+            Formatting: ## heading, - bullet point, **bold**. HTML and embedded
+            links are shown as text.
+          </p>
+          <label className="field-label">
+            Contact email for this listing · optional
+            <input
+              name="contactEmail"
+              type="email"
+              maxLength={254}
+              defaultValue={editing?.contact_email || ""}
+            />
+            <span className="fineprint">
+              Public, revealed by click. Use a work address you are authorised
+              to publish.
+            </span>
           </label>
           <label className="field-label">
             Responsibilities — one per line
@@ -493,6 +540,7 @@ function EmployerWorkspaceForUser() {
             <div className="application-row" key={role.id}>
               <div>
                 <h3>{role.title}</h3>
+                <ListingDocuments role={role} onSaved={() => void load()} />
                 <p>
                   {role.location} · {role.status} ·{" "}
                   {role.publication_requested

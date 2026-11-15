@@ -1,65 +1,66 @@
-export const metadata = { title: "Your privacy" };
+import Link from "next/link";
+import { Fragment } from "react";
+import policy from "@/content/privacy-policy.json";
+export const metadata = {
+  title: "Privacy policy",
+  description:
+    "How Westmere Careers handles accounts, CVs, applications, employer information and optional career tools.",
+};
+function linked(text: string) {
+  return text.split(/(\[[^\]]+\]\(https:\/\/[^\s)]+\))/g).map((s, i) => {
+    const match = s.match(/^\[([^\]]+)\]\((https:\/\/[^\s)]+)\)$/);
+    return match ? (
+      <a href={match[2]} key={i} rel="noopener noreferrer">
+        {match[1]}
+      </a>
+    ) : (
+      <Fragment key={i}>{s}</Fragment>
+    );
+  });
+}
 export default function Privacy() {
   return (
     <main id="main" className="container legal">
       <div className="page-intro">
         <p className="eyebrow">Your information, your choice</p>
-        <h1>Keep your next chapter yours.</h1>
-        <p className="muted">
-          Development privacy information · Updated 12 November 2026
-        </p>
+        <h1>Westmere Careers Privacy Policy</h1>
+        <p className="muted">Last updated: 15 November 2026</p>
       </div>
+      <div className="notice">
+        <strong>Your CV stays private.</strong> Saving a CV does not publish it
+        or send it to OpenAI. Applications share a separate copy with the hiring
+        organisation you choose. Optional AI assistance requires a separate
+        request and consent.
+      </div>
+      <nav className="policy-contents" aria-label="Privacy policy contents">
+        <h2>Find what you need</h2>
+        <ol>
+          {policy.map((s, i) => (
+            <li key={s.title}>
+              <a href={`#privacy-${i + 1}`}>{s.title.replace(/^\d+\. /, "")}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+      {policy.map((s, i) => (
+        <section key={s.title} id={`privacy-${i + 1}`}>
+          <h2>{s.title}</h2>
+          {s.paragraphs.map((p, n) =>
+            p.startsWith("- ") ? (
+              <ul key={n}>
+                {p.split("\n").map((line, k) => (
+                  <li key={k}>{linked(line.replace(/^- /, ""))}</li>
+                ))}
+              </ul>
+            ) : (
+              <p key={n}>{linked(p)}</p>
+            ),
+          )}
+        </section>
+      ))}
       <p>
-        This development preview uses fictional job listings and employers.
-        Account, payment and AI services remain unavailable until their
-        dedicated service configuration is completed. A final privacy policy
-        identifying the operating entity, privacy contact and all service
-        providers is required before public launch.
-      </p>
-      <h2>Your CV</h2>
-      <p>
-        The CV editor keeps pasted text in the current page’s memory. It does
-        not save CV text to browser storage. If you deliberately save a profile
-        after sign-in, the CV is stored privately in the configured database.
-        Submitting a live application creates a separate snapshot shared with
-        the hiring organisation.
-      </p>
-      <h2>OpenAI assistance is your choice</h2>
-      <p>
-        Paid CV improvement and tailoring send your CV, optional goals and
-        selected role information to OpenAI only after explicit consent and a
-        request for assistance. Requests are made by the server using a private
-        key and configured with storage disabled. Provider processing and
-        retention terms still apply; this setting is not a promise of zero
-        retention.
-      </p>
-      <p>
-        A labelled static sample does not send your entered CV to OpenAI.
-        Skill-overlap matching is a separate, explainable calculation; it does
-        not predict a hiring outcome.
-      </p>
-      <h2>Account and payment information</h2>
-      <p>
-        Supabase provides configured sign-in and private account storage. Stripe
-        hosts payment collection and subscription management; Westmere does not
-        collect card details directly. Live purchases are not enabled in this
-        preview.
-      </p>
-      <h2>On your device</h2>
-      <p>
-        We store your selected appearance and saved job identifiers in local
-        browser storage. Session cookies support sign-in when configured. We
-        have not added advertising trackers or third-party behavioural
-        analytics.
-      </p>
-      <h2>Before live personal data is accepted</h2>
-      <p>
-        The operating entity must publish contact details, collection purposes,
-        overseas service processing, retention periods, rights of access and
-        correction, export and deletion procedures, and a complaint process.
-        Account export/deletion and the full retention workflow remain launch
-        gates. Please use sample or redacted CV text while reviewing development
-        functionality.
+        <Link href="/account">Manage your private profile</Link> ·{" "}
+        <a href="mailto:support@westmere.com.au">Contact our Privacy Officer</a>
       </p>
     </main>
   );

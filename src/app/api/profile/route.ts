@@ -11,8 +11,9 @@ import {
 export const dynamic = "force-dynamic";
 const input = z
   .object({
-    fullName: z.string().trim().max(120).optional(),
+    fullName: z.string().trim().min(1, "Add your name.").max(120).optional(),
     cvText: z.string().max(40_000).optional(),
+    applicationEmailEnabled: z.boolean().optional(),
   })
   .strict();
 
@@ -23,7 +24,9 @@ export async function GET() {
     if (supabase && user) {
       const result = await supabase
         .from("profiles")
-        .select("full_name,cv_text,updated_at")
+        .select(
+          "full_name,cv_text,updated_at,active_cv_id,application_email_enabled",
+        )
         .eq("id", user.id)
         .maybeSingle();
       if (result.error)
@@ -56,6 +59,8 @@ export async function POST(request: Request) {
     };
     if (body.fullName !== undefined) profile.full_name = body.fullName;
     if (body.cvText !== undefined) profile.cv_text = body.cvText;
+    if (body.applicationEmailEnabled !== undefined)
+      profile.application_email_enabled = body.applicationEmailEnabled;
     const { error } = await supabase
       .from("profiles")
       .upsert(profile, { onConflict: "id" });

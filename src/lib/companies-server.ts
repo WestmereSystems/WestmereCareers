@@ -10,6 +10,9 @@ export type Company = {
   is_verified: boolean;
   suspended_at: string | null;
   verified_at: string | null;
+  careers_email?: string | null;
+  avatar_path?: string | null;
+  banner_path?: string | null;
 };
 export type Insight = {
   eligible_reports: number | null;
@@ -42,7 +45,7 @@ export async function getCompanies(page = 1) {
   const { data, error, count } = await client
     .from("organisations")
     .select(
-      "id,name,description,website,is_verified,suspended_at,verified_at",
+      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
       { count: "exact" },
     )
     .eq("is_verified", true)
@@ -59,9 +62,7 @@ export async function getCompanies(page = 1) {
       : {}),
   };
 }
-export async function getCompany(
-  id: string,
-): Promise<{
+export async function getCompany(id: string): Promise<{
   company: Company | null;
   jobs: Job[];
   insight: Insight | null;
@@ -95,7 +96,9 @@ export async function getCompany(
     return { company: null, jobs: [], insight: null, source: "live" };
   let result = await client
     .from("organisations")
-    .select("id,name,description,website,is_verified,suspended_at,verified_at")
+    .select(
+      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!result.data && !result.error) {
@@ -104,7 +107,7 @@ export async function getCompany(
       result = await client
         .from("organisations")
         .select(
-          "id,name,description,website,is_verified,suspended_at,verified_at",
+          "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
         )
         .eq("id", old.job.organisationId)
         .maybeSingle();
@@ -122,14 +125,18 @@ export async function getCompany(
   const [roles, insights] = await Promise.all([
     client
       .from("jobs")
-      .select("*")
+      .select(
+        "*,organisations(avatar_path,banner_path),listing_documents(id,filename,bytes)",
+      )
       .eq("organisation_id", result.data.id)
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(24),
     client
       .from("organisation_response_insights")
-      .select("*")
+      .select(
+        "*,organisations(avatar_path,banner_path),listing_documents(id,filename,bytes)",
+      )
       .eq("organisation_id", result.data.id)
       .maybeSingle(),
   ]);

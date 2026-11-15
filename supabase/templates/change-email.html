@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-AU">
+  <body
+    style="
+      margin: 0;
+      background: #f6f6ee;
+      color: #213e34;
+      font:
+        17px/1.65 Arial,
+        sans-serif;
+    "
+  >
+    <main
+      style="
+        max-width: 580px;
+        margin: 24px auto;
+        padding: 32px;
+        background: #fffef8;
+        border: 1px solid #dce2d3;
+        border-radius: 18px;
+      "
+    >
+      <a href="{{ .SiteURL }}"
+        ><img
+          src="https://westmere-careers.vercel.app/brand/westmere-email-logo.png"
+          width="260"
+          height="62"
+          alt="Westmere Careers"
+          style="max-width: 100%; height: auto"
+      /></a>
+      <p style="color: #705291">Your career starts with Westmere.</p>
+      <h1 style="font-size: 28px; line-height: 1.25">
+        Confirm your email change
+      </h1>
+      <p>
+        Enter this code in the email-change form on your profile, together with
+        the email address that received it. Confirm both inboxes to finish
+        changing your account address.
+      </p>
+      <p
+        style="
+          font-size: 34px;
+          letter-spacing: 6px;
+          font-weight: bold;
+          background: #f0ede6;
+          padding: 18px;
+          text-align: center;
+          border-radius: 10px;
+        "
+      >
+        {{ .Token }}
+      </p>
+      <p>
+        Keep this code private. Westmere will never ask you to send it to us. If
+        you didn’t request this email, you can ignore it.
+      </p>
+      <p style="font-size: 14px">
+        <a href="{{ .SiteURL }}/account">Your profile</a> ·
+        <a href="{{ .SiteURL }}/privacy">Privacy</a> ·
+        <a href="mailto:support@westmere.com.au">Help</a>
+      </p>
+    </main>
+  </body>
+</html>

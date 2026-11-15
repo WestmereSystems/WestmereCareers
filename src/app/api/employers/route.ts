@@ -29,6 +29,7 @@ const input = z
     responsibilities: z.array(z.string().trim().max(1000)).max(30).default([]),
     requirements: z.array(z.string().trim().max(1000)).max(30).default([]),
     skills: z.array(z.string().trim().max(100)).max(30).default([]),
+    contactEmail: z.union([z.email().max(254), z.literal("")]).default(""),
     publish: z.boolean().default(false),
   })
   .strict()
@@ -42,7 +43,7 @@ export async function GET() {
     const { data: memberships, error } = await supabase
       .from("organisation_members")
       .select(
-        "organisation_id,role,organisations(id,name,slug,is_verified,suspended_at)",
+        "organisation_id,role,organisations(id,name,slug,is_verified,suspended_at,description,careers_email,avatar_path,banner_path)",
       )
       .eq("user_id", user.id);
     if (error)
@@ -64,7 +65,7 @@ export async function GET() {
     const { data: jobs, error: jobsError } = await supabase
       .from("jobs")
       .select(
-        "id,organisation_id,title,status,location,city,state,category,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,description,responsibilities,requirements,skills,created_at,expires_at,moderation_status,publication_requested,listing_review_feedback(message)",
+        "id,organisation_id,title,status,location,city,state,category,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,description,responsibilities,requirements,skills,created_at,expires_at,moderation_status,publication_requested,contact_email,listing_documents(id,filename,bytes),listing_review_feedback(message)",
       )
       .in("organisation_id", organisationIds)
       .order("created_at", { ascending: false })
@@ -146,6 +147,7 @@ export async function POST(request: Request) {
       responsibilities: body.responsibilities,
       requirements: body.requirements,
       skills: body.skills,
+      contact_email: body.contactEmail || null,
       source: "direct",
       status: "draft",
       publication_requested: body.publish,
