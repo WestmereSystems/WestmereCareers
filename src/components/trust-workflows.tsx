@@ -381,7 +381,7 @@ type Report = {
   confirmed_at: string;
   moderation_status: string;
 };
-export function TrustActivity() {
+function TrustActivityForUser() {
   const session = useSession();
   const [cases, setCases] = useState<Case[]>([]),
     [reports, setReports] = useState<Report[]>([]),
@@ -492,4 +492,9 @@ export function TrustActivity() {
       </section>
     </>
   );
+}
+
+export function TrustActivity() {
+  const session = useSession();
+  return <TrustActivityForUser key={session.user?.id ?? "signed-out"} />;
 }

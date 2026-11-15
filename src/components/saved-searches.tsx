@@ -208,7 +208,7 @@ function SearchForm({
     </form>
   );
 }
-export function SavedSearches() {
+function SavedSearchesForUser() {
   const session = useSession(),
     params = useSearchParams();
   const seed = parseJobQuery(params);
@@ -396,4 +396,9 @@ export function SavedSearches() {
       )}
     </>
   );
+}
+
+export function SavedSearches() {
+  const session = useSession();
+  return <SavedSearchesForUser key={session.user?.id ?? "signed-out"} />;
 }

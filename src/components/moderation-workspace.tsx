@@ -23,7 +23,7 @@ const actions: Record<string, string[]> = {
   response_report: ["accept", "reject", "quarantine"],
   case: ["review", "resolve", "dismiss"],
 };
-export function ModerationWorkspace() {
+function ModerationWorkspaceForUser() {
   const session = useSession(),
     [kind, setKind] = useState("verification"),
     [all, setAll] = useState(false),
@@ -308,4 +308,9 @@ export function ModerationWorkspace() {
       )}
     </>
   );
+}
+
+export function ModerationWorkspace() {
+  const session = useSession();
+  return <ModerationWorkspaceForUser key={session.user?.id ?? "signed-out"} />;
 }

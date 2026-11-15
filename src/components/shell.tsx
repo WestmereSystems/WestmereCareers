@@ -38,6 +38,7 @@ export function Header() {
         >
           <Link
             href="/jobs"
+            aria-current={pathname.startsWith("/jobs") ? "page" : undefined}
             className={pathname.startsWith("/jobs") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
@@ -45,6 +46,9 @@ export function Header() {
           </Link>
           <Link
             href="/companies"
+            aria-current={
+              pathname.startsWith("/companies") ? "page" : undefined
+            }
             className={pathname.startsWith("/companies") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
@@ -52,6 +56,7 @@ export function Header() {
           </Link>
           <Link
             href="/careers-plus"
+            aria-current={pathname === "/careers-plus" ? "page" : undefined}
             className={`premium-link ${pathname === "/careers-plus" ? "active" : ""}`}
             onClick={() => setMenu(false)}
           >
@@ -59,6 +64,9 @@ export function Header() {
           </Link>
           <Link
             href="/employers"
+            aria-current={
+              pathname.startsWith("/employers") ? "page" : undefined
+            }
             className={pathname === "/employers" ? "active" : ""}
             onClick={() => setMenu(false)}
           >
