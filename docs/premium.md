@@ -1,6 +1,6 @@
 # Careers+ server integrations
 
-These handlers connect to real OpenAI and Stripe services once configured. They never return a fabricated AI review, pretend a subscription is active, or give a browser the service keys. Live provider calls, tax settings, database policy deployment and webhook delivery have not been verified in this workspace without the relevant credentials and a dedicated Westmere Supabase project.
+These handlers connect to OpenAI and Stripe through server-only credentials. They never return a fabricated AI review, pretend a subscription is active, or give a browser the service keys. Dedicated Westmere staging services are now configured; see [staging setup](staging-setup.md) for the verified checks and outstanding provider journeys. Tax review and full end-to-end billing/AI evaluation remain release gates.
 
 ## Configuration
 
