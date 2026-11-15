@@ -1,6 +1,6 @@
 # Protected staging setup
 
-Updated 13 November 2026. This is a development environment, not a live recruitment or billing launch.
+Updated 15 November 2026. This is a development environment, not a live recruitment or billing launch.
 
 ## Access and completed setup
 
@@ -29,7 +29,7 @@ In [Vercel environment settings](https://vercel.com/order-ward/westmere-careers/
 
 ## Authentication and email
 
-The approved Site URL and exact `/auth/callback` are saved and verified. No wildcard callbacks are allowed. Resend is the selected SMTP provider; see [email setup](email.md) for the cross-browser token-hash templates, verified sender and private SMTP key configuration. The owner’s first email was confirmed, but successful browser sign-in and Resend delivery remain to verify after the email update. No sign-in email has been sent by the setup agent.
+The approved Site URL and exact `/auth/callback` are saved and verified. No wildcard callbacks are allowed. Both cross-browser token-hash email templates are saved. Resend confirms the owner's `westmere.com.au` domain is verified in Tokyo; the approved outgoing sender is `Westmere Careers <hello@westmere.com.au>`. See [email setup](email.md) for the private SMTP key handoff and remaining delivery/sign-in verification. No sign-in email has been sent by the setup agent.
 
 ## Required webhook routing
 
