@@ -7,8 +7,26 @@ import {
   json,
   parseBody,
 } from "@/lib/server/http";
+import { checkRpc } from "@/lib/server/trust";
 
 export const dynamic = "force-dynamic";
+export async function GET() {
+  try {
+    const { supabase, user } = await requireSession();
+    const { data, error } = await supabase
+      .from("response_reports")
+      .select(
+        "id,organisation_id,application_id,job_reference,application_date,response_received,confirmed_at,moderation_status",
+      )
+      .eq("candidate_id", user.id)
+      .order("confirmed_at", { ascending: false })
+      .limit(100);
+    checkRpc(error);
+    return json({ reports: data });
+  } catch (error) {
+    return apiError(error);
+  }
+}
 const input = z
   .object({
     applicationId: z.uuid().optional(),

@@ -10,9 +10,14 @@ The following original SVG illustrations were created specifically for this proj
 - `public/illustrations/growing-together.svg` — a growing plant beside small steps.
 - `public/illustrations/new-chapter.svg` — an open notebook and leafy bookmark.
 
+The following additional original, code-native SVG illustrations were created specifically for this project on 15 November 2026:
+
+- `public/illustrations/premium-career-studio.svg` — a flowing purple ribbon, softly shaded globe, application sheet and growing leaves for Careers+.
+- `public/illustrations/opportunity-orbit.svg` — a sage globe with an open doorway and winding path, surrounded by a notebook, opportunity envelope and briefcase.
+
 To the extent rights exist in these original illustrations and can be dedicated, the contributor waives copyright and related rights under the [CC0 1.0 Universal Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/). They may be used, changed and redistributed commercially without attribution. This dedication covers these illustration files, not the Westmere brand name, website source, fonts, third-party icons or fictional employer names.
 
-The artwork contains no third-party photographs or copied character/brand designs. Each SVG includes a title, description and licence metadata. Render decorative instances with an empty image alternative where the surrounding copy already conveys the meaning.
+The artwork contains no third-party photographs or copied character/brand designs. Each SVG includes a title, description and licence metadata. The two November 15 illustrations are original vector geometry, not stock assets, and contain no external resources, scripts, fonts or embedded raster images. Their CC0 dedication is the same as the original illustrations above. Render decorative instances with an empty image alternative where the surrounding copy already conveys the meaning.
 
 ## Fonts — SIL Open Font License 1.1
 

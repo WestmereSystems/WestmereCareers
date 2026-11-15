@@ -23,6 +23,8 @@ type Profile = {
   configured: boolean;
   user: { id: string; email?: string } | null;
   isPremium: boolean;
+  loading: boolean;
+  staffRole: "reviewer" | "admin" | null;
 };
 type SessionValue = Profile & {
   openAuth: () => void;
@@ -32,6 +34,8 @@ const SessionContext = createContext<SessionValue>({
   configured: false,
   user: null,
   isPremium: false,
+  loading: true,
+  staffRole: null,
   openAuth: () => {},
   refresh: async () => {},
 });
@@ -42,6 +46,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     configured: false,
     user: null,
     isPremium: false,
+    loading: true,
+    staffRole: null,
   });
   const [authOpen, setAuthOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -51,22 +57,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const authTriggerRef = useRef<HTMLElement | null>(null);
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/profile", { cache: "no-store" });
+      const response = await fetch("/api/session", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         setProfile({
           configured: Boolean(data.configured),
           user: data.user ?? null,
           isPremium: data.isPremium === true,
+          loading: false,
+          staffRole: ["reviewer", "admin"].includes(data.staffRole)
+            ? data.staffRole
+            : null,
         });
       } else
         setProfile((previous) => ({
           ...previous,
           user: null,
           isPremium: false,
+          loading: false,
+          staffRole: null,
         }));
     } catch {
-      setProfile((previous) => ({ ...previous, user: null, isPremium: false }));
+      setProfile((previous) => ({
+        ...previous,
+        user: null,
+        isPremium: false,
+        loading: false,
+        staffRole: null,
+      }));
     }
   }, []);
   useEffect(() => {

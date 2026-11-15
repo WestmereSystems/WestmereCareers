@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   MapPin,
+  ShieldCheck,
   Clock3,
   ArrowUpRight,
   Check,
@@ -29,7 +30,7 @@ export function ResponseInsight({ job }: { job: Job }) {
           ? `${job.noResponseReports}/${job.eligibleReports} reports: no reply >2 months`
           : job.responseDays !== null
             ? `${job.responseReports} reports with a response`
-            : "New employer profile"}
+            : "Small or insufficient recent sample"}
       </small>
     </div>
   );
@@ -48,7 +49,7 @@ export function JobCard({
       <div className="job-card-top">
         <Link
           className={`company-monogram tone-${job.companyInitial.charCodeAt(0) % 4}`}
-          href={`/companies/${job.id}`}
+          href={`/companies/${job.organisationId ?? job.id}`}
           aria-label={`${job.company} profile`}
         >
           {job.companyInitial}
@@ -69,11 +70,20 @@ export function JobCard({
         <SaveButton id={job.id} compact />
       </div>
       <div className="job-card-title">
-        <Link href={`/jobs/${job.id}`}>
+        <Link href={`/jobs/${job.organisationId ?? job.id}`}>
           <h3>{job.title}</h3>
         </Link>
-        <Link className="company-name" href={`/companies/${job.id}`}>
+        <Link
+          className="company-name"
+          href={`/companies/${job.organisationId ?? job.id}`}
+        >
           {job.company}
+          {job.isVerified && (
+            <ShieldCheck
+              size={16}
+              aria-label="Business identity and hiring authority checked"
+            />
+          )}
         </Link>
       </div>
       <div className="job-facts">

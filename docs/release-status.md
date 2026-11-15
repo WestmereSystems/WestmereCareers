@@ -6,6 +6,12 @@ This is the first executable implementation of the approved Westmere Careers pro
 
 The [public development preview](https://westmere-careers.vercel.app) and source/proposal are published, with GitHub CI and automatic Vercel deployments. Protected staging uses the explicitly selected WestmereCareers Supabase project inside OrderWard, in Tokyo. Migrations/advisor checks, Resend authentication email and persistent sign-in passed. Careers+ Sandbox Checkout, actual webhook delivery/retry, paid entitlement and portal cancellation passed. Two real OpenAI reviews passed on synthetic data: general improvement and role tailoring with an adversarial job-description check. Private profile persistence/cleanup and the premium filter's empty-catalogue flow also passed. See [hosted verification](staging-verification.md) for evidence and limits. No live charges or real applications have been submitted.
 
+## 15 November trust and accessibility milestone
+
+Employer verification intake, an independently authorised review console, listing moderation/editing, concerns and appeals, and privacy-preserving response aggregation are implemented. Private saved searches, explicit daily/weekly consent, a durable Resend outbox, signed delivery events and unsubscribe handling are implemented. The hosted worker and schedules are installed; activation and owner-initiated email verification are tracked in [trust and alerts](trust-and-alerts.md). The public demo keeps fictional data separate from the connected staging service.
+
+Typography is larger, public reads no longer use session cookies, the initial job search is not immediately fetched twice, page loading boundaries provide feedback, and Careers+ marketing is prerendered. New original CC0 globe/ribbon artwork uses pausable CSS motion with reduced-motion support.
+
 ## Critical staging verification
 
 - Maintain the verified hosted grants/RLS and advisor checks as migrations change; complete signed-in account isolation tests against the selected Tokyo project.
@@ -18,9 +24,9 @@ The [public development preview](https://westmere-careers.vercel.app) and source
 
 ## Proposal features still to complete
 
-- Production employer onboarding and ownership review, admin console and moderation/appeals operations.
-- Structured response-report public aggregation with sample suppression, mature cohorts, freshness and audit rules; figures currently shown in fixtures are fictional.
-- Email delivery/outbox, saved searches and alerts, contact/support handling and abuse controls.
+- Assign the first independent trust administrator, run the founding-employer onboarding/review pilot, establish review staffing and service levels, and complete verified team invitations/ownership transfers. The core intake, admin console, listing review, suspension/reinstatement and appeals workflow is implemented.
+- Validate response aggregation at realistic volume and with a staffed moderation pilot. Unique mature cohorts, small-sample suppression, recent silence confirmations, late corrections, audit and hourly refresh are implemented; fixture figures remain fictional.
+- Complete owner-initiated alert delivery/unsubscribe verification and mailbox placement checks, then operate delivery monitoring. Saved searches, the Resend outbox, consent, bounded retries, delivery events and suppression are implemented. Contact/support handling and broader abuse operations remain.
 - File-based CV import with malware scanning, private Storage buckets, accessible DOCX/PDF export and document backup/restore.
 - Account export/deletion, retention/de-identification workflows, final legal/privacy documents and operating-entity contact details.
 - Interview rehearsal and its separate allowance; advanced workspace and continuing candidate research.

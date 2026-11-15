@@ -665,6 +665,14 @@ function AccountForUser() {
   return (
     <>
       <div className="account-grid">
+        <div className="actions-row" style={{ marginBottom: 24 }}>
+          <Link className="button secondary" href="/saved-searches">
+            Saved searches & email alerts
+          </Link>
+          <Link className="button secondary" href="/trust-activity">
+            Reports & trust activity
+          </Link>
+        </div>
         <form className="panel" onSubmit={save}>
           <h2>Your private profile</h2>
           <p>

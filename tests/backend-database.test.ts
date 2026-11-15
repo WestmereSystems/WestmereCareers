@@ -23,7 +23,7 @@ beforeEach(async () => {
   db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
-    create schema auth; create table auth.users(id uuid primary key);
+    create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon, authenticated, service_role;
     create schema storage;
@@ -36,12 +36,12 @@ beforeEach(async () => {
     await db.exec(await readFile(new URL(name, migrations), "utf8"));
   }
   await db.exec(`
-    insert into auth.users values('${candidate}'),('${otherCandidate}'),('${employer}'),('${otherEmployer}');
+    insert into auth.users(id,email,email_confirmed_at) values('${candidate}','candidate@example.test',now()),('${otherCandidate}','other@example.test',now()),('${employer}','employer@example.test',now()),('${otherEmployer}','other-employer@example.test',now());
     insert into public.profiles(id,cv_text) values('${candidate}','Private candidate CV'),('${otherCandidate}','Other private CV');
     insert into public.organisations(id,name,slug,is_verified) values('${org}','Fern Studio','fern-studio',true),('${otherOrg}','Banksia Group','banksia-group',true);
     insert into public.organisation_members(organisation_id,user_id,role) values('${org}','${employer}','owner'),('${otherOrg}','${otherEmployer}','owner');
-    insert into public.jobs(id,organisation_id,title,company,location,city,state,work_mode,employment_type,salary_min,salary_max,description,status,published_at)
-      values('${job}','${org}','Product Designer','Fern Studio','Melbourne VIC','Melbourne','VIC','Hybrid','Full time',100000,130000,'Design thoughtful digital products with our team.','published',now()-interval '1 day');
+    insert into public.jobs(id,organisation_id,title,company,location,city,state,work_mode,employment_type,salary_min,salary_max,description,status,published_at,moderation_status)
+      values('${job}','${org}','Product Designer','Fern Studio','Melbourne VIC','Melbourne','VIC','Hybrid','Full time',100000,130000,'Design thoughtful digital products with our team.','published',now()-interval '1 day','approved');
     insert into public.billing_customers(user_id,stripe_customer_id) values('${candidate}','cus_candidate'),('${otherCandidate}','cus_other');
     insert into public.subscriptions(user_id,stripe_customer_id,stripe_subscription_id,status,price_id,current_period_start,current_period_end,last_event_created)
       values('${candidate}','cus_candidate','sub_candidate','active','price_careers_plus',now()-interval '1 day',now()+interval '29 days',10);
@@ -442,5 +442,461 @@ describe("database security boundaries", () => {
     expect(
       (await db.query("select id from public.response_reports")).rows,
     ).toHaveLength(0);
+  });
+});
+
+describe("independent trust review", () => {
+  async function staff(role = "reviewer") {
+    await db.exec("reset role");
+    await db.query(
+      "insert into private.staff_members(user_id,role) values($1,$2) on conflict(user_id) do update set role=excluded.role",
+      [otherCandidate, role],
+    );
+    await asUser(otherCandidate);
+  }
+  it("requires independent evidence checks and never grants ownership from an ABN alone", async () => {
+    await asUser(candidate);
+    const request = await db.query<{ id: string }>(
+      "select public.submit_employer_verification('Acacia Pty Ltd','12345678901','https://acacia.example','Director','Public business contact can independently confirm my authority to hire.') as id",
+    );
+    const id = request.rows[0].id;
+    expect(
+      (await db.query("select public.my_staff_role() as role")).rows[0],
+    ).toEqual({ role: null });
+    await expect(
+      db.query(
+        "insert into private.staff_members(user_id,role) values($1,'admin')",
+        [candidate],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await db.exec("reset role");
+    await db.query(
+      "insert into private.staff_members(user_id,role) values($1,'reviewer')",
+      [candidate],
+    );
+    await asUser(candidate);
+    const version = (
+      await db.query<{ v: string }>(
+        "select updated_at::text as v from public.employer_verification_requests where id=$1",
+        [id],
+      )
+    ).rows[0].v;
+    await expect(
+      db.query(
+        "select public.review_trust_item('verification',$1,'approve','Identity and ownership independently confirmed',$2,true,true)",
+        [id, version],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await staff();
+    await expect(
+      db.query(
+        "select public.review_trust_item('verification',$1,'approve','Identity checked but ownership not confirmed',$2,true,false)",
+        [id, version],
+      ),
+    ).rejects.toMatchObject({ code: "22023" });
+    await db.query(
+      "select public.review_trust_item('verification',$1,'approve','Registration and business-domain contact independently confirmed',$2,true,true)",
+      [id, version],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select m.user_id,m.role from public.organisation_members m join public.organisations o on o.id=m.organisation_id where o.abn='12345678901'",
+        )
+      ).rows,
+    ).toEqual([{ user_id: candidate, role: "owner" }]);
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as n from private.moderation_audit",
+        )
+      ).rows[0],
+    ).toEqual({ n: 1 });
+    await asUser(employer);
+    expect(
+      (await db.query("select id from public.employer_verification_requests"))
+        .rows,
+    ).toHaveLength(0);
+  });
+  it("keeps edited listings private until reviewed and rejects stale decisions", async () => {
+    await asUser(employer);
+    await db.query(
+      "update public.jobs set title='Service Designer' where id=$1",
+      [job],
+    );
+    const state = (
+      await db.query(
+        "select status,moderation_status,publication_requested from public.jobs where id=$1",
+        [job],
+      )
+    ).rows[0];
+    expect(state).toEqual({
+      status: "draft",
+      moderation_status: "pending",
+      publication_requested: true,
+    });
+    await expect(
+      db.query(
+        "update public.jobs set moderation_status='approved' where id=$1",
+        [job],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+    await staff();
+    const queue = await db.query<{
+      q: { items: { id: string; moderation_updated_at: string }[] };
+    }>("select public.admin_queue('job') as q");
+    expect(queue.rows[0].q.items).toHaveLength(1);
+    const v = queue.rows[0].q.items[0].moderation_updated_at;
+    await expect(
+      db.query(
+        "select public.review_trust_item('job',$1,'approve','Reviewed pay and role requirements','2000-01-01',false,false)",
+        [job],
+      ),
+    ).rejects.toMatchObject({ code: "40001" });
+    await db.query(
+      "select public.review_trust_item('job',$1,'approve','Reviewed pay and role requirements',$2,false,false)",
+      [job, v],
+    );
+    await asUser("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
+    await expect(
+      db.query("select * from public.listing_review_feedback"),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("respects an employer's explicit private-draft choice when editing a published role", async () => {
+    await asUser(employer);
+    await db.query(
+      "update public.jobs set title='A revised Product Designer role',status='draft',publication_requested=false where id=$1",
+      [job],
+    );
+    expect(
+      (
+        await db.query(
+          "select status,publication_requested,moderation_status from public.jobs where id=$1",
+          [job],
+        )
+      ).rows[0],
+    ).toEqual({
+      status: "draft",
+      publication_requested: false,
+      moderation_status: "pending",
+    });
+    await staff();
+    expect(
+      (
+        await db.query<{ q: { items: unknown[] } }>(
+          "select public.admin_queue('job') q",
+        )
+      ).rows[0].q.items,
+    ).toHaveLength(0);
+  });
+  it("revokes every hiring document entry point when an administrator suspends a business", async () => {
+    await asUser(candidate);
+    const a = (
+      await db.query<{ id: string }>(
+        "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,'My genuine skills and experience recorded in a sufficiently detailed application for this role.') returning id",
+        [job, candidate],
+      )
+    ).rows[0].id;
+    await staff();
+    await expect(
+      db.query(
+        "select public.review_trust_item('organisation',$1,'suspend','Investigation confirmed a material concern',null)",
+        [org],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await staff("admin");
+    await db.query(
+      "select public.review_trust_item('organisation',$1,'suspend','Investigation confirmed a material concern',null)",
+      [org],
+    );
+    await asUser(employer);
+    expect(
+      (await db.query("select id from public.applications")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query("select public.open_application($1)", [a]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select private.open_application_before_trust($1)", [a]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select public.list_job_applications($1)", [job]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await staff("admin");
+    await expect(
+      db.query(
+        "select public.review_trust_item('organisation',$1,'reinstate','Appeal resolved and verification repeated',null,false,false)",
+        [org],
+      ),
+    ).rejects.toMatchObject({ code: "22023" });
+    await db.query(
+      "select public.review_trust_item('organisation',$1,'reinstate','Appeal resolved and verification repeated',null,true,true)",
+      [org],
+    );
+    await db.exec("reset role");
+    expect(
+      (await db.query("select status from public.jobs where id=$1", [job]))
+        .rows[0],
+    ).toEqual({ status: "closed" });
+    expect(
+      (
+        await db.query(
+          "select is_verified,suspended_at from public.organisations where id=$1",
+          [org],
+        )
+      ).rows[0],
+    ).toEqual({ is_verified: true, suspended_at: null });
+  });
+  it("aggregates unique candidates, suppresses small samples and replaces silence with late responses", async () => {
+    for (let i = 10; i < 20; i++) {
+      const uid = `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+      await db.query("insert into auth.users(id) values($1)", [uid]);
+      await db.query(
+        "insert into public.response_reports(candidate_id,organisation_id,job_reference,application_date,response_received,response_date,evidence_source,moderation_status) values($1,$2,$3,now()-interval '4 months',$4,case when $4 then now()-interval '4 months'+interval '10 days' end,'external_application','accepted')",
+        [uid, org, `Role ${i}`, i >= 16],
+      );
+    }
+    let insight = (
+      await db.query(
+        "select eligible_reports,no_response_reports,median_response_days,is_unresponsive from public.organisation_response_insights where organisation_id=$1",
+        [org],
+      )
+    ).rows[0];
+    expect(insight).toEqual({
+      eligible_reports: 10,
+      no_response_reports: 6,
+      median_response_days: null,
+      is_unresponsive: true,
+    });
+    await db.query(
+      "insert into public.response_reports(candidate_id,organisation_id,job_reference,application_date,response_received,evidence_source,moderation_status) values('10000000-0000-4000-8000-000000000010',$1,'Another role',now()-interval '5 months',false,'external_application','accepted')",
+      [org],
+    );
+    expect(
+      (
+        await db.query(
+          "select eligible_reports from public.organisation_response_insights where organisation_id=$1",
+          [org],
+        )
+      ).rows[0],
+    ).toEqual({ eligible_reports: 10 });
+    await db.query(
+      "update public.response_reports set response_received=true,response_date=application_date+interval '20 days' where job_reference='Role 10'",
+    );
+    insight = (
+      await db.query(
+        "select eligible_reports,no_response_reports,median_response_days,is_unresponsive from public.organisation_response_insights where organisation_id=$1",
+        [org],
+      )
+    ).rows[0];
+    expect(insight).toEqual({
+      eligible_reports: 10,
+      no_response_reports: 5,
+      median_response_days: "10.0",
+      is_unresponsive: false,
+    });
+    await db.query(
+      "update public.response_reports set confirmed_at=now()-interval '31 days' where job_reference='Role 11'",
+    );
+    expect(
+      (
+        await db.query(
+          "select eligible_reports,no_response_reports,median_response_days,is_unresponsive from public.organisation_response_insights where organisation_id=$1",
+          [org],
+        )
+      ).rows[0],
+    ).toEqual({
+      eligible_reports: null,
+      no_response_reports: null,
+      median_response_days: null,
+      is_unresponsive: false,
+    });
+    await asUser(candidate);
+    await expect(
+      db.query("select public.refresh_response_insights()"),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+});
+
+describe("consented saved-search outbox", () => {
+  async function saved() {
+    await asUser(candidate);
+    const id = (
+      await db.query<{ id: string }>(
+        'select public.save_search(null,\'Design in Melbourne\',\'{"keyword":"designer","location":"Melbourne VIC"}\',true,\'daily\',true) as id',
+      )
+    ).rows[0].id;
+    await db.exec("reset role");
+    await db.exec(
+      "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.example','https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe',true)",
+    );
+    await db.query(
+      "update public.saved_searches set consent_at=now()-interval '2 days',next_run_at=now()-interval '1 minute' where id=$1",
+      [id],
+    );
+    return id;
+  }
+  it("requires verified-email consent and prevents cross-user access or private CV filters", async () => {
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "select public.save_search(null,'My search','{}',true,'daily',false)",
+      ),
+    ).rejects.toMatchObject({ code: "22023" });
+    await expect(
+      db.query(
+        "select public.save_search(null,'My search','{\"cvText\":\"private CV\"}',false,'daily',false)",
+      ),
+    ).rejects.toMatchObject({ code: "22023" });
+    const id = (
+      await db.query<{ id: string }>(
+        "select public.save_search(null,'My search','{}',false,'weekly',false) as id",
+      )
+    ).rows[0].id;
+    await expect(
+      db.query("select unsubscribe_token from public.saved_searches"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(otherCandidate);
+    expect(
+      (await db.query("select id from public.saved_searches")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query(
+        "select public.save_search($1,'Hijacked search','{}',true,'daily',true)",
+        [id],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select public.claim_job_alerts()"),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("deduplicates jobs transactionally and rechecks unsubscribe before a leased send", async () => {
+    const id = await saved();
+    await db.query("select public.prepare_job_alerts()");
+    await db.query(
+      "update public.saved_searches set next_run_at=now()-interval '1 day' where id=$1",
+      [id],
+    );
+    await db.query("select public.prepare_job_alerts()");
+    expect(
+      (await db.query("select count(*)::int n from private.alert_outbox"))
+        .rows[0],
+    ).toEqual({ n: 1 });
+    const claim = (
+      await db.query<{ items: { id: string; lease_token: string }[] }>(
+        "select public.claim_job_alerts() as items",
+      )
+    ).rows[0].items[0];
+    expect(claim).toBeDefined();
+    const token = (
+      await db.query<{ token: string }>(
+        "select unsubscribe_token::text token from public.saved_searches where id=$1",
+        [id],
+      )
+    ).rows[0].token;
+    await db.query("select public.unsubscribe_job_alert($1)", [token]);
+    expect(
+      (
+        await db.query(
+          "select public.freeze_job_alert($1,$2,'{}') as request",
+          [claim.id, claim.lease_token],
+        )
+      ).rows[0],
+    ).toEqual({ request: null });
+    expect(
+      (
+        await db.query(
+          "select alerts_enabled from public.saved_searches where id=$1",
+          [id],
+        )
+      ).rows[0],
+    ).toEqual({ alerts_enabled: false });
+  });
+  it("freezes identical provider requests, handles webhook races and suppresses complaints", async () => {
+    await saved();
+    await db.query("select public.prepare_job_alerts()");
+    const item = (
+      await db.query<{ q: { id: string; lease_token: string }[] }>(
+        "select public.claim_job_alerts() q",
+      )
+    ).rows[0].q[0];
+    const body = {
+      from: "Westmere Careers <hello@westmere.com.au>",
+      to: ["candidate@example.test"],
+      subject: "A thoughtful opportunity",
+    };
+    await db.query("select public.freeze_job_alert($1,$2,$3)", [
+      item.id,
+      item.lease_token,
+      JSON.stringify(body),
+    ]);
+    expect(
+      (
+        await db.query<{ body: unknown }>(
+          'select public.freeze_job_alert($1,$2,\'{"subject":"different"}\') body',
+          [item.id, item.lease_token],
+        )
+      ).rows[0].body,
+    ).toEqual(body);
+    await db.query(
+      "select public.apply_alert_webhook('evt_delivery','email_123','email.delivered',now(),$1)",
+      [item.id],
+    );
+    await db.query(
+      "select public.settle_job_alert($1,$2,'accepted','email_123')",
+      [item.id, item.lease_token],
+    );
+    await db.query(
+      "select public.apply_alert_webhook('evt_old_sent','email_123','email.sent',now()-interval '1 minute',$1)",
+      [item.id],
+    );
+    expect(
+      (await db.query("select status from private.alert_outbox")).rows[0],
+    ).toEqual({ status: "delivered" });
+    await db.query(
+      "select public.apply_alert_webhook('evt_complaint','email_123','email.complained',now(),$1)",
+      [item.id],
+    );
+    await db.query(
+      "select public.apply_alert_webhook('evt_complaint','email_123','email.complained',now(),$1)",
+      [item.id],
+    );
+    expect(
+      (
+        await db.query(
+          "select count(*)::int n from private.alert_webhook_events",
+        )
+      ).rows[0],
+    ).toEqual({ n: 3 });
+    expect(
+      (await db.query("select alerts_enabled from public.saved_searches"))
+        .rows[0],
+    ).toEqual({ alerts_enabled: false });
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "select public.save_search(null,'Another search','{}',true,'daily',true)",
+      ),
+    ).rejects.toMatchObject({ code: "P0001" });
+  });
+  it("stops retrying outside the provider idempotency window", async () => {
+    await saved();
+    await db.query("select public.prepare_job_alerts()");
+    await db.exec(
+      "update private.alert_outbox set first_attempt_at=now()-interval '24 hours'",
+    );
+    expect(
+      (await db.query("select public.claim_job_alerts() q")).rows[0],
+    ).toEqual({ q: [] });
+    expect(
+      (await db.query("select status from private.alert_outbox")).rows[0],
+    ).toEqual({ status: "ambiguous" });
   });
 });

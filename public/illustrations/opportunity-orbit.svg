@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="540" viewBox="0 0 720 540" fill="none" role="img" aria-labelledby="opportunity-title opportunity-desc">
+  <title id="opportunity-title">A world of possibility</title>
+  <desc id="opportunity-desc">A warm green world with an open doorway and winding path, surrounded by a notebook, an opportunity envelope, growing leaves and small points of light.</desc>
+  <metadata>Original code-native vector artwork created specifically for Westmere Careers, 15 November 2026. No third-party images or copied brand designs. To the extent rights exist and can be dedicated, copyright and related rights are waived under CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/</metadata>
+  <defs>
+    <linearGradient id="opportunity-halo" x1="139" y1="97" x2="584" y2="437" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2EDDC"/>
+      <stop offset="1" stop-color="#E1E8D6"/>
+    </linearGradient>
+    <linearGradient id="opportunity-world" x1="273" y1="111" x2="491" y2="421" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DEE9D1"/>
+      <stop offset="1" stop-color="#A3BDA0"/>
+    </linearGradient>
+    <linearGradient id="opportunity-sun" x1="461" y1="74" x2="547" y2="174" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5DEAE"/>
+      <stop offset="1" stop-color="#E2B86E"/>
+    </linearGradient>
+    <clipPath id="opportunity-world-clip"><circle cx="383" cy="272" r="155"/></clipPath>
+  </defs>
+  <path d="M109 407C72 360 109 320 99 275C85 209 127 173 179 150C231 127 220 70 303 62C378 55 412 91 459 77C534 55 590 111 585 175C581 226 644 251 617 322C591 391 527 452 448 462L236 470C181 473 140 445 109 407Z" fill="url(#opportunity-halo)" opacity=".94"/>
+  <ellipse cx="374" cy="474" rx="207" ry="15" fill="#203B2A" opacity=".07"/>
+  <g id="opportunity-sun">
+    <circle cx="502" cy="123" r="52" fill="url(#opportunity-sun)"/>
+    <path d="M502 55V43M553 77L562 68M568 123H580M452 77L443 68" stroke="#D5AE65" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="opportunity-world">
+    <circle cx="383" cy="272" r="155" fill="url(#opportunity-world)"/>
+    <g clip-path="url(#opportunity-world-clip)">
+      <path d="M223 312C264 279 287 299 310 293C335 286 335 266 366 271C394 275 399 309 425 316C454 324 464 309 486 327C502 339 505 368 535 375V438H220L223 312Z" fill="#90AE8D" opacity=".55"/>
+      <path d="M246 164C283 173 286 195 311 192C340 188 336 163 360 158C381 154 393 173 413 165C437 157 445 135 468 127L392 103L295 111L246 164Z" fill="#EAF0DF" opacity=".6"/>
+      <g stroke="#759873" stroke-width="1.5" opacity=".42">
+        <ellipse cx="383" cy="272" rx="68" ry="155"/>
+        <ellipse cx="383" cy="272" rx="120" ry="155"/>
+        <ellipse cx="383" cy="272" rx="155" ry="58"/>
+        <path d="M248 195C324 226 442 226 518 195M248 349C324 318 442 318 518 349M228 272H538M383 117V427"/>
+      </g>
+      <path d="M343 408C386 380 331 361 340 337C352 309 417 321 422 290C425 269 406 257 395 248" stroke="#F6F2DF" stroke-width="27" stroke-linecap="round"/>
+      <path d="M343 408C386 380 331 361 340 337C352 309 417 321 422 290C425 269 406 257 395 248" stroke="#E2D8B9" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 9"/>
+    </g>
+    <circle cx="383" cy="272" r="155" stroke="#93AD8D" stroke-width="2"/>
+    <path d="M289 159C312 141 341 133 368 131" stroke="#FCFBF1" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+  </g>
+  <g id="opportunity-doorway">
+    <path d="M351 260V207C351 179 371 157 398 157C425 157 445 179 445 207V260H351Z" fill="#477351"/>
+    <path d="M366 260V208C366 189 379 175 398 175C417 175 430 189 430 208V260H366Z" fill="#F6EFDA"/>
+    <path d="M398 175V260H430V208C430 189 417 175 398 175Z" fill="#D8C8A5"/>
+    <path d="M398 175L424 185V252L398 260V175Z" fill="#FFF9E9"/>
+    <circle cx="415" cy="222" r="2.5" fill="#9D8A62"/>
+    <path d="M348 260H448" stroke="#315A40" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="opportunity-orbit" stroke="#829B79" stroke-width="1.5" stroke-linecap="round">
+    <path d="M174 281C182 348 299 373 435 339C573 304 662 233 645 184C637 161 608 148 568 149" stroke-dasharray="3 11" opacity=".7"/>
+    <path d="M180 267C185 246 200 225 222 206" opacity=".7"/>
+  </g>
+  <g id="opportunity-notebook" transform="rotate(-12 185 320)">
+    <rect x="113" y="244" width="139" height="179" rx="18" fill="#42694B" opacity=".12"/>
+    <rect x="106" y="235" width="139" height="179" rx="18" fill="#FFFCF0" stroke="#C2CDB7" stroke-width="2"/>
+    <path d="M132 236V412" stroke="#D8C6E5" stroke-width="10"/>
+    <path d="M155 269H215M155 286H203M155 341H215M155 358H209M155 375H194" stroke="#B3C4A8" stroke-width="5" stroke-linecap="round"/>
+    <path d="M171 328C173 309 181 294 190 284" stroke="#4A7350" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M177 311C162 314 153 303 155 293C169 292 177 299 177 311Z" fill="#9BB995"/>
+    <path d="M183 299C195 303 205 295 204 284C191 282 183 289 183 299Z" fill="#4F7A55"/>
+  </g>
+  <g id="opportunity-message" transform="rotate(12 190 159)">
+    <rect x="137" y="119" width="105" height="75" rx="14" fill="#D2DCC6" stroke="#89A17D" stroke-width="2"/>
+    <path d="M140 127L183 159C187 162 193 162 197 159L239 127" stroke="#5D815D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M142 186L171 159M237 186L208 159" stroke="#9DB18E" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="234" cy="121" r="17" fill="#F1D39C"/>
+    <path d="M226 121L232 127L242 115" stroke="#8D7040" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g id="opportunity-case" transform="rotate(9 561 382)">
+    <rect x="507" y="347" width="108" height="76" rx="15" fill="#D7C5E7" stroke="#A78ABC" stroke-width="2"/>
+    <path d="M541 347V337C541 333 544 330 548 330H574C578 330 581 333 581 337V347" stroke="#806096" stroke-width="3"/>
+    <path d="M508 368C535 384 586 384 614 368" stroke="#9E80B7" stroke-width="2.5"/>
+    <rect x="555" y="371" width="13" height="17" rx="4" fill="#F8F0DF" stroke="#9E80B7" stroke-width="2"/>
+  </g>
+  <g id="opportunity-growth">
+    <path d="M259 465C254 433 261 411 274 392" stroke="#3D6A46" stroke-width="3" stroke-linecap="round"/>
+    <path d="M260 445C237 447 225 430 229 416C248 416 261 428 260 445Z" fill="#7FA77D"/>
+    <path d="M261 428C284 431 299 415 294 399C274 398 261 412 261 428Z" fill="#4B7750"/>
+    <path d="M248 461H272L268 477H252L248 461Z" fill="#CAB6DC"/>
+  </g>
+  <g id="opportunity-floating-details">
+    <circle cx="584" cy="182" r="31" fill="#EFE4F4"/>
+    <path d="M584 162L589 176L603 182L589 187L584 201L578 187L564 182L578 176L584 162Z" fill="#A184BD"/>
+    <circle cx="307" cy="89" r="6" fill="#B7A0CB"/>
+    <circle cx="598" cy="282" r="8" fill="#A6BD92"/>
+    <circle cx="447" cy="451" r="5" fill="#BD9FCB"/>
+    <circle cx="88" cy="338" r="5" fill="#DBB77C"/>
+    <circle cx="620" cy="113" r="3" fill="#A7B99A"/>
+    <path d="M304 451L309 460L319 463L309 467L304 477L300 467L290 463L300 460L304 451Z" fill="#E0C18B"/>
+    <path d="M111 206L116 203M118 216L125 216M105 195L108 189" stroke="#9CB48C" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M557 440L562 445M574 437L574 444M584 430L580 435" stroke="#B69BCA" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

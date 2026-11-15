@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { AnimatedArt } from "@/components/animated-art";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,8 +17,7 @@ import { SearchBar } from "@/components/search-bar";
 import { JobCard } from "@/components/job-card";
 import { getPublicJobs } from "@/lib/jobs-server";
 
-export default async function Home() {
-  const { jobs, source } = await getPublicJobs();
+export default function Home() {
   return (
     <main id="main">
       <section className="hero">
@@ -51,20 +52,7 @@ export default async function Home() {
               </div>
             </div>
             <div className="hero-art">
-              <img
-                src="/illustrations/career-path.svg"
-                alt="An optimistic illustrated landscape with a winding path, growing plants and a rising sun"
-                width="620"
-                height="420"
-                fetchPriority="high"
-              />
-              <span className="art-note">
-                <Leaf size={16} />
-                Room to grow.
-              </span>
-              <span className="art-label">
-                A new chapter looks good on you.
-              </span>
+              <AnimatedArt />
             </div>
           </div>
           <SearchBar />
@@ -122,18 +110,15 @@ export default async function Home() {
             <ArrowRight size={18} />
           </Link>
         </div>
-        {source === "demo" && (
-          <p className="demo-note">
-            <span />
-            You’re exploring our development preview. These are fictional
-            employers and sample roles.
-          </p>
-        )}
-        <div className="job-grid">
-          {jobs.slice(0, 3).map((job) => (
-            <JobCard job={job} key={job.id} />
-          ))}
-        </div>
+        <Suspense
+          fallback={
+            <p className="notice" role="status">
+              Finding a few possibilities…
+            </p>
+          }
+        >
+          <FreshRoles />
+        </Suspense>
       </section>
       <section className="clarity-section">
         <div className="container clarity-grid">
@@ -274,5 +259,35 @@ export default async function Home() {
         </Link>
       </section>
     </main>
+  );
+}
+
+async function FreshRoles() {
+  const { jobs, source, error } = await getPublicJobs({ pageSize: 3 });
+  return (
+    <>
+      {source === "demo" && (
+        <p className="demo-note">
+          <span />
+          Development preview · Fictional employers and sample roles.
+        </p>
+      )}
+      {error && (
+        <p className="notice" role="alert">
+          {error}
+        </p>
+      )}
+      {!error && !jobs.length && (
+        <p className="notice">
+          New opportunities will appear here after employer and listing review.
+          Explore employers or save a search for your next chapter.
+        </p>
+      )}
+      <div className="job-grid">
+        {jobs.map((job) => (
+          <JobCard key={job.id} job={job} />
+        ))}
+      </div>
+    </>
   );
 }

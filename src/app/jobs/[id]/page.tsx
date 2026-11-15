@@ -65,13 +65,13 @@ export default async function JobDetail({
           <div className="detail-header">
             <Link
               className="company-monogram tone-0"
-              href={`/companies/${job.id}`}
+              href={`/companies/${job.organisationId ?? job.id}`}
             >
               {job.companyInitial}
             </Link>
             <div>
               <h1>{job.title}</h1>
-              <Link className="company-name" href={`/companies/${job.id}`}>
+              <Link className="company-name" href={`/companies/${job.organisationId ?? job.id}`}>
                 {job.company} ↗
               </Link>
             </div>
@@ -127,13 +127,13 @@ export default async function JobDetail({
         <aside className="detail-aside">
           <section className="panel">
             <h3>A clearer picture of the employer.</h3>
-            <p className="muted" style={{ fontSize: 12 }}>
+            <p className="muted" style={{ fontSize: 15 }}>
               {job.companyDescription}
             </p>
             <p className="fineprint">
               {job.companySize} · {job.city}
             </p>
-            <Link className="text-link" href={`/companies/${job.id}`}>
+            <Link className="text-link" href={`/companies/${job.organisationId ?? job.id}`}>
               Explore employer profile
               <ArrowRight size={16} />
             </Link>

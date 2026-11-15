@@ -18,6 +18,10 @@ const config: NextConfig = {
         ],
       },
       {
+        source: "/email-preferences",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+      {
         source: "/auth/:path*",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },

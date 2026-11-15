@@ -68,7 +68,11 @@ export function Header() {
         </nav>
         <div className="header-actions">
           <ThemeToggle />
-          {session.user ? (
+          {session.loading ? (
+            <span className="session-placeholder" role="status">
+              Checking account…
+            </span>
+          ) : session.user ? (
             <Link href="/account" className="button small secondary">
               My account
             </Link>
@@ -114,6 +118,8 @@ export function Footer() {
             <h3>Your next step</h3>
             <Link href="/jobs">Find a job</Link>
             <Link href="/saved">Saved roles</Link>
+            <Link href="/saved-searches">Saved searches & alerts</Link>
+            <Link href="/trust-activity">My trust activity</Link>
             <Link href="/applications">My applications</Link>
             <Link href="/studio">Application Studio</Link>
           </div>
@@ -123,6 +129,7 @@ export function Footer() {
             <Link href="/careers-plus">Careers+</Link>
             <Link href="/transparency">Our transparency promise</Link>
             <Link href="/privacy">Your privacy</Link>
+            <StaffLink />
           </div>
         </div>
         <div className="footer-flower" aria-hidden="true">
@@ -174,4 +181,11 @@ export function EmptyState({
       )}
     </div>
   );
+}
+
+function StaffLink() {
+  const session = useSession();
+  return session.staffRole ? (
+    <Link href="/admin">Trust review workspace</Link>
+  ) : null;
 }

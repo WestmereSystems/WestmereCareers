@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { publicClient } from "@/lib/supabase/public";
 import { demoJobs, type Job } from "./jobs";
 import { filterJobs, type PublicJobQuery } from "./search";
 export { parseJobQuery, type PublicJobQuery } from "./search";
@@ -13,7 +13,7 @@ export type PublicJobsResult = {
   error?: string;
 };
 const columns =
-  "id,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description";
+  "id,organisation_id,response_snapshot_at,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description";
 const strings = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -26,10 +26,14 @@ const number = (value: unknown, fallback = 0) =>
 /** Only public projections are mapped here. No private applicant or billing fields. */
 export function jobFromRecord(row: Record<string, unknown>): Job {
   const company = text(row.company, "Employer");
+  const fresh =
+    Date.parse(text(row.response_snapshot_at)) > Date.now() - 86400000;
   return {
     id: text(row.id),
     title: text(row.title),
     company,
+    organisationId: text(row.organisation_id) || undefined,
+    isVerified: Boolean(row.organisation_id),
     companyInitial: company.slice(0, 1),
     category: text(row.category, "Other"),
     location: text(row.location),
@@ -56,10 +60,10 @@ export function jobFromRecord(row: Record<string, unknown>): Job {
     skills: strings(row.skills),
     tags: strings(row.tags),
     responseDays:
-      typeof row.response_days === "number" ? row.response_days : null,
-    responseReports: number(row.response_reports),
-    noResponseReports: number(row.no_response_reports),
-    eligibleReports: number(row.eligible_reports),
+      fresh && typeof row.response_days === "number" ? row.response_days : null,
+    responseReports: fresh ? number(row.response_reports) : 0,
+    noResponseReports: fresh ? number(row.no_response_reports) : 0,
+    eligibleReports: fresh ? number(row.eligible_reports) : 0,
     companySize: text(row.company_size),
     companyDescription: text(row.company_description),
   };
@@ -75,7 +79,7 @@ export async function getPublicJobs(
   );
   const base = { page, pageSize };
   try {
-    const supabase = await createClient();
+    const supabase = publicClient();
     if (!supabase) {
       const all = filterJobs(demoJobs, filters);
       return {
@@ -176,7 +180,7 @@ export async function getPublicJobsByIds(requestedIds: string[]): Promise<{
 }> {
   const ids = [...new Set(requestedIds)].slice(0, 100);
   try {
-    const supabase = await createClient();
+    const supabase = publicClient();
     if (!supabase) {
       const byId = new Map(demoJobs.map((job) => [job.id, job]));
       return {
@@ -235,7 +239,7 @@ export async function getPublicJob(
   id: string,
 ): Promise<{ job: Job | null; source: "demo" | "live"; error?: string }> {
   try {
-    const supabase = await createClient();
+    const supabase = publicClient();
     if (!supabase)
       return {
         job: demoJobs.find((job) => job.id === id) ?? null,

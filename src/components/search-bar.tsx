@@ -2,7 +2,7 @@
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, ArrowRight, TrendingUp } from "lucide-react";
-import { jobSuggestions, locationSuggestions } from "@/lib/search";
+import { jobSuggestions, locationSuggestions } from "@/lib/suggestions";
 
 function SuggestionInput({
   kind,

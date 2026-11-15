@@ -72,10 +72,10 @@ export default function Transparency() {
         cannot remove valid negative reports or improve a responsiveness label.
       </p>
       <div className="notice" style={{ marginTop: 25 }}>
-        Development status: the response-reporting schema is included, but
-        public aggregation, moderation and appeals are not yet operational. All
-        response figures in the sample inventory are fictional and clearly
-        labelled. No public employer-rating service is active.
+        Development preview: all sample employers and response figures are
+        fictional. The connected staging service supports independent business
+        and listing review, moderated response aggregation and private appeals.
+        No genuine vacancies or candidate reports have been seeded.
       </div>
       <h2>Trust stays part of the free service</h2>
       <p>

@@ -7,21 +7,6 @@ export const metadata: Metadata = {
     "Personal CV guidance, thoughtful application tailoring and a clearer view of your strengths. Careers+ costs A$25 per month.",
 };
 
-export default async function CareersPlusPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ checkout?: string }>;
-}) {
-  const { checkout } = await searchParams;
-  return (
-    <CareersPlus
-      checkoutStatus={
-        checkout === "complete"
-          ? "complete"
-          : checkout === "canceled"
-            ? "canceled"
-            : undefined
-      }
-    />
-  );
+export default function CareersPlusPage() {
+  return <CareersPlus />;
 }

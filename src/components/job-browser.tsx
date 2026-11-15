@@ -73,6 +73,18 @@ export function JobBrowser({
 }: Props) {
   const session = useSession();
   const navigationQuery = useSearchParams().toString();
+  const loadedKey = useRef(
+    serialiseJobQuery({
+      keyword: initialKeyword,
+      location: initialLocation,
+      workMode: initialWorkMode,
+      employmentType: initialEmploymentType,
+      minSalary: initialMinSalary,
+      directOnly: initialDirectOnly,
+      sort: initialSort,
+      page: initialPage,
+    }),
+  );
   const seenNavigation = useRef(navigationQuery);
   const lastWrittenQuery = useRef<string | null>(null);
   const pendingNavigationQuery = useRef<string | null>(null);
@@ -205,9 +217,19 @@ export function JobBrowser({
   }, [session.isPremium, cv, appliedCv]);
   useEffect(() => {
     if (source !== "live") return;
+    const requestKey = JSON.stringify([
+      query,
+      matching,
+      appliedCv,
+      consent,
+      strongOnly,
+      sort,
+      retry,
+    ]);
+    if (!matching && loadedKey.current === query && retry === 0) return;
+    if (loadedKey.current === requestKey) return;
     const controller = new AbortController();
     setBusy(true);
-    setRemote({ jobs: [], total: 0, page, pageSize: PAGE_SIZE });
     const timer = setTimeout(async () => {
       try {
         const response = matching
@@ -233,7 +255,10 @@ export function JobBrowser({
           throw new Error(
             data.error || "We couldn’t load roles. Please try again.",
           );
-        if (!controller.signal.aborted) setRemote(data);
+        if (!controller.signal.aborted) {
+          setRemote(data);
+          loadedKey.current = requestKey;
+        }
       } catch (error) {
         if (!controller.signal.aborted)
           setRemote({
@@ -352,6 +377,11 @@ export function JobBrowser({
 
   return (
     <>
+      <div className="search-save-row">
+        <Link className="text-link" href={`/saved-searches?${query}`}>
+          Save this search & choose email alerts →
+        </Link>
+      </div>
       <SearchBar
         key={`${keyword}|${location}`}
         initialKeyword={keyword}
@@ -581,7 +611,7 @@ export function JobBrowser({
             </>
           ) : (
             <>
-              <p className="muted" style={{ fontSize: 13 }}>
+              <p className="muted" style={{ fontSize: 15 }}>
                 Careers+ helps you focus on roles that share the skills in your
                 CV, then prepare a thoughtful application with OpenAI-powered
                 guidance.

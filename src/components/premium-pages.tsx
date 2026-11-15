@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { AnimatedArt } from "./animated-art";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -58,28 +60,38 @@ async function billingRedirect(
   window.location.assign(destination.href);
 }
 
-export function CareersPlus({
-  checkoutStatus,
-}: {
-  checkoutStatus?: "complete" | "canceled";
-}) {
+export function CareersPlus() {
   const session = useSession();
-  return (
-    <CareersPlusContent
-      key={session.user?.id ?? "signedout"}
-      checkoutStatus={checkoutStatus}
-    />
-  );
+  return <CareersPlusContent key={session.user?.id ?? "signedout"} />;
 }
-
-function CareersPlusContent({
-  checkoutStatus,
+function CheckoutNotice({
+  onMessage,
+  onComplete,
 }: {
-  checkoutStatus?: "complete" | "canceled";
+  onMessage: (value: string) => void;
+  onComplete: (value: boolean) => void;
 }) {
+  const status = useSearchParams().get("checkout");
+  const session = useSession();
+  useEffect(() => {
+    onComplete(status === "complete");
+    if (status === "complete") {
+      onMessage(
+        "Thanks for completing Checkout. Your access appears here once your subscription is confirmed.",
+      );
+      void session.refresh();
+    } else if (status === "canceled")
+      onMessage(
+        "Checkout was closed. You can continue exploring Westmere for free.",
+      );
+  }, [status, session.refresh, onMessage, onComplete]);
+  return null;
+}
+function CareersPlusContent() {
   const session = useSession();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [checkoutComplete, setCheckoutComplete] = useState(false);
   const billingRequest = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
@@ -87,17 +99,6 @@ function CareersPlusContent({
     },
     [],
   );
-  useEffect(() => {
-    if (checkoutStatus === "complete") {
-      setMessage(
-        "Thanks for completing Checkout. Your access appears here once your subscription is confirmed.",
-      );
-      void session.refresh();
-    } else if (checkoutStatus === "canceled")
-      setMessage(
-        "Checkout was closed. You can continue exploring Westmere for free.",
-      );
-  }, [checkoutStatus, session.refresh]);
   async function billing(kind: "checkout" | "portal") {
     if (billingRequest.current) return;
     if (!session.configured) {
@@ -132,29 +133,43 @@ function CareersPlusContent({
   }
   return (
     <main id="main">
-      <section className="pricing-hero container">
-        <div className="plus-wordmark">
-          <Sparkles size={19} aria-hidden="true" />
-          Careers<span>+</span>
+      <Suspense fallback={null}>
+        <CheckoutNotice
+          onMessage={setMessage}
+          onComplete={setCheckoutComplete}
+        />
+      </Suspense>
+      <section className="pricing-hero container premium-hero-grid">
+        <div className="premium-hero-copy">
+          <div className="plus-wordmark">
+            <Sparkles size={19} aria-hidden="true" />
+            Careers<span>+</span>
+          </div>
+          <p className="eyebrow">A studio for your next chapter</p>
+          <h1>
+            Your experience.
+            <br />A little more possibility.
+          </h1>
+          <p>
+            You’ve done the work. Bring your strengths into the light with
+            thoughtful CV guidance and applications that sound like you.
+          </p>
+          <div className="actions-row">
+            <a className="button purple" href="#careers-plus-plan">
+              Explore Careers+ · A$25/month <ArrowRight size={18} />
+            </a>
+            <Link className="text-link" href="/studio">
+              Look inside the studio →
+            </Link>
+          </div>
+          <p className="fineprint">
+            Cancel online. Your CV stays private until you choose to use a
+            connected feature.
+          </p>
         </div>
-        <h1>
-          Your experience.
-          <br />A little more possibility.
-        </h1>
-        <p>
-          You’ve done the work. Let’s make your strengths easier to see—with
-          thoughtful CV guidance and applications that sound like you.
-        </p>
-        <Link
-          className="text-link"
-          href="/studio"
-          style={{ justifyContent: "center" }}
-        >
-          Take a look inside the studio
-          <ArrowRight size={17} />
-        </Link>
+        <AnimatedArt variant="premium" />
       </section>
-      <div className="container pricing-grid">
+      <div className="container pricing-grid" id="careers-plus-plan">
         <section
           aria-label="What Careers+ helps you do"
           className="feature-list"
@@ -315,7 +330,7 @@ function CareersPlusContent({
           {message && (
             <div className="message" role="status">
               {message}
-              {checkoutStatus === "complete" && !session.isPremium && (
+              {checkoutComplete && !session.isPremium && (
                 <button
                   type="button"
                   className="text-button"

@@ -82,7 +82,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font:
-    15px/1.65 "DM Sans",
+    17px/1.7 "DM Sans",
     system-ui,
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -164,7 +164,7 @@ h2 {
   font-size: clamp(28px, 3vw, 38px);
 }
 h3 {
-  font-size: 18px;
+  font-size: 21px;
   line-height: 1.4;
   letter-spacing: -0.025em;
 }
@@ -196,7 +196,7 @@ li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.13em;
   text-transform: uppercase;
@@ -204,7 +204,7 @@ li {
   margin-bottom: 18px;
 }
 .fineprint {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
   line-height: 1.6;
 }
@@ -217,7 +217,7 @@ li {
   padding: 13px 21px;
   border-radius: 9px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   min-height: 46px;
   transition:
     background 0.15s,
@@ -246,7 +246,7 @@ li {
 .button.small {
   padding: 9px 15px;
   min-height: 39px;
-  font-size: 12px;
+  font-size: 15px;
 }
 .button.full {
   width: 100%;
@@ -257,7 +257,7 @@ li {
   gap: 12px;
   color: var(--primary);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
 }
 .text-link:hover {
   text-decoration: underline;
@@ -321,7 +321,7 @@ li {
 }
 .brand-careers {
   font-family: "DM Sans", sans-serif;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 3px;
   line-height: 1.2;
@@ -361,7 +361,7 @@ li {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
   font-weight: 600;
   position: relative;
@@ -396,7 +396,7 @@ li {
   color: var(--muted);
 }
 .theme-label {
-  font-size: 10px;
+  font-size: 14px;
 }
 .mobile-menu {
   display: none;
@@ -434,7 +434,7 @@ li {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   margin-top: 22px;
@@ -474,7 +474,7 @@ li {
   background: var(--paper);
   padding: 9px 16px;
   box-shadow: var(--shadow);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
   transform: rotate(-5deg);
   border: 1px solid var(--line);
@@ -484,7 +484,7 @@ li {
   color: var(--primary);
 }
 .art-label {
-  font-size: 10px;
+  font-size: 14px;
   font-style: italic;
   color: var(--muted);
   position: absolute;
@@ -520,7 +520,7 @@ li {
   flex: 1;
 }
 .search-field label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   display: block;
   color: var(--ink);
@@ -532,7 +532,7 @@ li {
   padding: 4px 0;
   border-radius: 0;
   background: transparent;
-  font-size: 13px;
+  font-size: 15px;
 }
 .search-submit {
   min-height: 52px;
@@ -553,7 +553,7 @@ li {
 }
 .suggestion-label {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.05em;
   color: var(--muted);
   padding: 7px 10px;
@@ -569,7 +569,7 @@ li {
   text-align: left;
   padding: 10px;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 15px;
 }
 .suggestions button > span {
   flex: 1;
@@ -584,7 +584,7 @@ li {
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 17px;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 .popular-searches > span {
@@ -615,7 +615,7 @@ li {
   padding-block: 22px;
 }
 .trust-strip p {
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.6;
   color: var(--muted);
 }
@@ -627,7 +627,7 @@ li {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 .trust-strip svg {
@@ -652,13 +652,13 @@ li {
 }
 .section-heading p.muted {
   margin-top: 9px;
-  font-size: 13px;
+  font-size: 15px;
 }
 .demo-note {
   display: flex;
   gap: 7px;
   align-items: baseline;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   margin: -8px 0 18px;
 }
@@ -727,7 +727,7 @@ li {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted);
   margin-left: auto;
@@ -760,7 +760,7 @@ li {
   text-underline-offset: 4px;
 }
 .company-name {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
 }
 .company-name:hover {
@@ -770,7 +770,7 @@ li {
   margin: 12px 0;
   display: grid;
   gap: 6px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .job-facts > span {
@@ -779,7 +779,7 @@ li {
   gap: 7px;
 }
 .job-salary {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   margin: 3px 0 13px;
 }
@@ -792,7 +792,7 @@ li {
   margin-bottom: 17px;
 }
 .job-tags > span {
-  font-size: 9px;
+  font-size: 14px;
   background: var(--soft);
   color: var(--muted);
   border-radius: 5px;
@@ -810,11 +810,11 @@ li {
   color: var(--primary);
   border-top: 1px solid var(--line);
   padding-top: 13px;
-  font-size: 10px;
+  font-size: 14px;
 }
 .response-insight small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 14px;
   width: 100%;
   padding-left: 20px;
 }
@@ -855,11 +855,11 @@ li {
 }
 .timeline-title strong {
   display: block;
-  font-size: 12px;
+  font-size: 15px;
 }
 .timeline-title small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 .live-dot {
@@ -902,10 +902,10 @@ li {
   flex: 1;
 }
 .timeline-item strong {
-  font-size: 11px;
+  font-size: 14px;
 }
 .timeline-item p {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -917,7 +917,7 @@ li {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--primary);
   background: var(--soft);
   padding: 10px;
@@ -929,13 +929,13 @@ li {
   right: -25px;
   transform: rotate(8deg);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 15px;
   font-style: italic;
   line-height: 1.5;
 }
 .clarity-copy > p.muted {
   margin-top: 20px;
-  font-size: 14px;
+  font-size: 16px;
   max-width: 410px;
 }
 .check-list {
@@ -947,7 +947,7 @@ li {
   display: flex;
   align-items: start;
   gap: 9px;
-  font-size: 12px;
+  font-size: 15px;
   padding: 7px 0;
 }
 .check-list svg {
@@ -986,14 +986,14 @@ li {
   margin: 21px 0 17px;
 }
 .plus-banner p {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
   line-height: 1.9;
   margin-bottom: 25px;
 }
 .plus-banner small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 12px;
 }
@@ -1022,7 +1022,7 @@ li {
 }
 .studio-preview small {
   margin: 0;
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   flex: 1;
 }
@@ -1062,7 +1062,7 @@ li {
   gap: 6px;
   background: var(--lilac);
   color: var(--purple);
-  font-size: 9px;
+  font-size: 14px;
   border-radius: 5px;
   padding: 10px;
   margin: 16px -8px;
@@ -1081,7 +1081,7 @@ li {
   font-size: 29px;
 }
 .employer-invitation p.muted {
-  font-size: 13px;
+  font-size: 15px;
   margin-top: 10px;
 }
 .site-footer {
@@ -1104,7 +1104,7 @@ li {
   letter-spacing: -0.5px;
 }
 .footer-note {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   display: flex;
   gap: 5px;
@@ -1121,13 +1121,13 @@ li {
   gap: 10px;
 }
 .footer-links h3 {
-  font-size: 11px;
+  font-size: 14px;
   font-family: "DM Sans", sans-serif;
   letter-spacing: 0;
   margin-bottom: 4px;
 }
 .footer-links a {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .footer-links a:hover {
@@ -1143,7 +1143,7 @@ li {
   display: flex;
   gap: 20px;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 14px;
   color: var(--muted);
 }
 .footer-bottom > div {
@@ -1196,21 +1196,21 @@ li {
 }
 .modal .eyebrow {
   margin-top: 5px;
-  font-size: 9px;
+  font-size: 14px;
 }
 .modal h2 {
   font-size: 29px;
   margin-bottom: 15px;
 }
 .modal p.muted {
-  font-size: 13px;
+  font-size: 15px;
 }
 .modal form {
   margin: 24px 0 18px;
 }
 .field-label {
   display: block;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 8px;
 }
@@ -1223,7 +1223,7 @@ li {
   background: var(--soft);
   padding: 12px 15px;
   margin: 15px 0;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--ink);
 }
 .spin {
@@ -1243,7 +1243,7 @@ li {
 .page-intro p.muted {
   margin-top: 13px;
   max-width: 620px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .page-intro .eyebrow {
   margin-bottom: 12px;
@@ -1277,7 +1277,7 @@ li {
   border-radius: 7px;
   color: var(--muted);
   background: var(--paper);
-  font-size: 11px;
+  font-size: 14px;
   min-height: 36px;
 }
 .filter-chip[aria-pressed="true"] {
@@ -1293,11 +1293,11 @@ li {
   gap: 9px;
   align-items: center;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 .sort-control select {
   padding: 7px 24px 7px 10px;
-  font-size: 11px;
+  font-size: 14px;
   max-width: 200px;
 }
 .results-summary {
@@ -1306,11 +1306,11 @@ li {
   gap: 10px;
   align-items: center;
   padding: 12px 0 20px;
-  font-size: 12px;
+  font-size: 15px;
 }
 .results-summary > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 .filter-panel {
   display: flex;
@@ -1330,7 +1330,7 @@ li {
   min-width: 160px;
 }
 .filter-panel legend {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -1338,7 +1338,7 @@ li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 15px;
   padding: 5px 0;
 }
 .checkbox-label input {
@@ -1353,7 +1353,7 @@ li {
 .empty-state p {
   margin: 14px auto 24px;
   max-width: 490px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .empty-state h2 {
   font-size: 28px;
@@ -1365,7 +1365,7 @@ li {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-bottom: 25px;
 }
@@ -1400,7 +1400,7 @@ li {
   font-size: 32px;
 }
 .detail-header .company-name {
-  font-size: 13px;
+  font-size: 15px;
 }
 .detail-salary {
   font-size: 22px;
@@ -1413,7 +1413,7 @@ li {
 }
 .detail-card > p,
 .detail-card li {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--muted);
 }
 .detail-actions {
@@ -1444,7 +1444,7 @@ li {
   color: var(--purple);
 }
 .premium-panel p {
-  font-size: 12px;
+  font-size: 15px;
   margin-bottom: 17px;
 }
 .notice {
@@ -1452,7 +1452,7 @@ li {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px 17px;
-  font-size: 12px;
+  font-size: 15px;
   margin-bottom: 20px;
   color: var(--muted);
 }
@@ -1470,7 +1470,7 @@ li {
   margin-bottom: 10px;
 }
 .studio-layout textarea {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.7;
   min-height: 290px;
   margin: 12px 0 16px;
@@ -1487,7 +1487,7 @@ li {
 }
 .studio-layout .result-copy {
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.85;
   color: var(--muted);
 }
@@ -1504,11 +1504,11 @@ li {
   margin-top: 25px;
 }
 .studio-layout .result-section h3 {
-  font-size: 15px;
+  font-size: 16px;
   margin-bottom: 12px;
 }
 .studio-layout .result-section ul {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
 }
 .studio-empty {
@@ -1516,7 +1516,7 @@ li {
   text-align: center;
 }
 .studio-empty p {
-  font-size: 13px;
+  font-size: 15px;
   margin: 15px auto;
   max-width: 340px;
 }
@@ -1530,7 +1530,7 @@ li {
 .cv-filter-panel textarea {
   min-height: 130px;
   margin: 12px 0;
-  font-size: 12px;
+  font-size: 15px;
 }
 .pricing-hero {
   text-align: center;
@@ -1572,7 +1572,7 @@ li {
   margin: 20px 0 8px;
 }
 .price-value span {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--muted);
@@ -1596,7 +1596,7 @@ li {
   margin-bottom: 8px;
 }
 .feature-item p {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 .price-card .button {
@@ -1622,7 +1622,7 @@ li {
   margin: 18px 0 9px;
 }
 .company-card p {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
   margin: 12px 0;
 }
@@ -1647,7 +1647,7 @@ li {
     sans-serif;
 }
 .company-stats span {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .legal {
@@ -1660,7 +1660,7 @@ li {
 }
 .legal p,
 .legal li {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--muted);
   line-height: 1.9;
 }
@@ -1674,7 +1674,7 @@ li {
   margin-bottom: 15px;
 }
 .account-grid .panel p {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
   margin: 12px 0 20px;
 }
@@ -1716,7 +1716,7 @@ li {
   max-height: 330px;
 }
 .working-notice {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.7;
   color: var(--muted);
   margin-top: 18px;
@@ -1735,7 +1735,7 @@ li {
   color: var(--primary);
   padding: 4px 8px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 14px;
 }
 .badge.purple {
   background: var(--lilac);
@@ -1754,7 +1754,7 @@ li {
   color: var(--primary);
   padding: 4px 0;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 15px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1778,7 +1778,7 @@ li {
   font-size: 17px;
 }
 .application-row p {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--muted);
   margin-top: 6px;
 }
@@ -1813,7 +1813,7 @@ li {
     padding: 18px;
   }
   .job-type-label {
-    font-size: 8px;
+    font-size: 14px;
   }
   .plus-banner {
     padding: 35px;
@@ -1848,7 +1848,7 @@ li {
     gap: 14px;
   }
   .main-nav a {
-    font-size: 10px;
+    font-size: 14px;
   }
   .main-nav a:last-child {
     display: none;
@@ -1864,24 +1864,24 @@ li {
     font-size: 48px;
   }
   .hero-copy > p {
-    font-size: 14px;
+    font-size: 16px;
   }
   .hero-reassurance {
-    font-size: 9px;
+    font-size: 14px;
     gap: 10px;
   }
   .hero .eyebrow {
-    font-size: 8px;
+    font-size: 14px;
   }
   .hero-art {
     margin-right: -5px;
   }
   .art-note {
-    font-size: 10px;
+    font-size: 14px;
     bottom: 35px;
   }
   .art-label {
-    font-size: 8px;
+    font-size: 14px;
     right: 5px;
     bottom: 0;
   }
@@ -1890,24 +1890,24 @@ li {
     gap: 8px;
   }
   .search-field label {
-    font-size: 10px;
+    font-size: 14px;
   }
   .search-field input {
-    font-size: 12px;
+    font-size: 15px;
   }
   .search-submit {
-    font-size: 11px;
+    font-size: 14px;
     padding-inline: 17px;
   }
   .trust-strip span {
-    font-size: 10px;
+    font-size: 14px;
     gap: 6px;
   }
   .trust-strip svg {
     width: 18px;
   }
   .trust-strip p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .trust-strip > .container {
     gap: 15px;
@@ -1931,12 +1931,12 @@ li {
     font-size: 29px;
   }
   .clarity-copy > p.muted {
-    font-size: 12px;
+    font-size: 15px;
   }
   .hand-note {
     right: -10px;
     bottom: 0;
-    font-size: 10px;
+    font-size: 14px;
   }
   .plus-banner {
     gap: 25px;
@@ -1946,7 +1946,7 @@ li {
     font-size: 29px;
   }
   .plus-banner p {
-    font-size: 12px;
+    font-size: 15px;
   }
   .studio-preview {
     padding: 21px;
@@ -2013,7 +2013,7 @@ li {
   }
   .header-actions > .button {
     padding: 7px 10px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .mobile-menu {
     display: inline-flex;
@@ -2040,7 +2040,7 @@ li {
   .main-nav a:last-child {
     display: flex;
     padding: 12px;
-    font-size: 13px;
+    font-size: 15px;
   }
   .main-nav a.active:after {
     display: none;
@@ -2049,7 +2049,7 @@ li {
     font-size: 18px;
   }
   .brand-careers {
-    font-size: 8px;
+    font-size: 14px;
     letter-spacing: 2.5px;
   }
   .hero {
@@ -2069,17 +2069,17 @@ li {
     max-width: 450px;
   }
   .hero .eyebrow {
-    font-size: 9px;
+    font-size: 14px;
     margin-bottom: 20px;
   }
   .hero-copy > p {
-    font-size: 14px;
+    font-size: 16px;
     max-width: 360px;
     margin-top: 18px;
     line-height: 1.8;
   }
   .hero-reassurance {
-    font-size: 9px;
+    font-size: 14px;
     margin-top: 17px;
     gap: 13px;
   }
@@ -2096,7 +2096,7 @@ li {
     left: 3px;
     bottom: 26px;
     padding: 6px 10px;
-    font-size: 9px;
+    font-size: 14px;
   }
   .art-note svg {
     width: 13px;
@@ -2104,7 +2104,7 @@ li {
   .art-label {
     bottom: 8px;
     right: 10px;
-    font-size: 9px;
+    font-size: 14px;
   }
   .search-bar {
     display: flex;
@@ -2120,7 +2120,7 @@ li {
     border-bottom: 1px solid var(--line);
   }
   .search-field label {
-    font-size: 11px;
+    font-size: 14px;
   }
   .search-field input {
     font-size: 16px;
@@ -2128,7 +2128,7 @@ li {
   }
   .search-submit {
     margin-top: 5px;
-    font-size: 13px;
+    font-size: 15px;
     min-height: 47px;
   }
   .suggestions {
@@ -2137,7 +2137,7 @@ li {
     right: 0;
   }
   .popular-searches {
-    font-size: 10px;
+    font-size: 14px;
     gap: 5px;
     margin-top: 14px;
   }
@@ -2161,7 +2161,7 @@ li {
     display: none;
   }
   .trust-strip span {
-    font-size: 11px;
+    font-size: 14px;
     gap: 11px;
   }
   .trust-strip svg {
@@ -2181,17 +2181,17 @@ li {
     max-width: 320px;
   }
   .section-heading .eyebrow {
-    font-size: 9px;
+    font-size: 14px;
   }
   .section-heading p.muted {
-    font-size: 12px;
+    font-size: 15px;
   }
   .text-link {
-    font-size: 12px;
+    font-size: 15px;
     gap: 8px;
   }
   .demo-note {
-    font-size: 9px;
+    font-size: 14px;
   }
   .job-grid {
     grid-template-columns: 1fr;
@@ -2207,22 +2207,22 @@ li {
     font-size: 19px;
   }
   .job-type-label {
-    font-size: 9px;
-  }
-  .job-facts {
-    font-size: 12px;
-  }
-  .job-salary {
     font-size: 14px;
   }
+  .job-facts {
+    font-size: 15px;
+  }
+  .job-salary {
+    font-size: 16px;
+  }
   .job-tags > span {
-    font-size: 10px;
+    font-size: 14px;
   }
   .response-insight {
-    font-size: 11px;
+    font-size: 14px;
   }
   .response-insight small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .opportunities .job-card:last-child {
     display: flex;
@@ -2240,7 +2240,7 @@ li {
     font-size: 31px;
   }
   .clarity-copy > p.muted {
-    font-size: 13px;
+    font-size: 15px;
   }
   .clarity-art {
     padding: 8px 12px 14px;
@@ -2262,7 +2262,7 @@ li {
     font-size: 30px;
   }
   .plus-banner p {
-    font-size: 13px;
+    font-size: 15px;
   }
   .studio-preview {
     max-width: 275px;
@@ -2279,7 +2279,7 @@ li {
     font-size: 28px;
   }
   .employer-invitation p.muted {
-    font-size: 12px;
+    font-size: 15px;
   }
   .footer-top {
     display: block;
@@ -2297,13 +2297,13 @@ li {
     flex: 1;
   }
   .footer-links h3 {
-    font-size: 11px;
+    font-size: 14px;
   }
   .footer-links a {
-    font-size: 11px;
+    font-size: 14px;
   }
   .footer-bottom {
-    font-size: 9px;
+    font-size: 14px;
     display: block;
   }
   .footer-bottom > div {
@@ -2321,7 +2321,7 @@ li {
     font-size: 35px;
   }
   .page-intro .eyebrow {
-    font-size: 9px;
+    font-size: 14px;
   }
   .page-content {
     padding-bottom: 40px;
@@ -2334,7 +2334,7 @@ li {
     gap: 6px;
   }
   .filter-chip {
-    font-size: 10px;
+    font-size: 14px;
     padding: 8px 10px;
   }
   .sort-control {
@@ -2346,7 +2346,7 @@ li {
   }
   .results-summary {
     align-items: start;
-    font-size: 12px;
+    font-size: 15px;
     flex-direction: column;
     gap: 5px;
   }
@@ -2404,7 +2404,7 @@ li {
     font-size: 36px;
   }
   .pricing-hero > p {
-    font-size: 13px;
+    font-size: 15px;
   }
   .pricing-grid {
     grid-template-columns: 1fr;
@@ -2433,7 +2433,7 @@ li {
     gap: 12px;
   }
   .footer-note {
-    font-size: 10px;
+    font-size: 14px;
   }
 }
 @media (max-width: 380px) {
@@ -2472,4 +2472,439 @@ li {
   .checkbox-label {
     min-height: 42px;
   }
+}
+
+/* Readable controls and purposeful, optional motion. */
+button,
+.button,
+.icon-button,
+.save-icon {
+  min-height: 44px;
+}
+.button,
+.button.small,
+.field-label,
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+.main-nav a,
+.text-link,
+.footer-links a {
+  position: relative;
+}
+.main-nav a::after,
+.text-link::after,
+.footer-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+.main-nav a:hover::after,
+.main-nav a:focus-visible::after,
+.main-nav a.active::after,
+.text-link:hover::after,
+.text-link:focus-visible::after,
+.footer-links a:hover::after,
+.footer-links a:focus-visible::after {
+  transform: scaleX(1);
+}
+.session-placeholder {
+  font-size: 14px;
+  color: var(--muted);
+  min-width: 100px;
+}
+.animated-art {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  padding: 12px 12px 58px;
+}
+.animated-art img {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: auto;
+  animation: westmere-float 8s ease-in-out infinite;
+}
+.art-glow {
+  position: absolute;
+  inset: 8% 3% 15%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #d6e2c65e, transparent 68%);
+}
+.premium-art .art-glow {
+  background: radial-gradient(ellipse, #bd9bd54a, transparent 68%);
+}
+.floating-label {
+  position: absolute;
+  left: 8%;
+  bottom: 76px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 10px 16px;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 15px;
+  animation: westmere-float 6s ease-in-out -2s infinite;
+}
+.orbit-dot {
+  width: 13px;
+  height: 13px;
+  background: var(--gold);
+  position: absolute;
+  border-radius: 50%;
+  animation: westmere-orbit 10s ease-in-out infinite;
+}
+.dot-one {
+  top: 18%;
+  right: 12%;
+}
+.dot-two {
+  top: 64%;
+  left: 12%;
+  background: var(--purple);
+  animation-delay: -4s;
+  width: 9px;
+  height: 9px;
+}
+.orbit-star {
+  position: absolute;
+  top: 16%;
+  left: 18%;
+  font-size: 26px;
+  color: var(--purple);
+  animation: westmere-float 7s ease-in-out -3s infinite;
+}
+.motion-control {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--muted);
+  background: var(--paper);
+}
+.motion-paused *,
+.motion-paused img {
+  animation-play-state: paused !important;
+}
+.premium-art-stage {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 56px;
+  align-items: center;
+  padding-bottom: 64px;
+}
+.premium-art-copy p {
+  margin: 18px 0 24px;
+  max-width: 44ch;
+}
+.premium-art {
+  max-width: 560px;
+  margin: auto;
+}
+.hero-art .animated-art {
+  max-width: 620px;
+  margin: auto;
+}
+.form-stack {
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+}
+.form-stack .field-label {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.form-stack fieldset {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 0;
+}
+.form-stack legend {
+  font-size: 16px;
+  font-weight: 650;
+  padding: 0 6px;
+}
+.form-stack input:not([type="checkbox"]),
+.form-stack select {
+  width: 100%;
+}
+.form-stack .checkbox-label {
+  align-items: flex-start;
+  line-height: 1.6;
+}
+.form-stack input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin: 4px 0;
+  accent-color: var(--primary);
+}
+.choice-row,
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.choice-row .checkbox-label {
+  margin: 8px 12px 8px 0;
+}
+.trust-intake,
+.trust-disclosure {
+  margin: 24px 0;
+}
+summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 700;
+  font-size: 17px;
+}
+.trust-disclosure {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.activity-item {
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.activity-item p {
+  margin: 8px 0 14px;
+}
+.panel {
+  margin-bottom: 24px;
+}
+.saved-search-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 32px;
+  margin-top: 28px;
+}
+.saved-search-layout h2 {
+  font-size: 28px;
+  margin-bottom: 18px;
+}
+.search-save-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+.queue-tabs {
+  margin: 24px 0;
+}
+.review-item h2 {
+  font-size: 27px;
+}
+.review-facts {
+  display: grid;
+  gap: 12px;
+}
+.review-facts div {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.review-facts dt {
+  color: var(--muted);
+  text-transform: capitalize;
+  font-size: 15px;
+}
+.review-facts dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 28px;
+}
+.loading-card {
+  padding: 28px;
+  min-height: 240px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 18px;
+}
+.loading-card span {
+  display: block;
+  height: 18px;
+  margin: 20px 0;
+  border-radius: 5px;
+  background: var(--soft);
+}
+.loading-card span:nth-child(2) {
+  width: 75%;
+}
+.loading-card span:last-child {
+  width: 50%;
+}
+@keyframes westmere-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.5deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(0.5deg);
+  }
+}
+@keyframes westmere-orbit {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35% {
+    transform: translate(14px, -18px);
+  }
+  70% {
+    transform: translate(-12px, -9px);
+  }
+}
+@media (max-width: 900px) {
+  .saved-search-layout {
+    grid-template-columns: 1fr;
+  }
+  .premium-art-stage {
+    gap: 24px;
+  }
+  .main-nav {
+    gap: 16px;
+  }
+  .hero-grid {
+    gap: 24px;
+  }
+}
+@media (max-width: 650px) {
+  .form-grid,
+  .premium-art-stage,
+  .loading-grid {
+    grid-template-columns: 1fr;
+  }
+  .premium-art-copy {
+    text-align: left;
+  }
+  .premium-art-stage {
+    padding-bottom: 40px;
+  }
+  .animated-art {
+    max-width: 420px;
+  }
+  .floating-label {
+    font-size: 14px;
+    bottom: 68px;
+    padding: 8px 12px;
+  }
+  .review-facts div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .search-save-row {
+    justify-content: flex-start;
+  }
+  .header-actions {
+    gap: 6px;
+  }
+  .theme-label {
+    display: none;
+  }
+  .session-placeholder {
+    min-width: 0;
+    max-width: 75px;
+    line-height: 1.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animated-art *,
+  .animated-art img {
+    animation: none !important;
+  }
+  .main-nav a::after,
+  .text-link::after,
+  .footer-links a::after {
+    transition: none;
+  }
+}
+.premium-hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  text-align: left;
+  padding: 54px 0 40px;
+}
+.premium-hero-grid .plus-wordmark {
+  justify-content: flex-start;
+  margin-bottom: 18px;
+}
+.premium-hero-grid h1 {
+  margin: 12px 0 20px;
+  font-size: clamp(36px, 4.2vw, 54px);
+}
+.premium-hero-copy > p:not(.eyebrow) {
+  margin: 18px 0 24px;
+  max-width: 48ch;
+}
+.premium-hero-grid .animated-art {
+  max-width: 520px;
+}
+.company-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.motion-control:disabled {
+  cursor: default;
+}
+#careers-plus-plan {
+  scroll-margin-top: 30px;
+}
+@media (max-width: 760px) {
+  .premium-hero-grid {
+    grid-template-columns: 1fr;
+    padding-top: 32px;
+    gap: 16px;
+  }
+  .premium-hero-grid .animated-art {
+    max-width: 400px;
+  }
+}
+
+/* The wordmark is a decorative logo; its link has a full accessible name. */
+.brand-careers {
+  font-size: 10px;
 }

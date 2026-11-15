@@ -1,6 +1,8 @@
 /** Fictional fixtures for the local preview. Never seed these as genuine vacancies. */
 export type Job = {
   id: string;
+  organisationId?: string;
+  isVerified?: boolean;
   title: string;
   company: string;
   companyInitial: string;

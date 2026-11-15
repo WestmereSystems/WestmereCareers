@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({ client: vi.fn() }));
-vi.mock("../src/lib/supabase/server", () => ({ createClient: mock.client }));
+vi.mock("../src/lib/supabase/public", () => ({ publicClient: mock.client }));
 import {
   getPublicJob,
   getPublicJobs,
@@ -61,7 +61,7 @@ describe("public search boundaries", () => {
   });
   it("never turns a live database failure into fictional vacancies", async () => {
     const builder = query([], 0, { message: "internal database detail" });
-    mock.client.mockResolvedValue({ from: () => builder });
+    mock.client.mockReturnValue({ from: () => builder });
     const result = await getPublicJobs();
     expect(result.source).toBe("live");
     expect(result.jobs).toEqual([]);
@@ -70,7 +70,7 @@ describe("public search boundaries", () => {
   });
   it("explicitly excludes future and expired jobs even for employer sessions", async () => {
     const builder = query([], 32);
-    mock.client.mockResolvedValue({ from: () => builder });
+    mock.client.mockReturnValue({ from: () => builder });
     const result = await getPublicJobs({
       keyword: "designer",
       workMode: ["Hybrid"],
@@ -95,7 +95,7 @@ describe("public search boundaries", () => {
   });
   it("loads a single public role by ID and rejects malformed live identifiers", async () => {
     const builder = query();
-    mock.client.mockResolvedValue({ from: () => builder });
+    mock.client.mockReturnValue({ from: () => builder });
     expect(await getPublicJob("demo-fake")).toEqual({
       job: null,
       source: "live",
@@ -112,14 +112,14 @@ describe("public search boundaries", () => {
     );
   });
   it("uses labelled paginated fixtures only while unconfigured", async () => {
-    mock.client.mockResolvedValue(null);
+    mock.client.mockReturnValue(null);
     const result = await getPublicJobs({ page: 2, pageSize: 12 });
     expect(result.source).toBe("demo");
     expect(result.total).toBe(20);
     expect(result.jobs).toHaveLength(8);
   });
   it("resolves saved roles outside the first search page and reports stale IDs", async () => {
-    mock.client.mockResolvedValue(null);
+    mock.client.mockReturnValue(null);
     const result = await getPublicJobsByIds([
       demoJobs[18].id,
       "closed-demo-role",
@@ -141,7 +141,7 @@ describe("public search boundaries", () => {
         published_at: "2026-11-12T00:00:00Z",
       },
     ]);
-    mock.client.mockResolvedValue({ from: () => builder });
+    mock.client.mockReturnValue({ from: () => builder });
     const result = await getPublicJobsByIds(["not-a-uuid", id]);
     expect(builder.in).toHaveBeenCalledWith("id", [id]);
     expect(builder.eq).toHaveBeenCalledWith("status", "published");
@@ -154,7 +154,7 @@ describe("public search boundaries", () => {
   });
   it("keeps city/state filters consistent and allows Australia-wide remote roles", async () => {
     const builder = query();
-    mock.client.mockResolvedValue({ from: () => builder });
+    mock.client.mockReturnValue({ from: () => builder });
     await getPublicJobs({ location: "Melbourne, NSW" });
     expect(builder.or).toHaveBeenCalledWith(
       "and(city.ilike.%melbourne%,state.eq.NSW),and(work_mode.eq.Remote,city.eq.Anywhere in Australia)",

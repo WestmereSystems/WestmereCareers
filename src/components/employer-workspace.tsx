@@ -10,12 +10,40 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useSession } from "./providers";
+import { VerificationIntake, TrustCaseForm, sendJson } from "./trust-workflows";
 
-type Role = { id: string; title: string; status: string; location: string };
+type Role = {
+  id: string;
+  title: string;
+  status: string;
+  location: string;
+  moderation_status: string;
+  publication_requested: boolean;
+  organisation_id: string;
+  city: string;
+  state: string;
+  category: string;
+  work_mode: string;
+  employment_type: string;
+  salary_min: number;
+  salary_max: number;
+  salary_period: string;
+  super_included: boolean;
+  description: string;
+  responsibilities: string[];
+  requirements: string[];
+  skills: string[];
+  listing_review_feedback: { message: string } | null;
+};
 type Membership = {
   organisation_id: string;
   role: string;
-  organisations: { id: string; name: string; is_verified: boolean };
+  organisations: {
+    id: string;
+    name: string;
+    is_verified: boolean;
+    suspended_at: string | null;
+  };
 };
 type Applicant = {
   id: string;
@@ -38,12 +66,21 @@ function EmployerWorkspaceForUser() {
   const session = useSession();
   const [roles, setRoles] = useState<Role[]>([]);
   const [members, setMembers] = useState<Membership[]>([]);
-  const postingMembers = members.filter((member) =>
-    ["owner", "admin", "recruiter"].includes(member.role),
+  const postingMembers = members.filter(
+    (member) =>
+      ["owner", "admin", "recruiter"].includes(member.role) &&
+      !member.organisations.suspended_at,
   );
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(false);
+  const [editing, setEditing] = useState<Role | null>(null);
+  useEffect(() => {
+    if (form)
+      document
+        .getElementById("role-editor")
+        ?.scrollIntoView({ block: "start" });
+  }, [form, editing?.id]);
   const [selected, setSelected] = useState("");
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [application, setApplication] = useState<PrivateApplication | null>(
@@ -86,6 +123,7 @@ function EmployerWorkspaceForUser() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(editing ? { id: editing.id } : {}),
           organisationId: String(data.get("organisation")),
           title: String(data.get("title")),
           location: `${data.get("city")}, ${data.get("state")}`,
@@ -116,6 +154,7 @@ function EmployerWorkspaceForUser() {
       setMessage(result.message || result.error);
       if (r.ok) {
         setForm(false);
+        setEditing(null);
         await load();
       }
     } catch {
@@ -193,6 +232,8 @@ function EmployerWorkspaceForUser() {
       setBusy(false);
     }
   }
+  if (session.loading)
+    return <p role="status">Loading your hiring workspace…</p>;
   if (!session.user)
     return (
       <div className="panel">
@@ -200,7 +241,7 @@ function EmployerWorkspaceForUser() {
           <FileText size={25} />
         </span>
         <h2>Your hiring workspace.</h2>
-        <p className="muted" style={{ fontSize: 14, margin: "16px 0 22px" }}>
+        <p className="muted" style={{ fontSize: 16, margin: "16px 0 22px" }}>
           Sign in to create clear opportunities and keep your candidates
           informed.
         </p>
@@ -228,7 +269,13 @@ function EmployerWorkspaceForUser() {
           <h2>Good hiring feels human.</h2>
         </div>
         {postingMembers.length > 0 && (
-          <button className="button primary" onClick={() => setForm(!form)}>
+          <button
+            className="button primary"
+            onClick={() => {
+              setEditing(null);
+              setForm(!form);
+            }}
+          >
             <Plus size={17} />
             Create a role
           </button>
@@ -239,21 +286,51 @@ function EmployerWorkspaceForUser() {
           <h3>Let’s get to know your business first.</h3>
           <p className="muted" style={{ marginTop: 14 }}>
             Your account needs an approved organisation membership before you
-            can publish or access applications. Business review and onboarding
-            will open with the founding-employer pilot.
+            can publish or access applications. Submit the business details
+            below for independent review.
           </p>
         </div>
       ) : null}
+      <VerificationIntake />
+      {members.map((m) => (
+        <div key={m.organisation_id} className="panel">
+          <h3>{m.organisations.name}</h3>
+          <p>
+            {m.organisations.suspended_at
+              ? "Hiring access is suspended pending review."
+              : m.organisations.is_verified
+                ? "Business identity and hiring authority checked."
+                : "Business verification pending."}
+          </p>
+          <TrustCaseForm organisationId={m.organisation_id} />
+        </div>
+      ))}
       {form && (
         <form
           className="panel employer-form"
+          key={editing?.id ?? "new"}
+          id="role-editor"
           onSubmit={create}
           style={{ marginBottom: 25 }}
         >
-          <h2 style={{ fontSize: 26 }}>A clear role is a great beginning.</h2>
+          <h2 style={{ fontSize: 26 }}>
+            {editing
+              ? "Refine your opportunity."
+              : "A clear role is a great beginning."}
+          </h2>
+          {editing && (
+            <p className="notice">
+              Saving changes returns this listing to a private draft for
+              independent review.
+            </p>
+          )}
           <label className="field-label">
             Hiring business
-            <select name="organisation" required>
+            <select
+              name="organisation"
+              required
+              defaultValue={editing?.organisation_id}
+            >
               {postingMembers.map((m) => (
                 <option value={m.organisation_id} key={m.organisation_id}>
                   {m.organisations.name}
@@ -265,6 +342,7 @@ function EmployerWorkspaceForUser() {
             Role title
             <input
               name="title"
+              defaultValue={editing?.title}
               required
               minLength={3}
               maxLength={180}
@@ -274,11 +352,11 @@ function EmployerWorkspaceForUser() {
           <div className="account-grid">
             <label className="field-label">
               City or suburb
-              <input name="city" required />
+              <input name="city" defaultValue={editing?.city} required />
             </label>
             <label className="field-label">
               State or territory
-              <select name="state">
+              <select name="state" defaultValue={editing?.state}>
                 {["VIC", "NSW", "QLD", "WA", "SA", "TAS", "ACT", "NT"].map(
                   (s) => (
                     <option key={s}>{s}</option>
@@ -289,12 +367,17 @@ function EmployerWorkspaceForUser() {
           </div>
           <label className="field-label">
             Category
-            <input name="category" required placeholder="e.g. Technology" />
+            <input
+              name="category"
+              defaultValue={editing?.category}
+              required
+              placeholder="e.g. Technology"
+            />
           </label>
           <div className="account-grid">
             <label className="field-label">
               Working arrangement
-              <select name="workMode">
+              <select name="workMode" defaultValue={editing?.work_mode}>
                 {["Hybrid", "Remote", "On-site"].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
@@ -302,7 +385,10 @@ function EmployerWorkspaceForUser() {
             </label>
             <label className="field-label">
               Employment type
-              <select name="employmentType">
+              <select
+                name="employmentType"
+                defaultValue={editing?.employment_type}
+              >
                 {["Full time", "Part time", "Contract", "Casual"].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
@@ -314,6 +400,7 @@ function EmployerWorkspaceForUser() {
               Minimum salary (A$)
               <input
                 name="salaryMin"
+                defaultValue={editing?.salary_min}
                 type="number"
                 min={0}
                 max={100000000}
@@ -325,6 +412,7 @@ function EmployerWorkspaceForUser() {
               Maximum salary (A$)
               <input
                 name="salaryMax"
+                defaultValue={editing?.salary_max}
                 type="number"
                 min={0}
                 max={100000000}
@@ -335,19 +423,24 @@ function EmployerWorkspaceForUser() {
           </div>
           <label className="field-label">
             Pay period
-            <select name="salaryPeriod">
+            <select name="salaryPeriod" defaultValue={editing?.salary_period}>
               <option value="year">Per year</option>
               <option value="hour">Per hour</option>
             </select>
           </label>
           <label className="checkbox-label">
-            <input name="superIncluded" type="checkbox" />
+            <input
+              name="superIncluded"
+              type="checkbox"
+              defaultChecked={editing?.super_included}
+            />
             These amounts include superannuation
           </label>
           <label className="field-label">
             The opportunity
             <textarea
               name="description"
+              defaultValue={editing?.description}
               required
               minLength={20}
               maxLength={20000}
@@ -355,23 +448,30 @@ function EmployerWorkspaceForUser() {
           </label>
           <label className="field-label">
             Responsibilities — one per line
-            <textarea name="responsibilities" />
+            <textarea
+              name="responsibilities"
+              defaultValue={editing?.responsibilities?.join("\n")}
+            />
           </label>
           <label className="field-label">
             Requirements — one per line
-            <textarea name="requirements" />
+            <textarea
+              name="requirements"
+              defaultValue={editing?.requirements?.join("\n")}
+            />
           </label>
           <label className="field-label">
             Skills — separated by commas
             <input
               name="skills"
+              defaultValue={editing?.skills?.join(", ")}
               placeholder="Communication, CRM, Account management"
             />
           </label>
           <label className="checkbox-label">
             <input type="checkbox" name="publish" />
-            Publish immediately (verified businesses only); otherwise save a
-            draft
+            Submit for publication review (verified businesses only); otherwise
+            save a draft
           </label>
           <p className="fineprint">
             Check pay against the applicable award or agreement. Only include
@@ -394,16 +494,79 @@ function EmployerWorkspaceForUser() {
               <div>
                 <h3>{role.title}</h3>
                 <p>
-                  {role.location} · {role.status}
+                  {role.location} · {role.status} ·{" "}
+                  {role.publication_requested
+                    ? "Awaiting review"
+                    : role.moderation_status}
                 </p>
               </div>
-              <button
-                className="button secondary small"
-                onClick={() => review(role.id)}
-              >
-                Review applicants
-                <ArrowRight size={15} />
-              </button>
+              <div className="actions-row">
+                <button
+                  className="button secondary"
+                  onClick={() => {
+                    setEditing(role);
+                    setForm(true);
+                  }}
+                >
+                  Edit listing
+                </button>
+                {role.listing_review_feedback?.message && (
+                  <p className="fineprint">
+                    Reviewer feedback: {role.listing_review_feedback.message}
+                  </p>
+                )}
+                {role.status !== "published" && !role.publication_requested && (
+                  <button
+                    className="button secondary"
+                    onClick={async () => {
+                      try {
+                        const d = await sendJson(
+                          "/api/employers",
+                          { id: role.id, action: "submit" },
+                          "PATCH",
+                        );
+                        setMessage(d.message);
+                        await load();
+                      } catch (e) {
+                        setMessage(
+                          e instanceof Error ? e.message : "Please try again.",
+                        );
+                      }
+                    }}
+                  >
+                    Submit for review
+                  </button>
+                )}
+                {role.status !== "closed" && (
+                  <button
+                    className="button secondary"
+                    onClick={async () => {
+                      try {
+                        const d = await sendJson(
+                          "/api/employers",
+                          { id: role.id, action: "close" },
+                          "PATCH",
+                        );
+                        setMessage(d.message);
+                        await load();
+                      } catch (e) {
+                        setMessage(
+                          e instanceof Error ? e.message : "Please try again.",
+                        );
+                      }
+                    }}
+                  >
+                    Close listing
+                  </button>
+                )}
+                <button
+                  className="button secondary small"
+                  onClick={() => review(role.id)}
+                >
+                  Review applicants
+                  <ArrowRight size={15} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -452,7 +615,7 @@ function EmployerWorkspaceForUser() {
             style={{
               whiteSpace: "pre-wrap",
               font: "inherit",
-              fontSize: 13,
+              fontSize: 15,
               marginTop: 22,
               color: "var(--muted)",
             }}
@@ -463,7 +626,7 @@ function EmployerWorkspaceForUser() {
             <>
               <h3 style={{ marginTop: 22 }}>Cover letter</h3>
               <p
-                style={{ whiteSpace: "pre-wrap", fontSize: 13, marginTop: 12 }}
+                style={{ whiteSpace: "pre-wrap", fontSize: 15, marginTop: 12 }}
               >
                 {application.cover_letter}
               </p>
