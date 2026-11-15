@@ -29,10 +29,7 @@ export function EmailPreferences() {
           manage alerts from your account.
         </p>
       )}
-      <Link
-        href="https://westmere-careers-git-codex-staging-order-ward.vercel.app/saved-searches"
-        className="text-link"
-      >
+      <Link href="/account?tab=alerts" className="text-link">
         Manage all saved searches →
       </Link>
     </section>

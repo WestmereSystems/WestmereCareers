@@ -2,18 +2,26 @@
 import { AustraliaIcon } from "@/components/australia-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, ArrowRight, Menu, X, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowRight,
+  Menu,
+  X,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle, useSession } from "./providers";
+import { NotificationPreview } from "./notifications";
 
 export function Brand() {
   return (
     <Link href="/" className="brand" aria-label="Westmere Careers home">
       <span className="brand-mark" aria-hidden="true">
-        w<span />
+        w
       </span>
       <span>
-        westmere<span className="brand-careers">careers</span>
+        westmere<span className="brand-careers">CAREERS</span>
       </span>
     </Link>
   );
@@ -80,15 +88,10 @@ export function Header() {
                 Hello,{" "}
                 {session.user.fullName?.trim().split(/\s+/)[0] || "there"}
               </span>
-              <Link
-                href="/notifications"
-                className="header-notifications"
-                aria-label="Notifications"
-              >
-                Updates
-              </Link>
+              <NotificationPreview />
               <Link href="/account" className="button small secondary">
-                My profile
+                <UserRound size={17} aria-hidden="true" />
+                Profile
               </Link>
             </>
           ) : (
@@ -132,10 +135,10 @@ export function Footer() {
           <div>
             <h3>Your next step</h3>
             <Link href="/jobs">Find a job</Link>
-            <Link href="/saved">Saved roles</Link>
-            <Link href="/saved-searches">Saved searches & alerts</Link>
-            <Link href="/trust-activity">My trust activity</Link>
-            <Link href="/applications">My applications</Link>
+            <Link href="/account?tab=saved">Saved roles</Link>
+            <Link href="/account?tab=alerts">Saved searches & alerts</Link>
+            <Link href="/account?tab=trust">My trust activity</Link>
+            <Link href="/account?tab=applications">My applications</Link>
             <Link href="/studio">Application Studio</Link>
           </div>
           <div>
@@ -150,7 +153,7 @@ export function Footer() {
         </div>
         <div className="footer-flower" aria-hidden="true">
           <img
-            src="/illustrations/growing-together.svg"
+            src="/illustrations/career-path.svg"
             alt=""
             width="115"
             height="120"

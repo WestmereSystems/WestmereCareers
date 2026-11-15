@@ -60,7 +60,7 @@ export default function Privacy() {
       ))}
       <p>
         <Link href="/account">Manage your private profile</Link> ·{" "}
-        <a href="mailto:hello@westmere.com.au">Contact our Privacy Officer</a>
+        <a href="mailto:support@westmere.com.au">Contact our Privacy Officer</a>
       </p>
     </main>
   );

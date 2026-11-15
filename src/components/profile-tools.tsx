@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FileUp, Download, Trash2, Check, Bell } from "lucide-react";
+import { FileUp, Download, Trash2, Check } from "lucide-react";
 import { useSession } from "./providers";
 type CV = {
   id: string;
@@ -354,113 +354,4 @@ export function ChangeEmail() {
     </details>
   );
 }
-type Notice = {
-  id: string;
-  title: string;
-  message: string;
-  path: string;
-  read_at: string | null;
-  created_at: string;
-};
-export function Notifications() {
-  const session = useSession();
-  const [items, setItems] = useState<Notice[]>([]),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(true);
-  useEffect(() => {
-    if (!session.user) {
-      setItems([]);
-      setBusy(false);
-      return;
-    }
-    const c = new AbortController();
-    fetch("/api/notifications", { cache: "no-store", signal: c.signal })
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error);
-        if (!c.signal.aborted) setItems(d.notifications || []);
-      })
-      .catch((e) => {
-        if (!c.signal.aborted) setMessage(e.message);
-      })
-      .finally(() => {
-        if (!c.signal.aborted) setBusy(false);
-      });
-    return () => c.abort();
-  }, [session.user?.id]);
-  if (session.loading || busy)
-    return <p role="status">Loading notifications…</p>;
-  if (!session.user)
-    return (
-      <div className="panel">
-        <p>Sign in to see your account updates.</p>
-        <button className="button primary" onClick={session.openAuth}>
-          Sign in
-        </button>
-      </div>
-    );
-  return (
-    <section className="panel">
-      <h2>
-        <Bell size={22} /> Your updates
-      </h2>
-      <p>
-        Application receipts, intentional first views and employer decisions
-        appear here. A view confirms that someone opened your application,
-        rather than a full assessment.
-      </p>
-      {items.length ? (
-        <ul className="notification-list">
-          {items.map((n) => (
-            <li key={n.id} className={n.read_at ? "read" : "unread"}>
-              <div>
-                <span className="badge">{n.read_at ? "Read" : "New"}</span>
-                <h3>{n.title}</h3>
-                <p>{n.message}</p>
-                <p className="fineprint">
-                  {new Date(n.created_at).toLocaleString("en-AU")}
-                </p>
-                <Link className="text-link" href={n.path}>
-                  View details →
-                </Link>
-              </div>
-              {!n.read_at && (
-                <button
-                  className="button secondary small"
-                  onClick={async () => {
-                    try {
-                      const r = await fetch("/api/notifications", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: n.id }),
-                      });
-                      if (!r.ok) throw new Error();
-                      setItems((items) =>
-                        items.map((x) =>
-                          x.id === n.id
-                            ? { ...x, read_at: new Date().toISOString() }
-                            : x,
-                        ),
-                      );
-                    } catch {
-                      setMessage("This notification could not be marked read.");
-                    }
-                  }}
-                >
-                  Mark read
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>You’re up to date. New activity will appear here.</p>
-      )}
-      {message && (
-        <p className="message" role="status">
-          {message}
-        </p>
-      )}
-    </section>
-  );
-}
+export { Notifications } from "./notifications";

@@ -1,4 +1,4 @@
-import { Check, MessageCircle, FileText, ShieldCheck } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 import { EmployerWorkspace } from "@/components/employer-workspace";
 export const metadata = { title: "For employers" };
 export default function Employers() {
@@ -29,13 +29,19 @@ export default function Employers() {
               Candidate communication built into the process.
             </li>
           </ul>
+          <a className="button primary" href="#workspace">
+            Your hiring workspace <ArrowRight size={17} />
+          </a>
         </div>
-        <img
-          src="/illustrations/growing-together.svg"
-          alt="Plants growing together, an illustration of shared opportunity"
-          width={420}
-          height={340}
-        />
+        <figure className="employer-hero-photo">
+          <img
+            src="/images/creative-colleagues.webp"
+            alt="Colleagues bringing their experience together at work"
+            width={1260}
+            height={709}
+          />
+          <figcaption>Good hiring feels human.</figcaption>
+        </figure>
       </section>
       <section className="page-content" id="workspace">
         <EmployerWorkspace />

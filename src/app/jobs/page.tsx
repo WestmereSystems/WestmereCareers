@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JobBrowser } from "@/components/job-browser";
 import { getPublicJobs, parseJobQuery } from "@/lib/jobs-server";
+import { CareerAssistant } from "@/components/career-assistant";
 
 export const metadata: Metadata = {
   title: "Find your next role",
@@ -23,32 +24,38 @@ export default async function JobsPage({
   const result = await getPublicJobs(query);
   return (
     <main id="main">
-      <div className="container">
-        <section className="page-intro">
-          <p className="eyebrow">A world of possibility</p>
-          <h1>Find your next chapter.</h1>
-          <p className="muted">
-            Clear pay, thoughtful filters and a better picture of who’s hiring.
-            Let’s find work that feels right for you.
-          </p>
-        </section>
-        <section className="page-content" aria-label="Search and explore roles">
-          <JobBrowser
-            key={JSON.stringify(query)}
-            initialJobs={result.jobs}
-            source={result.source}
-            initialKeyword={query.keyword}
-            initialLocation={query.location}
-            initialSort={query.sort}
-            initialTotal={result.total}
-            initialPage={result.page}
-            initialError={result.error}
-            initialWorkMode={query.workMode}
-            initialEmploymentType={query.employmentType}
-            initialMinSalary={query.minSalary}
-            initialDirectOnly={query.directOnly}
-          />
-        </section>
+      <div className="container jobs-with-assistant">
+        <div className="jobs-primary-content">
+          <section className="page-intro">
+            <p className="eyebrow">A world of possibility</p>
+            <h1>Find your next chapter.</h1>
+            <p className="muted">
+              Clear pay, thoughtful filters and a better picture of who’s
+              hiring. Let’s find work that feels right for you.
+            </p>
+          </section>
+          <section
+            className="page-content"
+            aria-label="Search and explore roles"
+          >
+            <JobBrowser
+              key={JSON.stringify(query)}
+              initialJobs={result.jobs}
+              source={result.source}
+              initialKeyword={query.keyword}
+              initialLocation={query.location}
+              initialSort={query.sort}
+              initialTotal={result.total}
+              initialPage={result.page}
+              initialError={result.error}
+              initialWorkMode={query.workMode}
+              initialEmploymentType={query.employmentType}
+              initialMinSalary={query.minSalary}
+              initialDirectOnly={query.directOnly}
+            />
+          </section>
+        </div>
+        <CareerAssistant />
       </div>
     </main>
   );

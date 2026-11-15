@@ -61,3 +61,9 @@ Use these as illustrative photographs of people and work. The subjects are not r
 - Changes: longitude was scaled by `cos(27°)`, latitude inverted for SVG coordinates, both polygons uniformly fitted to a 24 × 24 viewbox with margins, and coastlines simplified at a 0.08-unit tolerance. Geographic islands absent from this small-scale source have not been invented. The result was rendered and visually checked with Tasmania preserved, and includes source/licence metadata without scripts or remote resources.
 
 The Westmere email wordmark SVG and rendered PNG are original Westmere artwork, dedicated to CC0 alongside the original illustration set. The React Australia icon uses the same documented Natural Earth geometry as `public/icons/australia.svg`.
+
+## November 15 visual refresh
+
+`public/images/australian-wildlife-worker.webp` is an original AI-generated illustrative workplace scene produced with the built-in image-generation tool. It depicts a fictional wildlife carer and wallabies; it is not a stock photograph, real employer, customer or testimonial. The homepage labels it illustrative. The exact prompt and processing details are in [visual-refresh.md](visual-refresh.md). Existing Nappy photography and its notices remain unchanged.
+
+`public/illustrations/career-path.svg` and the updated Westmere email SVG/PNG wordmark are original vector artwork, dedicated to CC0 alongside the existing original illustrations. Brand names remain subject to the exclusions above. `scripts/generate-brand-assets.mjs` regenerates the PNG from its source SVG.

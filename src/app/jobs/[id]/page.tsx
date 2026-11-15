@@ -15,6 +15,7 @@ import { formatSalary } from "@/lib/search";
 import { SaveButton } from "@/components/providers";
 import { ResponseInsight } from "@/components/job-card";
 import { ApplyPanel } from "@/components/candidate-pages";
+import { CareerAssistant } from "@/components/career-assistant";
 
 export async function generateMetadata({
   params,
@@ -169,6 +170,7 @@ export default async function JobDetail({
           </div>
         </article>
         <aside className="detail-aside">
+          <CareerAssistant key={job.id} job={job} />
           <section className="panel">
             <h3>A clearer picture of the employer.</h3>
             <p className="muted" style={{ fontSize: 15 }}>

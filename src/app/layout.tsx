@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./refresh.css";
 import { Providers } from "@/components/providers";
 import { Header, Footer } from "@/components/shell";
 
@@ -22,11 +23,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f5eb" },
-    { media: "(prefers-color-scheme: dark)", color: "#132623" },
+    { media: "(prefers-color-scheme: light)", color: "#0b1210" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1210" },
   ],
 };
-const themeScript = `try{var t=localStorage.getItem('westmere-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`;
+const themeScript = `try{var t=localStorage.getItem('westmere-theme');document.documentElement.dataset.theme=['light','dark','system'].includes(t)?t:'dark'}catch(e){document.documentElement.dataset.theme='dark'}`;
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-AU" data-scroll-behavior="smooth" suppressHydrationWarning>

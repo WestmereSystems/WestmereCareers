@@ -593,17 +593,24 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
   );
 }
 
-export function Account() {
+export function Account({
+  section = "profile",
+}: {
+  section?: "profile" | "settings";
+}) {
   const session = useSession();
-  return <AccountForUser key={session.user?.id ?? "signed-out"} />;
+  return (
+    <AccountForUser key={session.user?.id ?? "signed-out"} section={section} />
+  );
 }
-function AccountForUser() {
+function AccountForUser({ section }: { section: "profile" | "settings" }) {
   const session = useSession();
   const [applicationEmails, setApplicationEmails] = useState(true);
   const [name, setName] = useState("");
   const [cv, setCv] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!session.user) return;
     const controller = new AbortController();
@@ -617,6 +624,7 @@ function AccountForUser() {
         setName(data.profile?.full_name || "");
         setCv(data.profile?.cv_text || "");
         setApplicationEmails(data.profile?.application_email_enabled !== false);
+        setLoaded(true);
       })
       .catch(() => {
         if (!controller.signal.aborted)
@@ -624,8 +632,9 @@ function AccountForUser() {
       });
     return () => controller.abort();
   }, [session.user?.id, session.user?.fullName]);
-  async function save(event: React.FormEvent) {
-    event.preventDefault();
+  async function save(event?: React.FormEvent) {
+    event?.preventDefault();
+    if (!loaded) return;
     setBusy(true);
     try {
       const r = await fetch("/api/profile", {
@@ -680,20 +689,6 @@ function AccountForUser() {
     );
   return (
     <>
-      <div className="actions-row" style={{ marginBottom: 24 }}>
-        <Link className="button secondary" href="/notifications">
-          Notifications
-        </Link>
-        <Link className="button secondary" href="/applications">
-          My applications
-        </Link>
-        <Link className="button secondary" href="/saved-searches">
-          Saved searches & email alerts
-        </Link>
-        <Link className="button secondary" href="/trust-activity">
-          Reports & trust activity
-        </Link>
-      </div>
       {session.sampleWorkspace && (
         <p className="notice">
           <Link className="text-link" href="/employers/sample">
@@ -706,106 +701,138 @@ function AccountForUser() {
           Welcome. Add your name below to finish setting up your profile.
         </p>
       )}
-      <Applications compact />
-      <CVHistory onSelect={setCv} />
-      <div className="account-grid">
-        <form className="panel" onSubmit={save}>
-          <h2>Your private profile</h2>
-          <p>
-            Keep a base CV for your own reference. Each application keeps a
-            separate copy of what you submitted.
-          </p>
-          <label className="field-label" htmlFor="profile-name">
-            Your name
-          </label>
-          <input
-            id="profile-name"
-            required
-            autoComplete="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-            style={{ width: "100%", marginBottom: 20 }}
-          />
-          <label className="field-label" htmlFor="profile-cv">
-            Your base CV text
-          </label>
-          <textarea
-            id="profile-cv"
-            value={cv}
-            onChange={(e) => setCv(e.target.value)}
-            maxLength={40000}
-          />
-          <p className="fineprint">
-            Saving your CV does not make it publicly searchable or send it to
-            OpenAI.
-          </p>
-          <button
-            className="button primary"
-            style={{ marginTop: 18 }}
-            disabled={busy}
-          >
-            Save profile
-            <Check size={16} />
-          </button>
-        </form>
-        <div>
-          <section className="panel">
-            <span className="badge">
-              <ShieldCheck size={13} />
-              Private by default
-            </span>
-            <h2 style={{ marginTop: 20 }}>Your account</h2>
-            <p>{session.user.email}</p>
-            <ChangeEmail />
-            <label className="checkbox-label">
+      {section === "profile" && <CVHistory onSelect={setCv} />}
+      <div
+        className={
+          section === "profile"
+            ? "account-grid profile-details-grid"
+            : "profile-settings"
+        }
+      >
+        {section === "profile" && (
+          <>
+            <form className="panel" onSubmit={save}>
+              <h2>Your private profile</h2>
+              <p>
+                Keep a base CV for your own reference. Each application keeps a
+                separate copy of what you submitted.
+              </p>
+              <label className="field-label" htmlFor="profile-name">
+                Your name
+              </label>
               <input
-                type="checkbox"
-                checked={applicationEmails}
-                onChange={(e) => setApplicationEmails(e.target.checked)}
+                id="profile-name"
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={120}
+                style={{ width: "100%", marginBottom: 20 }}
               />
-              Email me application activity and employer updates
-            </label>
-            <p className="fineprint">
-              Save your profile to apply this preference. Site notifications
-              remain available. Job-alert preferences are separate.
-            </p>
-            <p>
-              {session.isPremium
-                ? "Careers+ · Active membership"
-                : "Free Westmere account"}
-            </p>
-            {session.isPremium ? (
-              <button className="button secondary" onClick={portal}>
-                Manage billing and cancellation
-                <ArrowRight size={15} />
+              <label className="field-label" htmlFor="profile-cv">
+                Your base CV text
+              </label>
+              <textarea
+                id="profile-cv"
+                value={cv}
+                onChange={(e) => setCv(e.target.value)}
+                maxLength={40000}
+              />
+              <p className="fineprint">
+                Saving your CV does not make it publicly searchable or send it
+                to OpenAI.
+              </p>
+              <button
+                className="button primary"
+                style={{ marginTop: 18 }}
+                disabled={busy || !loaded}
+              >
+                Save profile
+                <Check size={16} />
               </button>
-            ) : (
-              <Link href="/careers-plus" className="button secondary">
-                Explore Careers+
-                <ArrowRight size={15} />
+            </form>
+            <aside className="panel profile-privacy">
+              <ShieldCheck size={25} />
+              <h3>Private by default.</h3>
+              <p>
+                Your profile and base CV are yours. Employers only receive the
+                separate copy you choose to submit with an application.
+              </p>
+              <Link className="text-link" href="/account?tab=settings">
+                Account & communication settings <ArrowRight size={16} />
               </Link>
-            )}
-            <button
-              className="text-button"
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                marginTop: 25,
-              }}
-              onClick={signOut}
-            >
-              <LogOut size={15} />
-              Sign out
-            </button>
-          </section>
-          <p className="fineprint" style={{ marginTop: 20 }}>
-            Request an account copy, correction or deletion through our Privacy
-            Officer at hello@westmere.com.au. See our privacy policy for
-            details.
-          </p>
-        </div>
+              <Link className="text-link" href="/privacy">
+                How we handle your data <ArrowRight size={16} />
+              </Link>
+            </aside>
+          </>
+        )}
+        {section === "settings" && (
+          <div>
+            <section className="panel">
+              <span className="badge">
+                <ShieldCheck size={13} />
+                Private by default
+              </span>
+              <h2 style={{ marginTop: 20 }}>Your account</h2>
+              <p>{session.user.email}</p>
+              <ChangeEmail />
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={applicationEmails}
+                  onChange={(e) => setApplicationEmails(e.target.checked)}
+                />
+                Email me application activity and employer updates
+              </label>
+              <p className="fineprint">
+                Save your profile to apply this preference. Site notifications
+                remain available. Job-alert preferences are separate.
+              </p>
+              <button
+                className="button primary"
+                disabled={busy || !loaded}
+                onClick={() => void save()}
+              >
+                Save preferences <Check size={16} />
+              </button>
+              <p>
+                {session.isPremium
+                  ? "Careers+ · Active membership"
+                  : "Free Westmere account"}
+              </p>
+              {session.isPremium ? (
+                <button className="button secondary" onClick={portal}>
+                  Manage billing and cancellation
+                  <ArrowRight size={15} />
+                </button>
+              ) : (
+                <Link href="/careers-plus" className="button secondary">
+                  Explore Careers+
+                  <ArrowRight size={15} />
+                </Link>
+              )}
+              <button
+                className="text-button"
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  marginTop: 25,
+                }}
+                onClick={signOut}
+              >
+                <LogOut size={15} />
+                Sign out
+              </button>
+            </section>
+            <p className="fineprint" style={{ marginTop: 20 }}>
+              Request an account copy, correction or deletion through our
+              Privacy Officer at support@westmere.com.au. See our privacy policy
+              for details.
+            </p>
+          </div>
+        )}
       </div>
       {message && (
         <p className="message" role="status">

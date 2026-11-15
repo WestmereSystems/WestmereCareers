@@ -53,6 +53,49 @@ afterEach(async () => {
 });
 
 describe("database security boundaries", () => {
+  it("enforces guest and free-account AI allowances in the server-only ledger", async () => {
+    await asUser(candidate);
+    await expect(
+      db.query("select * from public.ai_trial_usage"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select public.reserve_trial_ai_usage($1,'account',$2,$3)", [
+        "a".repeat(64),
+        "b".repeat(64),
+        candidate,
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(candidate, "service_role");
+    const reserve = async (
+      principal: string,
+      tier: string,
+      abuse: string,
+      user: string | null,
+    ) =>
+      (
+        await db.query<{ id: string }>(
+          "select public.reserve_trial_ai_usage($1,$2,$3,$4) as id",
+          [principal.repeat(64), tier, abuse.repeat(64), user],
+        )
+      ).rows[0].id;
+    const guest = await reserve("a", "guest", "b", null);
+    await expect(reserve("a", "guest", "b", null)).rejects.toThrow();
+    await db.query("select public.settle_trial_ai_usage($1,false)", [guest]);
+    const retry = await reserve("a", "guest", "b", null);
+    await db.query("select public.settle_trial_ai_usage($1,true)", [retry]);
+    await expect(reserve("a", "guest", "b", null)).rejects.toThrow();
+    for (let index = 0; index < 3; index++)
+      await reserve("c", "account", "d", candidate);
+    await expect(reserve("c", "account", "d", candidate)).rejects.toThrow();
+    expect(
+      (
+        await db.query<{ remaining: number }>(
+          "select public.trial_ai_remaining($1,'account') as remaining",
+          ["c".repeat(64)],
+        )
+      ).rows[0].remaining,
+    ).toBe(0);
+  });
   it("isolates candidate profiles and prevents self-awarded subscriptions", async () => {
     await asUser(candidate);
     expect((await db.query("select id from public.profiles")).rows).toEqual([

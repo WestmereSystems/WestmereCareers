@@ -18,6 +18,7 @@ import {
   Moon,
   Monitor,
 } from "lucide-react";
+import { NotificationProvider } from "./notifications";
 
 type Profile = {
   configured: boolean;
@@ -261,7 +262,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         toggleSaved,
       }}
     >
-      {children}
+      <NotificationProvider>{children}</NotificationProvider>
       {profile.user && !profile.user.fullName && !profile.loading && (
         <NameOnboarding onComplete={refresh} />
       )}
@@ -411,13 +412,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState("system");
+  const [theme, setTheme] = useState("dark");
   useEffect(() => {
     try {
       const saved = localStorage.getItem("westmere-theme");
-      setTheme(saved === "light" || saved === "dark" ? saved : "system");
+      setTheme(saved === "light" || saved === "system" ? saved : "dark");
     } catch {
-      setTheme("system");
+      setTheme("dark");
     }
   }, []);
   function cycle() {

@@ -1,0 +1,19 @@
+import { writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
+
+// The same lowercase w, sage badge and spaced CAREERS wordmark used by the site.
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="520" height="124" viewBox="0 0 520 124"><rect width="520" height="124" rx="12" fill="#0b1210"/><path d="M36 16h40c14 0 24 10 24 24v46c0 14-10 24-24 24H12V40c0-14 10-24 24-24Z" fill="#c6e5ab"/><text x="55" y="86" text-anchor="middle" font-family="Arial,sans-serif" font-size="77" font-weight="700" letter-spacing="-5" fill="#122018">w</text><text x="124" y="68" font-family="Arial,sans-serif" font-size="61" font-weight="700" letter-spacing="-2" fill="#f3f5ee">westmere</text><text x="127" y="99" font-family="Arial,sans-serif" font-size="19" letter-spacing="8" fill="#afbeb3">CAREERS</text></svg>`;
+await writeFile(
+  new URL("../public/brand/westmere-email-logo.svg", import.meta.url),
+  svg + "\n",
+);
+await sharp(Buffer.from(svg))
+  .png()
+  .toFile(
+    fileURLToPath(
+      new URL("../public/brand/westmere-email-logo.png", import.meta.url),
+    ),
+  );
+// Keep a small, deterministic regeneration command; generated PNG is checked in for email clients.
+console.log("Updated Westmere email SVG and PNG wordmarks.");

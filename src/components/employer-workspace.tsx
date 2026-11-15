@@ -13,6 +13,7 @@ import Link from "next/link";
 import { EmployerBranding, ListingDocuments } from "./employer-branding";
 import { useSession } from "./providers";
 import { VerificationIntake, TrustCaseForm, sendJson } from "./trust-workflows";
+import { EmployerInsights } from "./employer-insights";
 
 type Role = {
   id: string;
@@ -73,6 +74,7 @@ export function EmployerWorkspace() {
 function EmployerWorkspaceForUser() {
   const session = useSession();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [statisticsRevision, setStatisticsRevision] = useState(0);
   const [members, setMembers] = useState<Membership[]>([]);
   const postingMembers = members.filter(
     (member) =>
@@ -105,6 +107,7 @@ function EmployerWorkspaceForUser() {
       if (r.ok) {
         setRoles(data.jobs || []);
         setMembers(data.memberships || []);
+        setStatisticsRevision((revision) => revision + 1);
         if (data.message) setMessage(data.message);
       } else setMessage(data.error);
     } catch {
@@ -206,8 +209,10 @@ function EmployerWorkspaceForUser() {
       const data = await r.json();
       if (version !== reviewVersion.current || opening !== openVersion.current)
         return;
-      if (r.ok) setApplication(data.application);
-      else setMessage(data.error);
+      if (r.ok) {
+        setApplication(data.application);
+        setStatisticsRevision((revision) => revision + 1);
+      } else setMessage(data.error);
     } catch {
       if (version === reviewVersion.current && opening === openVersion.current)
         setMessage("This application could not be opened.");
@@ -233,6 +238,7 @@ function EmployerWorkspaceForUser() {
       setMessage(data.message || data.error);
       if (r.ok) {
         setUpdate("");
+        setStatisticsRevision((revision) => revision + 1);
         await review(selected);
       }
     } catch {
@@ -245,28 +251,32 @@ function EmployerWorkspaceForUser() {
     return <p role="status">Loading your hiring workspace…</p>;
   if (!session.user)
     return (
-      <div className="panel">
-        <span className="round-icon">
-          <FileText size={25} />
-        </span>
-        <h2>Your hiring workspace.</h2>
-        <p className="muted" style={{ fontSize: 16, margin: "16px 0 22px" }}>
-          Sign in to create clear opportunities and keep your candidates
-          informed.
-        </p>
-        <button className="button primary" onClick={session.openAuth}>
-          Sign in to start hiring
-          <ArrowRight size={17} />
-        </button>
-        <p className="working-notice">
-          Business ownership review is required before a new employer can
-          publish. The development preview does not accept live job
-          advertisements.
-        </p>
+      <div className="employer-signed-out">
+        <EmployerInsights />
+        <div className="panel">
+          <span className="round-icon">
+            <FileText size={25} />
+          </span>
+          <h2>Your hiring workspace.</h2>
+          <p className="muted" style={{ fontSize: 16, margin: "16px 0 22px" }}>
+            Sign in to create clear opportunities and keep your candidates
+            informed.
+          </p>
+          <button className="button primary" onClick={session.openAuth}>
+            Sign in to start hiring
+            <ArrowRight size={17} />
+          </button>
+          <p className="working-notice">
+            Business ownership review is required before a new employer can
+            publish. The development preview does not accept live job
+            advertisements.
+          </p>
+        </div>
       </div>
     );
   return (
     <>
+      <EmployerInsights revision={statisticsRevision} />
       {message && (
         <p className="message" role="status">
           {message}

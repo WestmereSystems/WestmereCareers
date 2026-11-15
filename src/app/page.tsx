@@ -1,6 +1,6 @@
 import { AustraliaIcon } from "@/components/australia-icon";
 import { Suspense } from "react";
-import { AnimatedArt } from "@/components/animated-art";
+import { FeaturedRoles } from "@/components/featured-roles";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,12 +15,11 @@ import {
   Compass,
 } from "lucide-react";
 import { SearchBar } from "@/components/search-bar";
-import { JobCard } from "@/components/job-card";
 import { getPublicJobs } from "@/lib/jobs-server";
 
 export default function Home() {
   return (
-    <main id="main">
+    <main id="main" className="home-page">
       <section className="hero">
         <div className="container">
           <div className="hero-grid">
@@ -52,9 +51,19 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            <div className="hero-art">
-              <AnimatedArt />
-            </div>
+            <figure className="hero-photograph">
+              <img
+                src="/images/focused-work.webp"
+                alt="A person considering their next step while working on a laptop"
+                width="1260"
+                height="840"
+                fetchPriority="high"
+              />
+              <figcaption>
+                Good work is out there.
+                <small>Your career starts with Westmere.</small>
+              </figcaption>
+            </figure>
           </div>
           <SearchBar />
           <div className="popular-searches">
@@ -221,6 +230,39 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <section
+        className="australia-story container"
+        aria-labelledby="australia-story-title"
+      >
+        <div className="australia-story-photo">
+          <img
+            src="/images/australian-wildlife-worker.webp"
+            alt="An illustrative scene of an Australian wildlife carer with two wallabies in a eucalyptus sanctuary"
+            width="1600"
+            height="900"
+            loading="lazy"
+          />
+          <span className="image-context">Illustrative image</span>
+        </div>
+        <div className="australia-story-copy">
+          <span className="australia-story-label">
+            <AustraliaIcon />
+            Made for the Australian working world.
+          </span>
+          <h2 id="australia-story-title">
+            A world of possibility.
+            <br />
+            Right here in Australia.
+          </h2>
+          <p>
+            Good work takes all kinds of people, in all kinds of places. Bring
+            your experience. Find your next chapter.
+          </p>
+          <Link className="button primary" href="/jobs">
+            Explore opportunities <ArrowRight size={17} />
+          </Link>
+        </div>
+      </section>
       <section className="section container">
         <div className="plus-banner">
           <div>
@@ -286,31 +328,6 @@ export default function Home() {
 }
 
 async function FreshRoles() {
-  const { jobs, source, error } = await getPublicJobs({ pageSize: 3 });
-  return (
-    <>
-      {source === "demo" && (
-        <p className="demo-note">
-          <span />
-          Development preview · Fictional employers and sample roles.
-        </p>
-      )}
-      {error && (
-        <p className="notice" role="alert">
-          {error}
-        </p>
-      )}
-      {!error && !jobs.length && (
-        <p className="notice">
-          New opportunities will appear here after employer and listing review.
-          Explore employers or save a search for your next chapter.
-        </p>
-      )}
-      <div className="job-grid">
-        {jobs.map((job) => (
-          <JobCard key={job.id} job={job} />
-        ))}
-      </div>
-    </>
-  );
+  const inventory = await getPublicJobs({ pageSize: 12, sort: "newest" });
+  return <FeaturedRoles initial={inventory} />;
 }

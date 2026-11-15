@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/server/auth";
-import {
-  studioRequestSchema,
-  studioResultSchema,
-  studioOutputJsonSchema,
-  studioInstructions,
-  studioInput,
-} from "@/lib/premium/contracts";
+import { studioRequestSchema } from "@/lib/premium/contracts";
 import {
   boundedJson,
   premiumError,
@@ -14,6 +8,8 @@ import {
   requireOrigin,
 } from "@/lib/premium/http";
 import { openAIClient, premiumAdmin } from "@/lib/premium/providers";
+
+import { generateStudioReview } from "@/lib/premium/studio-review";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -60,44 +56,7 @@ export async function POST(request: Request) {
       );
     let settled = false;
     try {
-      const response = await client.responses.create({
-        model: process.env.OPENAI_MODEL || "gpt-6.1-sol",
-        instructions: studioInstructions,
-        input: studioInput(parsed.data),
-        store: false,
-        max_output_tokens: 6500,
-        text: {
-          format: {
-            type: "json_schema",
-            name: "westmere_cv_review",
-            strict: true,
-            schema: studioOutputJsonSchema,
-          },
-        },
-      });
-      if (response.status !== "completed" || !response.output_text)
-        throw new PremiumError(
-          "GENERATION_INCOMPLETE",
-          "The studio could not complete this request. Your allowance will be returned. Try a shorter CV.",
-          502,
-        );
-      let result: unknown;
-      try {
-        result = JSON.parse(response.output_text);
-      } catch {
-        throw new PremiumError(
-          "INVALID_OUTPUT",
-          "The studio could not produce a complete review. Your allowance will be returned.",
-          502,
-        );
-      }
-      const validated = studioResultSchema.safeParse(result);
-      if (!validated.success)
-        throw new PremiumError(
-          "INVALID_OUTPUT",
-          "The studio could not produce a complete review. Your allowance will be returned.",
-          502,
-        );
+      const result = await generateStudioReview(client, parsed.data);
       const { error: settleError } = await admin.rpc("settle_ai_usage", {
         p_reservation_id: reservation,
         p_success: true,
@@ -110,7 +69,7 @@ export async function POST(request: Request) {
         );
       settled = true;
       return NextResponse.json(
-        { result: validated.data, reservationId: reservation },
+        { result, reservationId: reservation },
         { headers: { "Cache-Control": "no-store" } },
       );
     } finally {

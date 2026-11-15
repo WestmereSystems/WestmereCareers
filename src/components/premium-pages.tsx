@@ -28,6 +28,7 @@ import { SavedCVButton } from "./profile-tools";
 import { useSession } from "@/components/providers";
 import type { Job } from "@/lib/jobs";
 import type { StudioResult } from "@/lib/premium/contracts";
+import { useAssistantAllowance } from "./assistant-allowance";
 
 async function billingRedirect(
   endpoint: "checkout" | "portal",
@@ -461,10 +462,7 @@ type StudioProps = {
 };
 
 export function ApplicationStudio(props: StudioProps) {
-  const session = useSession();
-  // Reset the whole private editor and its results when account identity changes.
-  // A subsequent user never inherits the previous person's in-memory CV.
-  return <StudioEditor key={session.user?.id ?? "signedout"} {...props} />;
+  return <StudioEditor {...props} />;
 }
 
 function StudioEditor({
@@ -475,6 +473,8 @@ function StudioEditor({
   initialNotice,
 }: StudioProps) {
   const session = useSession();
+  const { allowance, refresh: refreshAllowance } = useAssistantAllowance();
+  const owner = useRef(session.user?.id);
   const initialJob = jobs.find((job) => job.id === initialJobId);
   const [mode, setMode] = useState<"improve" | "tailor">(
     initialJob || initialTailor ? "tailor" : "improve",
@@ -498,6 +498,23 @@ function StudioEditor({
   const resultRef = useRef<HTMLElement>(null);
   const studioRequest = useRef<AbortController | null>(null);
   const mounted = useRef(true);
+  useEffect(() => {
+    // Keep a guest's review when they deliberately sign in for their extra allowance;
+    // clear private material on sign-out or a change between identified accounts.
+    if (owner.current && owner.current !== session.user?.id) {
+      studioRequest.current?.abort();
+      studioRequest.current = null;
+      setCv("");
+      setGoals("");
+      setResult(null);
+      setReviewedCv("");
+      setReviewedLetter("");
+      setConsent(false);
+      setBusy(false);
+      setMessage("");
+    }
+    owner.current = session.user?.id;
+  }, [session.user?.id]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -570,14 +587,12 @@ function StudioEditor({
       );
       return;
     }
-    if (!session.user) {
-      session.openAuth();
-      return;
-    }
-    if (!session.isPremium) {
-      setMessage(
-        "An active Careers+ subscription is needed for personal CV guidance. You can explore the static example or view Careers+.",
-      );
+    if (allowance?.remaining === 0) {
+      if (!session.user) session.openAuth();
+      else
+        setMessage(
+          "Your available reviews are used. Explore Careers+ or return when your billing-period allowance renews. Your existing review stays here.",
+        );
       return;
     }
     if (cv.trim().length < 100) {
@@ -602,18 +617,21 @@ function StudioEditor({
     studioRequest.current = controller;
     setBusy(true);
     try {
-      const response = await fetch("/api/studio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          mode,
-          cv,
-          goals,
-          consent,
-          ...(mode === "tailor" ? { jobTitle, jobDescription } : {}),
-        }),
-      });
+      const response = await fetch(
+        session.isPremium ? "/api/studio" : "/api/assistant",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            mode,
+            cv,
+            goals,
+            consent,
+            ...(mode === "tailor" ? { jobTitle, jobDescription } : {}),
+          }),
+        },
+      );
       const data = await response.json();
       if (!mounted.current || controller.signal.aborted) return;
       if (!response.ok)
@@ -646,6 +664,7 @@ function StudioEditor({
       if (mounted.current && !controller.signal.aborted) {
         studioRequest.current = null;
         setBusy(false);
+        void refreshAllowance();
       }
     }
   }
@@ -704,8 +723,9 @@ function StudioEditor({
               style={{ flexShrink: 0, color: "var(--purple)" }}
             />
             <p>
-              Explore the editor and static example freely. Personal OpenAI
-              guidance is included with Careers+ at A$25/month.{" "}
+              Try one free guest review, then sign in for three additional
+              account reviews. Careers+ includes 30 requests per billing period
+              at A$25/month. Daily preview limits apply.{" "}
               <Link className="text-button" href="/careers-plus">
                 Explore Careers+
               </Link>
@@ -899,13 +919,17 @@ function StudioEditor({
                     ? mode === "tailor"
                       ? "Prepare my application"
                       : "Review my CV"
-                    : "Explore personal CV guidance"}
+                    : allowance?.remaining === 0 && !session.user
+                      ? "Sign in for 3 more free uses"
+                      : "Use a free CV review"}
                 {!busy && <ArrowRight size={16} />}
               </button>
               <p className="fineprint" style={{ marginTop: 14 }}>
-                One completed request uses one of your 30 monthly studio
-                requests. Search skill-match filters run separately and don’t
-                use this allowance.
+                {allowance
+                  ? `${allowance.remaining} of ${allowance.cap} reviews available${session.isPremium ? " this billing period" : " in this allowance"}. `
+                  : "Allowances are checked securely before a review. "}
+                One completed request uses one review; failed requests return
+                the allowance. Search skill-match filters run separately.
               </p>
               {message && (
                 <p className="message" role="status">

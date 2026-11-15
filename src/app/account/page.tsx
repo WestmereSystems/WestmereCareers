@@ -1,18 +1,21 @@
-import { Account } from "@/components/candidate-pages";
+import { Suspense } from "react";
+import { ProfileHub } from "@/components/profile-hub";
+import { getPublicJobsByIds } from "@/lib/jobs-server";
 export const metadata = {
-  title: "My profile",
+  title: "Profile",
   robots: { index: false, follow: false },
 };
-export default function Page() {
+export default async function Page() {
+  const { source } = await getPublicJobsByIds([]);
   return (
-    <main id="main" className="container">
-      <div className="page-intro">
-        <p className="eyebrow">Your own little corner</p>
-        <h1>Your profile.</h1>
-      </div>
-      <div className="page-content">
-        <Account />
-      </div>
-    </main>
+    <Suspense
+      fallback={
+        <main id="main" className="container page-content">
+          <p role="status">Loading your profile…</p>
+        </main>
+      }
+    >
+      <ProfileHub source={source} />
+    </Suspense>
   );
 }
