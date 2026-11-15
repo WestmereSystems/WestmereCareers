@@ -899,4 +899,53 @@ describe("consented saved-search outbox", () => {
       (await db.query("select status from private.alert_outbox")).rows[0],
     ).toEqual({ status: "ambiguous" });
   });
+  it("preserves preview allowance across search deletion and isolates it per user", async () => {
+    let id = await saved();
+    await asUser(candidate);
+    for (let i = 0; i < 3; i++) {
+      if (i)
+        id = (
+          await db.query<{ id: string }>(
+            "select public.save_search(null,'Disposable preview','{}',true,'daily',true) id",
+          )
+        ).rows[0].id;
+      await db.query("select public.preview_search_alert($1)", [id]);
+      await db.query("select public.remove_saved_search($1)", [id]);
+    }
+    const next = (
+      await db.query<{ id: string }>(
+        "select public.save_search(null,'Another preview','{}',true,'daily',true) id",
+      )
+    ).rows[0].id;
+    await expect(
+      db.query("select public.preview_search_alert($1)", [next]),
+    ).rejects.toMatchObject({ code: "P0001" });
+    await expect(
+      db.query("select * from private.alert_preview_allowance"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(otherCandidate);
+    const other = (
+      await db.query<{ id: string }>(
+        "select public.save_search(null,'Other account','{}',true,'daily',true) id",
+      )
+    ).rows[0].id;
+    await db.query("select public.preview_search_alert($1)", [other]);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select cardinality(recent_requests) n from private.alert_preview_allowance where user_id=$1",
+          [candidate],
+        )
+      ).rows[0],
+    ).toEqual({ n: 3 });
+    expect(
+      (
+        await db.query(
+          "select count(*)::int n from private.alert_outbox where user_id=$1",
+          [candidate],
+        )
+      ).rows[0],
+    ).toEqual({ n: 0 });
+  });
 });

@@ -298,6 +298,10 @@ function SavedSearchesForUser() {
           {message}
         </p>
       )}
+      <p className="fineprint">
+        Keep up to 20 searches. Preview emails are limited to three per 24
+        hours.
+      </p>
       <div className="saved-search-layout">
         <section className="panel">
           <h2>{editing ? "Refine your search." : "Save your next chapter."}</h2>

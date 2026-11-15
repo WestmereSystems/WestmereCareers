@@ -20,7 +20,7 @@ Publish figures only with at least ten unique eligible candidates. A median also
 
 Users can keep up to twenty private searches and choose optional daily or weekly digests. Explicit consent and a verified account email are required. New, approved roles matching the saved filters are eligible; no new matches means no email. CV content and private matching consent are never saved in these filters or included in alerts.
 
-Pausing, deleting, changing filters or unsubscribing cancels unsent work. Emails include text and HTML alternatives, saved-search controls, a visible unsubscribe link and one-click unsubscribe support. Opening a confirmation page does not unsubscribe the user; submitting it does. Users can explicitly request a preview to their own verified address.
+Pausing, deleting, changing filters or unsubscribing cancels unsent work. Emails include text and HTML alternatives, saved-search controls, a visible unsubscribe link and one-click unsubscribe support. Opening a confirmation page does not unsubscribe the user; submitting it does. Users can explicitly request a preview to their own verified address, limited to three requests per 24 hours. Removing a saved search does not reset this allowance.
 
 Delivery is distinguished from provider acceptance and does not claim reading or inbox placement. Bounces, complaints and suppressions pause further alerts. Temporary provider failures use bounded retries and duplicate protection. Uncertain older requests require investigation rather than blind resending.
 

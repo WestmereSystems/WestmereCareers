@@ -13,7 +13,7 @@ Westmere Careers is an executable implementation of the approved proposal, avail
 - Test subscription purchase/cancellation, paid entitlement and real AI reviews on synthetic CV material.
 - Faster navigation feedback, independent public inventory reads, removal of the duplicate initial search fetch, and prerendered Careers+ marketing.
 
-TypeScript, 103 automated tests, the email worker check and the production build pass. An explicitly approved preview email, signed delivery, unsubscribe and disposable-test cleanup were verified. See [verification](staging-verification.md).
+TypeScript, 104 automated tests, the email worker check and the production build pass. An explicitly approved preview email, signed delivery, unsubscribe and disposable-test cleanup were verified. See [verification](staging-verification.md).
 
 ## Remaining launch work
 
