@@ -1,0 +1,370 @@
+{
+  "title": "Westmere Careers Terms and Conditions",
+  "version": "2026-11-16",
+  "updated": "16 November 2026",
+  "introduction": "These Terms explain the agreement for using Westmere Careers, including job search, candidate accounts, applications, employer and agency services, transparency information and optional Careers+ tools. Read them before creating an account, submitting material or purchasing a service. Keep a copy of the version you accept and any order confirmation.",
+  "highlights": [
+    "Core job search, applications on Westmere, application activity and published employer-response information are free. Careers+ is optional and does not buy hiring priority.",
+    "An external application is completed with another website or recipient. Westmere cannot confirm that it was submitted, opened or considered.",
+    "Employers control their hiring decisions and communications. Westmere does not guarantee a progress update or individual response for every candidate.",
+    "Careers+ is A$25 per month, including any applicable GST, with 30 shared AI requests per billing period and monthly renewal until cancelled. Free previews do not automatically become paid subscriptions.",
+    "Your Australian Consumer Law rights continue to apply. Agreement to these Terms is separate from consent to marketing, optional AI processing or other activities that need their own consent."
+  ],
+  "sections": [
+    {
+      "id": "agreement",
+      "title": "Our agreement and contact details",
+      "clauses": [
+        "Westmere Careers is operated by Louis Jacques Pierre Sibul, a sole trader trading as Westmere Systems, ABN 16 319 214 903. In these Terms, Westmere, we, us and our mean that operator. You and your mean the person using the service and, where that person is authorised to act for an organisation, that organisation for the activities carried out on its behalf.",
+        "Contact us at support@westmere.com.au or write to Westmere Systems, Suite 1208/530 Little Collins Street, Melbourne, VIC 3000, Australia. Use these details for account assistance, billing questions, complaints, content concerns, legal notices and requests for an accessible copy of these Terms. Privacy requests can be made through the same address.",
+        "The service means the Westmere Careers website and the account, job search, application, employer, trust, notification and preparation features we make available through it. A candidate is a person seeking work. An advertiser is an employer, recruitment agency or other authorised organisation advertising a role. A hiring team is the advertiser's authorised account members.",
+        "These Terms preserve all rights, remedies and obligations that cannot lawfully be excluded or limited, including under the Australian Consumer Law. A reference to a qualification, limitation or responsibility elsewhere in these Terms is subject to that protection. An organisation can also have consumer or small-business protections where the law provides them."
+      ]
+    },
+    {
+      "id": "acceptance",
+      "title": "When these Terms apply",
+      "clauses": [
+        "These Terms are available through the website footer and you can request a copy from support. By affirmatively agreeing to them when creating or completing an account, or when accepting an order that incorporates them, you enter an agreement with Westmere. The website-use rules also apply to your deliberate use of the service after they have been reasonably brought to your attention, to the extent an agreement is formed under applicable law. Merely opening a page is not treated as proof that you accepted a subscription or an undisclosed obligation.",
+        "The same agreement applies regardless of the available authentication method you choose. An email one-time code is our passwordless sign-in method; entering a code verifies access to an email address and does not, by itself, prove acceptance of these Terms. Google or Microsoft authentication, and any additional authentication or two-factor step made available, do not replace the separate agreement step or give another person's authority to use the service.",
+        "If you do not agree, do not create or continue using an account or request a paid service. You may still read the Terms and Privacy Policy, contact us, exercise legal rights, seek access to your information or arrange account closure and subscription cancellation. We will not require you to accept new Terms simply to make those requests.",
+        "A separately accepted order may specify the purchased service, price, term, seats, listing allowance and other commercial particulars. It takes priority only for an expressly identified inconsistency concerning that order. A general reference to an order does not override non-excludable rights, permit undisclosed charges or remove the protections concerning price changes and cancellation in these Terms. Advertiser recruitment terms govern a separate relationship with that advertiser only if lawfully agreed; they do not change Westmere's obligations.",
+        "The [Privacy Policy](/privacy) explains information handling, and [Our transparency promise](/transparency) explains application activity and response insights. A privacy notice is not a blanket consent or a waiver of privacy rights. Feature-specific permissions, including optional AI processing and commercial email alerts, remain separate choices. Material changes to this agreement are dealt with in section 33."
+      ]
+    },
+    {
+      "id": "eligibility",
+      "title": "Age and authority to act",
+      "clauses": [
+        "You must be at least 16 years old to create a Westmere account. If you are under 18, involve a parent or lawful guardian where their permission or assistance is required for a valid agreement or for the feature you want to use. The minimum account age is a service rule, not a statement that every advertised role is lawful or suitable for a 16-year-old.",
+        "Only an adult aged 18 or over, or an adult properly authorised to make the purchase for the intended user, may purchase a subscription or place an employer or agency order. An adult's payment does not give them unrestricted access to another person's private account. Optional AI features must also meet any applicable provider age and consent requirements shown before use.",
+        "You must have authority to act for an employer, agency, client or other person where you claim to do so. Employer-account representatives and anyone placing a business order must be adults. You must identify the organisation accurately and must not suggest that access to a business email address or knowledge of its ABN alone establishes authority.",
+        "Candidates and advertisers remain responsible for checking applicable working-age rules, work rights, professional registrations and role-specific requirements. Creating an account is not an identity, age, qualification, visa or work-rights verification. Westmere is intended for the Australian working world; use outside Australia must also comply with any mandatory law that applies to that use."
+      ]
+    },
+    {
+      "id": "service",
+      "title": "The service and its limits",
+      "clauses": [
+        "Westmere provides a careers marketplace and related tools. Unless we separately and expressly agree otherwise, we do not employ candidates, act as an advertiser's recruitment agent, supply labour, negotiate employment contracts or make hiring decisions. Employment, contracting, agency representation and other work arrangements are between the relevant parties.",
+        "Core browsing, role search, applications submitted on Westmere, available application activity and published employer-response information are free to candidates. An optional paid preparation tool is not a condition of applying. Westmere does not charge candidates a placement fee, and advertisers must not make applying through Westmere conditional on paying them or buying a candidate service.",
+        "We do not promise a vacancy, applicant, response, interview, offer, placement, particular salary or successful employment outcome. Payment does not purchase an employer's attention, improve an employer-response label or remove a substantiated unfavourable report. These limits do not excuse an inaccurate description of a service we sell or a failure to provide it with the care required by law.",
+        "A page or workspace expressly marked development, demo, sample, test or illustrative must be understood according to that label. Fictional vacancies and applicants are not genuine opportunities or people to contact; test payments are not live purchases. Availability of a demonstration does not mean a live service has launched. These Terms do not authorise charges or real candidate collection in a configuration that does not support them."
+      ]
+    },
+    {
+      "id": "accounts",
+      "title": "Accounts and sign in security",
+      "clauses": [
+        "Provide accurate account information, use an email address you are entitled to control and keep your contact details reasonably up to date. Do not impersonate another person, create accounts to evade a suspension or abuse a free allowance, or share a personal sign-in with other hiring-team members. Each hiring-team member must use their own authorised access.",
+        "Protect your email account, provider account, devices, sign-in codes, session cookies and private download links. Do not give a code to a person claiming to be Westmere support. Sign out on shared devices and tell us promptly if you suspect unauthorised access. An email-address change takes effect only after the required verification steps; entering a new address alone does not complete the change.",
+        "You are responsible for actions you authorise and for taking reasonable account-security steps. You are not automatically responsible for every unauthorised action merely because it used your account, particularly where our failure contributed to it. We may investigate disputed activity, restrict compromised access and ask for proportionate verification before restoring access or acting on a sensitive request.",
+        "Available Google and Microsoft sign-in is subject to the selected provider's account arrangements. Westmere does not receive your provider password. A provider's security checks or multi-factor authentication do not certify the accuracy of a candidate profile or an advertiser's authority to hire."
+      ]
+    },
+    {
+      "id": "conduct",
+      "title": "Lawful and acceptable use",
+      "clauses": [
+        "Use the service for genuine career, recruitment and related account purposes. Do not submit fraudulent, deliberately misleading, defamatory, unlawfully discriminatory, threatening, abusive or otherwise unlawful material. Do not harass candidates, employers, reviewers or support staff, or expose another person's private information without a lawful basis.",
+        "Do not distribute malware, attempt unauthorised access, probe private records, circumvent permissions or payment and usage checks, interfere with service availability, or use another person's account or session. Do not send unsolicited bulk messages, harvest contact information or use candidate material for advertising, unrelated sales, identity fraud or building a resale database.",
+        "Do not scrape private pages, bulk-download applications, copy substantial parts of the listings database for commercial reuse, or use service content to train a model without the necessary permission. Ordinary candidate browsing, personal copies of relevant vacancies, accessibility tools and search-engine access permitted by our published controls are not prohibited merely because they use software. Contact us about a proposed integration or substantial reuse.",
+        "Do not manipulate response reports, create fabricated application histories, coordinate false complaints, buy favourable trust treatment or retaliate against a person for an honest report or lawful complaint. These rules do not prohibit good-faith criticism, protected disclosures, lawful wage discussions, access to advice or reporting concerns to a regulator."
+      ]
+    },
+    {
+      "id": "profiles",
+      "title": "Profiles CVs and uploaded documents",
+      "clauses": [
+        "You choose what career information to provide. Check the accuracy of your experience, qualifications, achievements, dates and work-rights statements. You must have permission or another lawful basis to include another person's details, such as a referee's contact information. Do not upload identity, tax, banking, health or other sensitive documents that the feature does not need.",
+        "Your saved profile and CV library are private account features. Saving, uploading or selecting a CV does not publish it, send it to every employer or automatically authorise AI processing. A direct application shares a separate submitted copy with the identified advertiser and its authorised hiring team. An agency's onward use must have its own lawful basis.",
+        "Supported formats and limits are shown in the relevant feature. Currently the CV library supports PDF and Word .docx files up to 4 MB, with up to 20 CV files; a listing may have up to five supporting documents. Unsupported, encrypted, malformed or scanned documents may not yield usable text. Review extracted text before using it in an application, match or AI request. File processing is not a certification that a document is free of malware or factually correct.",
+        "Replacing a base CV or editing a profile does not automatically amend an application already submitted. Deleting a library file does not delete a separate application copy or copies lawfully held by an advertiser. Use the application controls or contact the recipient and Westmere if a correction or privacy request concerns submitted information. Keep your own copies of material you need."
+      ]
+    },
+    {
+      "id": "search",
+      "title": "Role search matching and listing appearance",
+      "clauses": [
+        "Results depend on the available inventory, search words, location and other filters, selected sort, publication and expiry status, and any comparison you deliberately request. Search suggestions are starting points and may not identify every available role. The service is not a complete index of Australian vacancies. An empty result does not mean that no suitable work exists.",
+        "Sort labels describe the selected ordering, such as newest, displayed salary, available response information or skill overlap. Keyword matching, language processing, location matching and results displayed on different pages can produce different orders. A relevance label is not a professional recommendation or a ranking of candidates. Annual and hourly pay are not automatically equivalent; check the pay period, hours, superannuation treatment and conditions in the actual advertisement.",
+        "Optional CV comparison identifies evidence of named requirements in supplied text, including recognised word variants. Missing wording can reduce a match even when you possess the skill, and a mention does not establish proficiency. A percentage is a limited text-overlap measure, not an ATS acceptance score, eligibility decision, assessment of your whole ability or probability of being hired. Comparison may examine a bounded batch of results rather than every vacancy; check the searched-count information. It does not automatically submit, reject or shortlist you.",
+        "The homepage carousel shows a rotating selection from the latest available published roles and refreshes periodically. Space, responsive layout, review, edits, closing or expiry can affect whether and when a role is visible. Saving a role does not reserve it or extend its closing date. A listing can change or cease to accept applications before a cached page or email is refreshed.",
+        "A subscription or listing fee does not guarantee a particular position, number of impressions, search-engine indexing, clicks, applications or applicants of a particular quality. The current service does not sell undisclosed paid ranking. Any future sponsored placement must be clearly identified, with its scope explained before purchase; it must not be presented as an independent trust endorsement."
+      ]
+    },
+    {
+      "id": "direct-applications",
+      "title": "Applications submitted on Westmere",
+      "clauses": [
+        "Before submitting a direct application, check the advertiser, role, selected CV version, cover letter, answers and any supporting material. Submission requests disclosure of that application to the advertiser identified for the vacancy. A receipt confirms the recorded submission, not that an employer has assessed the application or that you meet every requirement.",
+        "The hiring organisation controls its recruitment decision and may use its own lawful assessment processes. Westmere does not make an employment offer on its behalf. A message, interview stage or offer label in the service is not, by itself, a complete employment contract; confirm any offer, conditions and acceptance directly with the relevant organisation.",
+        "You can use an available withdrawal control to record that you no longer wish to proceed. Withdrawal is not a guarantee that already viewed or independently retained copies disappear, or that an email already sent can be recalled. Contact the advertiser directly about urgent changes, interviews or an offer and use the privacy-request routes where appropriate.",
+        "A closed or expired vacancy does not necessarily mean every candidate has been rejected, the vacancy has been filled or a recruitment process has ended. Check the specific update and contact the advertiser for clarification. Keep enough information to identify a role if you need to raise a concern after it is removed."
+      ]
+    },
+    {
+      "id": "external-applications",
+      "title": "External listings and applications",
+      "clauses": [
+        "Some positions require you to apply on an employer or agency website, applicant-tracking system, third-party job site, or by another method stated in the advertisement. An external-application label or outbound application link means the application is completed with that recipient rather than through Westmere's direct-application workflow. Follow the actual advertiser's instructions and deadlines.",
+        "An outbound click, opening a contact email or saving an external role is not a completed application. Westmere generally cannot see whether you submitted, whether files arrived, whether an application was opened, its current stage or the final outcome on another system. A candidate's later report is self-reported information and is not converted into a Westmere-recorded submission or view.",
+        "The external operator's terms, privacy notice, security arrangements and application requirements apply to the transaction with it. You may need a separate account or to provide the material again. Westmere does not silently send your stored CV merely because you follow an external link. Ask the recipient about onward disclosures, including to an end client or an offshore hiring team, before sending information if this affects your decision.",
+        "We cannot control external forms, outages, account verification, changes, receipt or processing. Check the destination and obtain your own confirmation where needed. An external destination or advertised role may change after review. Our responsibility for our own representations, links, information handling and legal duties is not removed by the fact that an application is external.",
+        "Treat requests to pay to apply, move money, buy cryptocurrency, share a sign-in code or provide unnecessary identity or bank information as reasons to stop and verify the request independently. Report a suspicious or broken listing through the available trust process or support. A listing's presence on Westmere is not a guarantee against fraud."
+      ]
+    },
+    {
+      "id": "advertiser-authority",
+      "title": "Employer and agency authority and verification",
+      "clauses": [
+        "Advertisers must accurately identify the advertising organisation, maintain authority to recruit and supply the information reasonably needed for identity and hiring-authority review. Recruitment agencies must have authority to advertise the work and handle applicants for the client or purpose described. Do not use a client's name, logo, documents or vacancy without permission.",
+        "If you advertise for an end client, describe the agency's role accurately. Do not represent an agency-handled application as a direct application to an unnamed client. Any legitimate confidentiality arrangement must still leave the candidate with a clear understanding of the advertiser, application recipient and nature of the opportunity. Explain proposed onward sharing before it occurs where law requires.",
+        "Business and listing approval are separate from account authentication. Review may require additional evidence, and publication is not automatic on payment or submission of an ABN. Material edits or supporting-document changes may return a listing to review. Saving a published listing as a draft can remove it from public display. Review feedback and available appeal routes are shown through the service.",
+        "A verification indicator describes the checks performed for the service. It is not a government accreditation, guarantee of solvency, workplace quality, ongoing authority, lawful conduct or every statement in a listing. Organisations must tell us about a material ownership, authority or identity change and remove access when a team member is no longer authorised.",
+        "Advertisers are responsible for any registration, labour-hire licence, professional authorisation or other approval required for their actual activities and locations. Requirements can apply to providers, intermediaries and hosts; describing a business as an agency does not settle whether a licence is needed. Westmere account approval does not supply or replace a required licence."
+      ]
+    },
+    {
+      "id": "listing-rules",
+      "title": "Requirements for job advertisements",
+      "clauses": [
+        "Advertise a genuine vacancy or clearly identified recruitment purpose that you are authorised to offer. Describe the duties, location, work arrangement, employment or contracting type, necessary qualifications, material conditions, application method and pay accurately. Keep the advertisement current and close it when applications should stop. Do not repeatedly repost solely to mislead users about its age or availability.",
+        "Pay statements must not undercut applicable minimum entitlements under the Fair Work Act, an award, enterprise agreement or other applicable instrument. Clearly distinguish salary or hourly pay, superannuation included or additional, commission, variable remuneration and material conditions. Where piecework advertising rules apply, include the required periodic rate information. Labelling a role casual, contractor, internship, commission-only or unpaid does not remove legal obligations.",
+        "Do not publish unlawful discriminatory requirements, misleading work-rights or sponsorship claims, sham contracting, exploitative work, prohibited recruitment fees, unlawful unpaid trials or arrangements that require a candidate to buy goods or transfer money to obtain the role. Any lawful special measure, genuine occupational requirement or exemption must be properly supported and accurately explained where needed. Accessible recruitment and reasonable adjustments remain the advertiser's responsibility where required by law.",
+        "Do not use a vacancy as a disguised sales pitch, multi-level marketing offer, speculative money-making scheme, identity-collection exercise, unrelated mailing-list sign-up or advertisement for an opportunity materially different from the one described. Do not include malicious links or documents, another person's confidential information, or protected content you cannot lawfully publish.",
+        "You are responsible for your advertisement, profile images, public contact details and supporting documents. A contact address revealed after a click is still public. Make an appropriate business contact available rather than publishing a candidate's or employee's private details. Westmere may require corrections, refuse publication or remove material under section 30, but our review does not transfer the advertiser's legal responsibilities to us."
+      ]
+    },
+    {
+      "id": "hiring-data",
+      "title": "Hiring responsibilities and candidate information",
+      "clauses": [
+        "Authorised hiring-team members may use application material only for the relevant lawful recruitment purpose, associated candidate communication, required records and any further purpose for which a valid lawful basis exists. Limit access to those who need it. Do not sell, indiscriminately circulate, publish, scrape or use applications to train an unrelated model, build an unauthorised talent database or market unrelated goods or services.",
+        "Advertisers must give their own required privacy information, obtain any necessary consent, protect candidate material, manage lawful onward transfers and respond to access, correction, deletion and security concerns under laws that apply to them. Do not assume that a candidate's submission to your agency authorises circulation to every client. The fact that Westmere provides storage does not replace your independent duties for downloaded or otherwise controlled copies.",
+        "Make recruitment decisions fairly and lawfully. Check necessary qualifications, work rights and relevant references through an appropriate process. Do not use protected personal characteristics, unnecessary sensitive information, a text-overlap score or an unverified AI suggestion as an unlawful basis for screening. Take reasonable steps to prevent unauthorised access when staff leave or change duties.",
+        "Enter stages and messages honestly. Do not mark an application opened, interviewed, offered or otherwise assessed merely to improve statistics. A Westmere message is a communication record, not proof of email delivery or reading. Do not use the messaging or notification features for harassment, unsolicited marketing or a purpose unrelated to the candidate's application without a separate lawful basis."
+      ]
+    },
+    {
+      "id": "activity",
+      "title": "Application activity and progress updates",
+      "clauses": [
+        "For supported direct applications, Westmere records a receipt and the first intentional opening of the application's detail view by an authorised hiring-team member. Loading a list of applicants does not count as that opening. The recorded event does not establish a full read, consideration of every attachment, assessment, interview or favourable decision.",
+        "Later stages, individual messages, decisions and vacancy-closure events depend on actions recorded through the available workflows. An employer may consider an application, communicate by telephone or another system, change a recruitment process or make a decision without recording every step on Westmere. A timeline can therefore be incomplete or out of date.",
+        "Westmere does not guarantee that each employer or agency will give a progress update, personalised explanation or response for every candidate, or will do so within a particular time. A candidate should not treat silence, an unchanged stage or a missing notification as conclusive evidence of rejection or misconduct. This limit does not remove an advertiser's legal duties, a specific promise it has made, or a legal right to information.",
+        "A recorded receipt, opening, candidate update, employer decision and vacancy closure mean different things. Closing a vacancy alone is not recorded as an individual rejection. Notifications describe the event available to the service; they do not create a guarantee that an employer continues to use Westmere or will maintain a complete recruitment record here. External applications have the additional limits in section 10."
+      ]
+    },
+    {
+      "id": "response-insights",
+      "title": "Candidate reported employer response insights",
+      "clauses": [
+        "Published employer-response information summarises eligible, reviewed candidate reports. It is separate from the application activity Westmere records itself. A meaningful response generally means direct contact or a specific application decision. Receipts, marketing, generic processing messages and opening an application are not meaningful replies. An automated decision is distinguished where reported as such.",
+        "The current methodology uses a mature application cohort from six calendar months before a snapshot to three calendar months before it, with the end date excluded, assessed in Australia/Melbourne time. It counts one latest eligible application per candidate per employer, excludes current organisation members and requires no-response reports to have been reconfirmed within 30 days. Corrections and late responses return to review.",
+        "Public figures require at least ten unique eligible candidates. A median response time additionally requires at least five reports of a response and describes those responders only. A label of unresponsive requires more than half of the eligible cohort to report no meaningful reply strictly beyond two calendar months after applying. Month-end dates are adjusted to the last valid day of the relevant month. The relevant sample, period and no-response information must be considered together.",
+        "Small samples show insufficient information rather than a negative assumption. Old snapshots can be suppressed pending refresh. Reporting is voluntary and subject to self-selection, incomplete evidence and the limits of self-reports about external systems. The figures do not describe every candidate, prove an individual outcome, establish a legal finding or predict a future response. Agency handling is attributed to the agency rather than an unverified end client.",
+        "If you submit a report, it must concern your own genuine experience and accurately distinguish what you observed, what you were told and what you do not know. Do not fabricate evidence, submit duplicate identities, disclose unnecessary personal information or present speculation as established fact. Use the correction process if you later receive a response or discover an error. A report may be held, declined or corrected under the review process.",
+        "An advertiser can seek correction or appeal through the available trust controls or support. Payment does not improve an insight, buy a favourable label or remove a valid negative report. Methodology changes must be explained alongside the relevant information and must not silently present incomparable results as equivalent. More detail is available in [Our transparency promise](/transparency)."
+      ]
+    },
+    {
+      "id": "trust",
+      "title": "Trust activity concerns moderation and appeals",
+      "clauses": [
+        "Trust activity lets an authenticated user follow available reports, listing or business concerns, review feedback and appeals concerning their own requests or authorised organisation. A trust case is a private service-review process, not a public review forum, court proceeding, emergency response service or substitute for a regulator.",
+        "Give a clear, honest account, identify the relevant listing or organisation and provide only evidence you can lawfully share. We may ask for clarification, assess available records, decline an unsupported request or take proportionate protective action while a concern is examined. We cannot promise that every report can be substantiated or that a particular outcome will result.",
+        "Reviews are intended to be independent. A reviewer must not decide a matter in which they have a disqualifying personal or business interest. Where appropriate, we give the affected party a reasonable opportunity to respond and explain a material decision, subject to protecting personal information, safety, a lawful investigation and other legal duties. A report is not automatically disclosed in full to the advertiser.",
+        "You can request a correction or review through the offered controls or support, supplying relevant new facts or explaining the alleged error. We may limit repeated requests that add no material information, with reasons where practicable. Reinstatement after a business suspension can require renewed identity and authority review; old listings do not automatically become public again.",
+        "Nothing in this process prevents a lawful complaint, legal advice, an urgent court application or a report to police, Fair Work, a privacy regulator, a consumer agency or another competent authority. Do not use the process to intimidate an honest reporter or demand removal merely because a report is unfavourable."
+      ]
+    },
+    {
+      "id": "statistics",
+      "title": "Employer hiring dashboard and exports",
+      "clauses": [
+        "The hiring dashboard is an operational overview of Westmere activity accessible through authorised organisation memberships. Date, business and role filters restrict the displayed records. An account with no verified hiring business or relevant applications may show an empty overview. Access to the dashboard does not itself verify a business or authorise publication.",
+        "Application totals concern Westmere submissions in the selected period, excluding withdrawals. Open-role counts reflect current availability. Stages show current application status rather than a cumulative conversion funnel. First review means the recorded intentional opening; first candidate update means a supported recorded employer message or decision, rather than an opening alone. Read the definitions, date range, previous-period comparison and refresh time alongside each figure.",
+        "Activity occurring outside Westmere, unrecorded communications, recruitment steps before the selected period and later changes can affect interpretation. We do not infer external applications, successful hires or a hiring probability. Dashboard figures are not a payroll, statutory employment record, financial audit or certification of compliance.",
+        "CSV exports are snapshots of the permitted overview when generated. Handle exported information lawfully and securely, preserve the relevant context when sharing and do not present a partial figure as a complete outcome. Access controls in Westmere do not follow a copy you independently download or distribute."
+      ]
+    },
+    {
+      "id": "saved-searches",
+      "title": "Saved roles searches and job alerts",
+      "clauses": [
+        "Saved roles and searches help you return to opportunities; they do not reserve a role or guarantee that it remains available. Account records are distinct from a browser's appearance preference or any legacy device storage. Signing out does not delete your account's saved roles.",
+        "You may currently keep up to 20 private saved searches and, with a verified email address and a separate affirmative choice, request daily or weekly matching-job digests. Matching uses the saved filters, not a hidden inclusion of your CV. No newly matching eligible roles means no digest. Delivery can be delayed or prevented by moderation, changing vacancies, provider failures, bounces, suppression or your email settings.",
+        "You can change, pause or delete a search or use its unsubscribe facility. A requested preview is sent only to your own verified address and is currently limited to three requests in 24 hours; deleting a search does not reset that limit. An alert is information about a role, not an application, deadline extension, personalised suitability assessment or guarantee that the advertiser is still accepting candidates when you read it."
+      ]
+    },
+    {
+      "id": "notifications",
+      "title": "Notifications email and service communications",
+      "clauses": [
+        "The navigation bell previews recent in-site notifications and the full inbox is available in your [Profile](/account?tab=notifications). Opening the preview does not mark every notification read. An unread badge or read marker describes activity within the feature; it does not establish that an employer read your application or that you received an email.",
+        "Supported notices can include application receipts, first openings, recorded employer messages or stages, vacancy closure, account activity and trust feedback. Notices may be grouped, deduplicated, delayed or suppressed. Employers generally receive grouped in-site new-application notices rather than an email for every applicant. A notification cannot report a recruitment event the service has not recorded.",
+        "Keep your account email current and check the relevant account pages and direct advertiser communications when a matter is time-sensitive. We use reasonable care in delivering supported notices but cannot guarantee uninterrupted delivery, inbox placement or reading. A notification failure does not of itself extend an external application deadline. We remain responsible for our own failures to the extent required by this agreement and law.",
+        "Authentication, security, necessary account, application, billing and legal messages are distinct from optional promotions. Where an application-email preference is available, you can manage it in your account. Unsubscribing from commercial alerts does not necessarily stop a requested sign-in code or a necessary non-promotional message.",
+        "Creating an account, applying, subscribing or agreeing to these Terms does not automatically consent to marketing or unrelated promotions. Commercial communications require a lawful basis, identify the sender and provide the unsubscribe options required by law. We action valid marketing unsubscribe requests within five working days. The [Privacy Policy](/privacy) explains delivery records, preferences and information handling."
+      ]
+    },
+    {
+      "id": "careers-plus",
+      "title": "Careers plus plan and price",
+      "clauses": [
+        "Careers+ is an optional candidate preparation subscription. The current standard plan costs A$25 per month, including any applicable GST, and renews monthly until cancelled. It includes 30 shared Application Studio AI requests per paid billing period. Improvement, tailoring and AI matching all draw from that same allowance; they are not 30 requests for each task.",
+        "Available tasks can provide CV wording or structure suggestions, a role-specific revised CV and cover letter, or analysis of requirements evidenced in supplied text. The relevant task and required inputs are shown before a request. Private keyword or skill-overlap job filtering is distinct from an AI review and does not itself consume an AI request. A subscription is for the purchasing account's permitted use and does not allow resale, shared logins or services sold under another person's allowance.",
+        "The billing period is the subscription period confirmed by the payment service, not necessarily a calendar month. Unused requests do not roll over, have no cash value and are not transferable. Reaching the allowance does not automatically buy more requests or authorise an additional charge. Supported failed, incomplete or refused generations release their reserved allowance rather than count as a completed result; contact support if your count appears wrong.",
+        "Careers+ does not include employment placement, professional accreditation, immigration advice, a complete human CV-writing service or guaranteed access to any advertiser's screening system. It does not grant priority in job applications or change published employer-response information. Check the plan and checkout disclosures before paying; we must supply the service we describe, subject to your consumer rights."
+      ]
+    },
+    {
+      "id": "free-ai",
+      "title": "Guest and free account AI previews",
+      "clauses": [
+        "Where enabled, a guest can request one free AI use, and a verified free account has three additional free uses shared across the available trial tasks. These are introductory allowances, not a recurring monthly free plan. Guest access uses a browser identifier and is subject to separate abuse and capacity controls. Clearing storage or opening another browser does not create permission to circumvent the allowance.",
+        "Free previews do not require a subscription purchase and do not automatically convert into a paid subscription. A paid plan requires its own deliberate checkout and payment authorisation. When the free allowance is used, you may continue with the free marketplace features without buying Careers+.",
+        "We may limit concurrent, repeated, excessive or suspicious requests to protect the service and control preview costs, including limits shared across a network. A preview may be unavailable even when an individual allowance remains. The currently available allowance and any service error should be checked in the feature. We do not promise unlimited or uninterrupted free AI capacity.",
+        "We may revise a future free promotion prospectively and explain the revised offer before use. Changes to a free preview do not silently reduce a paid allowance or authorise a charge. Do not create duplicate identities, automate requests or share accounts to obtain additional promotional use."
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI requests limitations and outputs",
+      "clauses": [
+        "AI assistance is optional. You must deliberately select a task, provide the relevant text and give the separate processing permission shown before a request. Saving a CV or accepting these Terms alone does not authorise sending it to OpenAI. Remove unnecessary personal or confidential information, and do not supply another person's material without a lawful basis.",
+        "The requested service sends the supplied CV text, relevant job description or title, goals and task to the AI provider through our infrastructure. Processing may occur overseas. Provider arrangements, retention limits and your choices are explained in the [Privacy Policy](/privacy). Closing the page or cancelling a browser request cannot necessarily recall a request already received by a provider.",
+        "AI output can be inaccurate, incomplete, biased, repetitive or unsuitable. It can omit context or suggest wording unsupported by your experience. Review and edit every result before relying on it. Do not claim a qualification, employer, achievement, numerical result, reference or work right you cannot substantiate. You decide whether and how to use a result; it is not automatically sent as an application.",
+        "A matching result describes evidence in the text supplied. It does not establish a missing ability, professional competency, legal eligibility or a probability of employment. AI assistance is not legal, financial, medical, migration or other regulated professional advice. Advertisers remain responsible for lawful human recruitment decisions and must not treat these preparation tools as an authorised automated hiring system.",
+        "Keep a copy of outputs you want to retain. The current Studio does not automatically save prompts or generated documents to your Westmere profile, and a page reload, sign-out or account change can clear the editor. Copying, downloading, saving a profile and submitting an application are distinct actions. Availability of an output does not mean it has been reviewed by a Westmere employee.",
+        "You retain rights in your input. To the extent Westmere has transferable rights in an output generated for you, we assign those rights to you so you can edit and use it for lawful purposes, subject to third-party rights. We do not promise that AI output is unique, eligible for copyright or free of another person's rights. Do not use the feature to generate deception, unlawful discrimination, malware or material prohibited by section 6."
+      ]
+    },
+    {
+      "id": "billing",
+      "title": "Purchases renewal and cancellation",
+      "clauses": [
+        "Before a purchase, we will identify the service, total payable price and currency, billing frequency, included allowance or scope, any minimum term and whether renewal is automatic. Prices are in Australian dollars unless a separately accepted business order clearly states otherwise. Consumer-facing totals include applicable GST and unavoidable charges. An optional extra requires separate agreement.",
+        "Stripe provides the hosted checkout and billing portal for the currently supported Careers+ subscription. You must use a payment method you are authorised to use. A successful browser redirect is not proof that payment cleared; access depends on confirmed payment and subscription status. Contact us if a completed payment has not resulted in the described access within a reasonable time.",
+        "By completing a clearly disclosed recurring purchase, you authorise the agreed recurring charge until cancellation under the accepted plan. Careers+ has a monthly renewal and no additional fixed-term commitment beyond the current paid period. An employer or agency minimum term, if any, must be separately and clearly accepted. We do not add a renewal term, cancellation fee or paid extra through these Terms alone.",
+        "Cancel Careers+ online through Manage billing in the account's billing controls. If those controls are unavailable, email support@westmere.com.au from the account address, identify the subscription and ask to cancel. We will action a valid request without an unnecessary retention process. Access normally continues until the already paid period ends and future renewal charges stop. There is no separate Careers+ cancellation fee.",
+        "Request cancellation before the next renewal is processed. If our cancellation mechanism fails or we fail to action a valid request and an avoidable renewal charge results, contact us for correction and any applicable refund. We do not rely on an arbitrary earlier notice deadline for monthly Careers+ cancellation.",
+        "Changing an email address, signing out, deleting a browser cookie, withdrawing an application and unsubscribing from job alerts do not cancel a subscription. When you request account closure, tell us about any paid plan so we can stop future renewals and confirm the outcome. We will assist with cancellation as part of closure rather than require a closed account to remain accessible for billing controls.",
+        "A failed or disputed payment can delay or suspend paid access while resolved. We will not represent unpaid access as active or charge undisclosed collection penalties. We may give reasonable notice and a way to correct payment details. Cancelling a payment method is not a substitute for notifying us that you wish to end renewal, and a good-faith billing dispute does not remove your complaint or consumer rights."
+      ]
+    },
+    {
+      "id": "refunds",
+      "title": "Consumer guarantees refunds and billing corrections",
+      "clauses": [
+        "Our services come with guarantees that cannot be excluded under the Australian Consumer Law where it applies, including guarantees concerning due care and skill, fitness for a disclosed purpose in the relevant circumstances and supply within a reasonable time where no time is agreed. These Terms do not exclude a statutory refund, cancellation, compensation or other remedy.",
+        "If a service has a major failure, you may have the right to cancel and receive the refund required by law for the affected or unsupplied service, or to retain it with an appropriate reduction in price, and to compensation for other reasonably foreseeable loss. For a failure that can be remedied and is not major, we must have a reasonable opportunity to remedy it; further remedies can arise if it is not remedied within a reasonable time.",
+        "For an ordinary change of mind after a paid monthly period has started, we do not normally provide a pro-rata refund merely because you used fewer requests, did not apply for a job or did not obtain an interview. That policy does not apply to a consumer-guarantee failure, an unauthorised or duplicate charge, a cancellation we failed to action, or another refund right under law or these Terms.",
+        "Contact support@westmere.com.au with the account email, transaction reference if available, the problem and the outcome sought. Do not email full card details. We will assess the request on its facts, explain our response and correct confirmed billing errors. You do not have to accept a credit in place of a monetary refund where the law entitles you to money."
+      ]
+    },
+    {
+      "id": "business-orders",
+      "title": "Employer and recruitment agency orders",
+      "clauses": [
+        "The current website does not offer a self-service paid employer or recruitment-agency subscription. No employer or agency charge arises merely from creating an account, submitting verification details, viewing the dashboard or using an available free workflow. Paid business services are supplied only under a separately accepted quote, checkout or written order that identifies the fee and service.",
+        "An order must explain the plan or package, permitted organisation or client use, authorised seats, listing quantities and duration, included tools, term, renewal arrangement, any credit expiry, tax treatment, payment dates and cancellation method. A proposal, discussion, draft quote or feature demonstration is not acceptance. There are no implied unlimited listings, affiliate access or client seats.",
+        "An agency must obtain the appropriate scope for advertising on behalf of clients. Access for one organisation does not automatically extend to every client, franchisee or related company. Do not transfer seats, share logins or resell access beyond the accepted order. Tell us about an intended change so a suitable order or access arrangement can be agreed.",
+        "Payment never guarantees listing approval, a successful hire, a specified response rate or immunity from moderation. If we cannot provide an agreed paid service, we will discuss a lawful correction or equivalent arrangement and provide any refund due. A rejected unlawful or materially misdescribed advertisement can be corrected and resubmitted where appropriate; the treatment of the fee must reflect the accepted order, work actually and properly supplied and your legal rights, rather than an automatic forfeiture of every unused fee.",
+        "Unless a valid order expressly sets a minimum term, do not assume one exists. Business cancellation and any fixed-term commitment must be clear before acceptance and remain subject to consumer and unfair-contract-term laws where applicable. We will not automatically accelerate all future fees or impose a penalty merely because a business raises a dispute or lawfully ends a service."
+      ]
+    },
+    {
+      "id": "price-changes",
+      "title": "Pricing increases and changes to paid plans",
+      "clauses": [
+        "We may change prices for future purchases. A published new price alone does not change an already paid period, accepted fixed-price order or existing recurring authorisation. Any increase affecting an existing Careers+, employer or agency renewal will be notified directly at least 30 days before the first affected renewal, or earlier if a longer notice period has been agreed or is required by law.",
+        "The notice will state the new total, the first affected billing date, any material change in inclusions and how to cancel or decline. An increase will take effect only at a permitted renewal after that notice period. We will not retrospectively increase a paid fee or use an increase to alter an agreed fixed-price minimum term without your separate agreement or a specific lawful basis.",
+        "You may cancel future renewal before the increase takes effect without a price-change penalty. If an order has a renewal notice deadline, we must give the increase notice early enough to allow a real opportunity to decline renewal; otherwise we will not rely on that deadline to impose the increase. Silence does not authorise an unrelated paid product or an optional extra. Where further affirmative agreement is required, we will obtain it before charging.",
+        "A material reduction in a paid allowance or removal of a principal paid feature is treated with similar advance notice and a genuine choice. If it materially affects an already paid commitment and we cannot continue the agreed service, you may end the affected service and receive an appropriate refund for the unsupplied part, in addition to any statutory remedy. Urgent security or legal restrictions are addressed under sections 29 and 30; they do not create an unrestricted right to retain fees for services we do not supply."
+      ]
+    },
+    {
+      "id": "intellectual-property",
+      "title": "Content ownership and permissions",
+      "clauses": [
+        "Westmere and its licensors retain rights in the service software, design, branding and content they own. Subject to these Terms, you may access the features offered to you and make ordinary personal or authorised internal recruitment use of their outputs. Do not imply that Westmere endorses your business or use its branding in a way that misrepresents an affiliation. Separate open-source and asset licences continue to govern the material they cover.",
+        "You retain ownership of your CVs, application material, advertisements, business branding and other content you supply. You give Westmere a non-exclusive permission to host, store, reproduce, transmit, display and format that material only as reasonably needed to provide the requested service, implement your sharing choices, secure the service and meet lawful retention or dispute obligations. This includes sharing a submitted application with its identified advertiser and publicly displaying material you submit for publication.",
+        "We may resize and re-encode employer imagery, extract document text and adapt formatting for supported displays. This permission is not a transfer of ownership or unrestricted permission to sell private CVs, publish private applications, train an unrelated model or use a person's image as a testimonial. Optional AI processing requires the separate request and consent described in section 22.",
+        "The permission ends when the relevant material is removed and no continuing service, backup, legal retention or dispute purpose requires it. Copies already lawfully supplied to a recipient are subject to that recipient's responsibilities and your applicable rights. We do not require a general waiver of moral rights. If you believe content infringes your rights, identify it and your authority to complain through support so we can assess appropriate action."
+      ]
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy international infrastructure and data handling",
+      "clauses": [
+        "Our [Privacy Policy](/privacy) explains account information, CVs, applications, reports, communications, payments, AI requests, storage, security, retention and request rights. It also explains the roles of hiring organisations and providers including Vercel, Supabase, Resend, Stripe and OpenAI. Read the specific collection or sharing notice shown for the feature you choose.",
+        "The service uses global infrastructure. A selected hosting or database region does not mean all processing, backups, support, delivery or onward access stays in Australia or that region. Overseas recipients and applicable safeguards are described in the Privacy Policy. Agreement to these Terms is not a waiver of cross-border privacy protections or a blanket informed-consent exception under Australian privacy law.",
+        "Handle other people's information lawfully and securely. Do not submit unnecessary sensitive information, disclose a referee's details without a lawful basis or assume that an employment-record exemption applies to every applicant or recruitment record. The applicable Privacy Act, Australian Privacy Principles, Victorian health-information requirements and other privacy duties continue where they apply.",
+        "You can request access, correction, a copy, closure or consideration of deletion through support. An application withdrawal, library deletion, account closure, marketing unsubscribe and subscription cancellation have different effects. We will explain relevant retention and recipient limits rather than promise that every independent copy can be erased immediately."
+      ]
+    },
+    {
+      "id": "availability",
+      "title": "Security availability and service changes",
+      "clauses": [
+        "We use reasonable technical and organisational measures to operate and protect the service. Internet services can still experience maintenance, defects, provider failures, interrupted access and security incidents. No security statement is a guarantee of absolute security. Our use of a provider does not remove our responsibility for our own service or legal duties.",
+        "Use a supported browser, protect downloaded material and retain copies of documents you need. We may apply proportionate file, request, storage and concurrency limits disclosed in the feature. We will not use a general fair-use statement to impose undisclosed paid overage charges. Contact support about a limit that appears to be applied incorrectly.",
+        "We may improve interfaces, correct errors and change free operational features. Where a change materially affects a paid service or this agreement, the notice, choice and remedy provisions apply. A future feature mentioned in general marketing or a demonstration is not included in a purchase unless it is part of the service description you accepted.",
+        "We may act promptly where reasonably necessary to address a credible security threat, legal requirement or serious service failure. We will limit the impact and explain it as soon as reasonably practicable where lawful, restore appropriate access when the reason ends and address fees and remedies for affected paid services under sections 24, 26 and 30."
+      ]
+    },
+    {
+      "id": "ending",
+      "title": "Restrictions suspension and ending the service",
+      "clauses": [
+        "We may refuse publication, restrict a feature, suspend access or end an account where reasonably necessary because of a material breach of these Terms, loss of hiring authority, fraud, unlawful content, a credible safety or security risk, a valid legal requirement or unresolved non-payment for a paid service. The response must be proportionate to the issue. An honest complaint or unfavourable good-faith report alone is not a reason for retaliation or exclusion.",
+        "Where the issue can reasonably be corrected and urgent action is not needed, we will normally give reasons, a reasonable opportunity to remedy it and a way to seek review. We may act immediately to protect people or information, prevent serious harm or comply with law, explaining the action later where lawful. We need not disclose another person's private information or details that would compromise security or an investigation.",
+        "You can stop using free features or request account closure at any time. Use Manage billing or contact support to stop a paid renewal. We will explain the effect on active applications, business access, remaining paid access and retained records. Ending access does not retrospectively make a lawful past action a breach or eliminate an accrued refund or privacy right.",
+        "If we discontinue a paid service or end it for convenience, we will give reasonable advance notice, stop future charges and refund the unused prepaid service that we will not provide. For suspension or termination caused by a user's material breach, fees must still be assessed fairly according to services properly supplied, actual lawful entitlements and non-excludable rights; there is no automatic forfeiture of all prepaid amounts.",
+        "We may retain limited records needed for lawful financial, security, complaint or legal purposes as described in the Privacy Policy. Provisions concerning properly accrued payments, content already lawfully shared, confidentiality and privacy, liability and dispute resolution continue only to the extent their purpose requires after the agreement ends."
+      ]
+    },
+    {
+      "id": "liability",
+      "title": "Responsibility and liability",
+      "clauses": [
+        "Each party remains responsible for its own acts and omissions under applicable law. Westmere is responsible for supplying its services with the care required by law and for loss for which it is legally responsible. You are responsible for the content and actions you authorise and for loss you cause through a breach, negligence or unlawful conduct, to the extent the law makes you responsible.",
+        "An advertiser is responsible for its vacancy, hiring decisions, employment arrangements and independently handled candidate information. External providers are responsible for their own services. Those allocations do not excuse Westmere's own misleading statement, breach, negligence, contribution to harm or failure to meet a duty it cannot exclude.",
+        "Subject to non-excludable rights, neither party is responsible to the other for loss that was not reasonably foreseeable when the relevant agreement was made, or to the extent the loss was caused by the other party's own conduct. Both parties must take reasonable steps to avoid or reduce loss where the law requires. A category such as lost income is not automatically excluded if it is recoverable under a consumer guarantee or another mandatory law.",
+        "These Terms do not impose an unlimited consumer indemnity, exclude every form of liability, cap consumer remedies at a subscription fee or require you to reimburse Westmere for harm caused by Westmere. Nothing limits liability for fraud, wilful misconduct or any matter that cannot lawfully be limited. Any separately negotiated business allocation must be clear and lawful and cannot remove mandatory consumer or small-business protections."
+      ]
+    },
+    {
+      "id": "disputes",
+      "title": "Complaints disputes and governing law",
+      "clauses": [
+        "If something goes wrong, contact support@westmere.com.au with the relevant account, listing, transaction or case reference, what happened and the outcome you seek. Do not send passwords, sign-in codes, full card details or unnecessary identity documents. We aim to acknowledge a complaint within five business days and provide a substantive response within 30 days, explaining any genuine need for further investigation. A shorter statutory deadline takes priority.",
+        "We encourage both parties to try to resolve a dispute in good faith. That is not a compulsory waiting period, mandatory arbitration clause, restriction on urgent relief or bar to contacting a regulator, payment provider, court or tribunal. You may seek independent advice or assistance from Consumer Affairs Victoria or the consumer agency in your state or territory. Employment, discrimination and privacy concerns may also be raised with the relevant authority.",
+        "Victorian law and applicable Australian Commonwealth law govern this agreement. The parties submit to the non-exclusive jurisdiction of competent Victorian courts and tribunals. This does not remove a mandatory protection of another jurisdiction or prevent a consumer from using a court, tribunal or complaint process available to them by law.",
+        "These Terms do not shorten a statutory limitation period, require a complaint to be kept secret or waive a right to participate in a lawful group claim. A trust review is separate from legal dispute resolution, and the ACCC's regulatory role does not mean it resolves individual consumer disputes."
+      ]
+    },
+    {
+      "id": "changes",
+      "title": "Changes to these Terms",
+      "clauses": [
+        "We may revise these Terms for a genuine reason, such as a service change, a legal requirement, a security issue or a correction. The revised version and update date will be available on the Terms page. A new version does not retrospectively change a completed purchase, past conduct or an accrued right.",
+        "For a material change affecting an existing account or paid agreement, we will give direct notice describing the change and its intended start date at least 30 days in advance, unless a legal requirement or urgent safety or security need makes that impracticable. A shorter notice will be limited to what is reasonably necessary and explained as soon as practicable. Price increases remain subject to section 26.",
+        "Where further agreement is required, we will ask for it through an appropriate affirmative step rather than treat authentication, silence or an ordinary notification as acceptance. If you do not accept a material change, you may stop future use or renewal without a change-related penalty. Where the change materially reduces an already paid commitment and we cannot continue the agreed service, the appropriate refund and statutory remedies remain available.",
+        "Minor editorial corrections that do not reduce rights or increase obligations may take effect when published. They do not require a new marketing or AI consent. Keep a copy of the version and order you accepted; contact support if you need the applicable previous wording."
+      ]
+    },
+    {
+      "id": "general",
+      "title": "Other agreement provisions",
+      "clauses": [
+        "Important account, contractual and price-change notices will be directed to your current account or nominated order contact, with relevant information also available in the service where practicable. We will take reasonable steps if a material notice is known not to have reached you. These Terms do not deem a message actually read merely because it was sent, placed in an inbox or marked delivered by a provider. Electronic communications remain subject to applicable law.",
+        "If a provision is unlawful or unenforceable, it is ineffective only to the necessary extent. The rest of the agreement continues if it can sensibly operate without that provision. A failure to enforce a provision on one occasion is not a general waiver. Any waiver must be clear and applies only to the matter it addresses.",
+        "Neither party may transfer this agreement in a way that materially reduces the other party's rights or protections without any consent required by law. A proposed business transfer does not permit unrestricted sale or reuse of private CVs. We will give appropriate notice and preserve existing rights and privacy obligations in any lawful transfer.",
+        "These Terms and a separately accepted order describe the relevant service agreement, but do not exclude a representation or promise on which the law permits you to rely. They do not create an employment, partnership or general agency relationship between Westmere and a user. Headings assist navigation; a business day means a day other than a Saturday, Sunday or public holiday in Melbourne, Victoria, unless an applicable law uses a different definition."
+      ]
+    }
+  ]
+}
