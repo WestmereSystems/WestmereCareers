@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   cvReviewSchema,
   cvReadinessScore,
+  studioReviewText,
   isCareersPrice,
   selectCurrentSubscription,
   studioRequestSchema,
@@ -241,4 +242,25 @@ describe("CV readiness scoring", () => {
       cvReviewSchema.safeParse({ ...report, assessable: false }).success,
     ).toBe(false);
   });
+});
+
+it("exports review-only results with suggestions and explicit score limitations", () => {
+  const text = studioReviewText({
+    summary: "Readable document; add supported achievements.",
+    improvements: ["Explain your own project contribution."],
+    revisedCv: "",
+    coverLetter: "",
+    matchedSkills: [],
+    missingSkills: [],
+    review: {
+      assessable: false,
+      intendedField: "",
+      explanation: "More CV evidence needed.",
+      criteria: [],
+    },
+  });
+  expect(text).toContain("Explain your own project contribution.");
+  expect(text).toContain("No numerical score");
+  expect(text).toContain("Not an ATS score");
+  expect(text).not.toContain("undefined");
 });

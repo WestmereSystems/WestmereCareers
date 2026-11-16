@@ -93,6 +93,38 @@ export const studioResultSchema = z
 
 export type StudioResult = z.infer<typeof studioResultSchema>;
 
+/** Plain-text review export also supports tasks that intentionally do not rewrite the CV. */
+export function studioReviewText(result: StudioResult) {
+  const review = result.review;
+  const score = cvReadinessScore(review);
+  return [
+    "WESTMERE CAREERS · CV REVIEW",
+    result.summary,
+    review
+      ? [
+          review.intendedField,
+          score === null
+            ? "No numerical score: insufficient CV evidence."
+            : `Document readiness: ${score}/100 (AI writing rubric only)`,
+          review.explanation,
+          ...review.criteria.map(
+            (c) => `${c.criterion}: ${c.points}/20 — ${c.feedback}`,
+          ),
+          "Not an ATS score, comparison with other applicants or prediction of hiring success.",
+        ].join("\n")
+      : "",
+    ...result.improvements.map((s, i) => `${i + 1}. ${s}`),
+    result.matchedSkills.length
+      ? `Evidenced requirements: ${result.matchedSkills.join(", ")}`
+      : "",
+    result.missingSkills.length
+      ? `Requirements not evidenced: ${result.missingSkills.join(", ")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 // A compact strict schema is accepted by the Responses API; output is validated
 // again locally because refusals and interrupted responses need explicit handling.
 export const studioOutputJsonSchema = {

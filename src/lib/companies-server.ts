@@ -35,7 +35,7 @@ const demoCompany = (j: Job): Company => ({
   verified_at: null,
 });
 export async function getCompanies(page = 1, query = "") {
-  const q = query.trim().slice(0, 80);
+  const q = typeof query === "string" ? query.trim().slice(0, 80) : "";
   const preview = demoJobs.filter(
     (j) => !q || j.company.toLowerCase().includes(q.toLowerCase()),
   );

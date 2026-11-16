@@ -29,7 +29,7 @@ import {
 import { SavedCVButton } from "./profile-tools";
 import { useSession } from "@/components/providers";
 import type { Job } from "@/lib/jobs";
-import type { StudioResult } from "@/lib/premium/contracts";
+import { studioReviewText, type StudioResult } from "@/lib/premium/contracts";
 import { useAssistantAllowance } from "./assistant-allowance";
 
 async function billingRedirect(
@@ -674,6 +674,8 @@ function StudioEditor({
     }
   }
   function resultText() {
+    if (result && !reviewedCv && !reviewedLetter)
+      return studioReviewText(result);
     return `${isExample ? "STATIC EXAMPLE — FICTIONAL CV\n\n" : ""}${reviewedCv}${reviewedLetter ? `\n\nCOVER LETTER\n\n${reviewedLetter}` : ""}`;
   }
   async function copy() {
@@ -694,7 +696,9 @@ function StudioEditor({
     anchor.href = url;
     anchor.download = isExample
       ? "westmere-static-example.txt"
-      : "westmere-reviewed-cv.txt";
+      : result && !result.revisedCv && !result.coverLetter
+        ? "westmere-cv-review.txt"
+        : "westmere-reviewed-cv.txt";
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import {
   cvReadinessScore,
+  studioReviewText,
   type StudioRequest,
   type StudioResult,
 } from "@/lib/premium/contracts";
@@ -335,6 +336,30 @@ export function CareerChat({
                     <li key={i}>{s}</li>
                   ))}
                 </ul>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        studioReviewText(e.result!),
+                      );
+                      notice({
+                        title: "Review copied",
+                        message:
+                          "Your review includes the rubric, limitations and suggestions. Check its accuracy before using it.",
+                      });
+                    } catch {
+                      notice({
+                        title: "Copy review",
+                        message: "Select and copy the review text above.",
+                      });
+                    }
+                  }}
+                >
+                  <Copy size={15} />
+                  Copy review report
+                </button>
                 {(e.result.revisedCv || e.result.coverLetter) && (
                   <details>
                     <summary>View draft</summary>
