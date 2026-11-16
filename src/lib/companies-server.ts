@@ -7,6 +7,7 @@ export type Company = {
   name: string;
   description: string;
   website: string | null;
+  social_links?: Record<string, string>;
   is_verified: boolean;
   suspended_at: string | null;
   verified_at: string | null;
@@ -45,7 +46,7 @@ export async function getCompanies(page = 1) {
   const { data, error, count } = await client
     .from("organisations")
     .select(
-      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
+      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path,social_links",
       { count: "exact" },
     )
     .eq("is_verified", true)
@@ -70,7 +71,7 @@ export async function getCompany(id: string): Promise<{
   error?: string;
 }> {
   const client = publicClient();
-  if (!client) {
+  if (!client || id.startsWith("demo-")) {
     const j = demoJobs.find((j) => j.id === id);
     return {
       company: j ? demoCompany(j) : null,
@@ -97,7 +98,7 @@ export async function getCompany(id: string): Promise<{
   let result = await client
     .from("organisations")
     .select(
-      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
+      "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path,social_links",
     )
     .eq("id", id)
     .maybeSingle();
@@ -107,7 +108,7 @@ export async function getCompany(id: string): Promise<{
       result = await client
         .from("organisations")
         .select(
-          "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path",
+          "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path,social_links",
         )
         .eq("id", old.job.organisationId)
         .maybeSingle();

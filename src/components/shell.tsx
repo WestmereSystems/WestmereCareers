@@ -1,4 +1,5 @@
 "use client";
+import { PrivacyChoice } from "./privacy-choice";
 import { AustraliaIcon } from "@/components/australia-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -65,7 +66,7 @@ export function Header() {
             Careers<span>+</span>
           </Link>
           <Link
-            href="/employers"
+            href={session.business ? "/account?tab=dashboard" : "/employers"}
             aria-current={
               pathname.startsWith("/employers") ? "page" : undefined
             }
@@ -117,11 +118,13 @@ export function Header() {
   );
 }
 export function Footer() {
+  const session = useSession();
   return (
     <footer className="site-footer">
       <div className="container footer-top">
         <div>
           <Brand />
+          <PrivacyChoice />
           <p>
             A little clarity.
             <br />A world of possibility.
@@ -139,11 +142,17 @@ export function Footer() {
             <Link href="/account?tab=alerts">Saved searches & alerts</Link>
             <Link href="/account?tab=trust">My trust activity</Link>
             <Link href="/account?tab=applications">My applications</Link>
-            <Link href="/studio">Application Studio</Link>
+            {!session.business && (
+              <Link href="/studio">Careers+ Application Studio</Link>
+            )}
           </div>
           <div>
             <h3>A better experience</h3>
-            <Link href="/employers">For employers</Link>
+            <Link
+              href={session.business ? "/account?tab=dashboard" : "/employers"}
+            >
+              For employers
+            </Link>
             <Link href="/careers-plus">Careers+</Link>
             <Link href="/about">About Westmere</Link>
             <Link href="/transparency">Our transparency promise</Link>

@@ -1,3 +1,5 @@
+import { DiscoveryEvent } from "@/components/privacy-choice";
+import { BusinessLinks } from "@/components/business-profile";
 import Link from "next/link";
 import { ContactEmail } from "@/components/contact-email";
 import { RichText } from "@/components/rich-text";
@@ -30,6 +32,9 @@ export default async function Company({
     insight?.eligible_reports !== undefined;
   return (
     <main id="main" className="container page-intro page-content">
+      {source === "live" && (
+        <DiscoveryEvent organisations={[company.id]} kind="profile" />
+      )}
       <nav className="breadcrumbs">
         <Link href="/companies">
           <ArrowLeft size={12} />
@@ -77,6 +82,10 @@ export default async function Company({
                 ? "Hiring access suspended pending review"
                 : "Business verification not complete"}
           </p>
+          <BusinessLinks
+            website={company.website}
+            links={company.social_links}
+          />
           <h2>A little about us</h2>
           <RichText
             text={

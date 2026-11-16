@@ -4,6 +4,8 @@ type Org = {
   id: string;
   name: string;
   description?: string;
+  website?: string | null;
+  social_links?: Record<string, string>;
   careers_email?: string | null;
   avatar_path?: string | null;
   banner_path?: string | null;
@@ -61,6 +63,13 @@ export function EmployerBranding({
                   organisationId: organisation.id,
                   description: String(f.get("description")),
                   careersEmail: String(f.get("email")),
+                  website: String(f.get("website")),
+                  socialLinks: Object.fromEntries(
+                    ["linkedin", "instagram", "facebook"].map((k) => [
+                      k,
+                      String(f.get(k) || ""),
+                    ]),
+                  ),
                 }),
               }),
               d = await r.json();
@@ -86,6 +95,29 @@ export function EmployerBranding({
             defaultValue={organisation.description || ""}
           />
         </label>
+        <label className="field-label">
+          Company website
+          <input
+            name="website"
+            type="url"
+            pattern="https://.*"
+            maxLength={500}
+            defaultValue={organisation.website || ""}
+            placeholder="https://your-company.com.au"
+          />
+        </label>
+        {["linkedin", "instagram", "facebook"].map((k) => (
+          <label className="field-label" key={k}>
+            {k[0].toUpperCase() + k.slice(1)} profile · optional
+            <input
+              name={k}
+              type="url"
+              pattern="https://.*"
+              maxLength={500}
+              defaultValue={organisation.social_links?.[k] || ""}
+            />
+          </label>
+        ))}
         <label className="field-label">
           General careers email · optional
           <input

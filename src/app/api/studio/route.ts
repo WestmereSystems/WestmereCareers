@@ -1,3 +1,4 @@
+import { assertIndividual } from "@/lib/server/business";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/server/auth";
 import { studioRequestSchema } from "@/lib/premium/contracts";
@@ -17,7 +18,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
-    const { supabase, user, isPremium } = await getSessionContext();
+    const { supabase, user, isPremium, business } = await getSessionContext();
     if (!supabase)
       throw new PremiumError(
         "NOT_CONFIGURED",
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
         "Please sign in to use your CV studio.",
         401,
       );
+    assertIndividual(business);
     if (!isPremium)
       throw new PremiumError(
         "PREMIUM_REQUIRED",

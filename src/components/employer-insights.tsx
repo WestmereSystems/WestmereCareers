@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Users,
 } from "lucide-react";
+import { DashboardSkeleton } from "./skeleton";
+import { summariseHiring } from "@/lib/hiring-statistics";
 import type { HiringStatistics } from "@/lib/hiring-statistics";
 import { useSession } from "./providers";
 
@@ -26,7 +28,13 @@ const date = (value: string) =>
     month: "short",
     timeZone: "Australia/Melbourne",
   });
-export function EmployerInsights({ revision = 0 }: { revision?: number }) {
+export function EmployerInsights({
+  revision = 0,
+  demo = false,
+}: {
+  revision?: number;
+  demo?: boolean;
+}) {
   const session = useSession();
   const [period, setPeriod] = useState("30");
   const [business, setBusiness] = useState("");
@@ -36,6 +44,60 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
   const [loading, setLoading] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (demo) {
+      const now = Date.now(),
+        day = 86400000;
+      const roles = [
+        "Product Designer",
+        "Customer Success Manager",
+        "Software Engineer",
+      ].map((title, i) => ({
+        id: `demo-role-${i}`,
+        title,
+        organisation_id: "demo-company",
+        status: "published",
+        published_at: new Date(now - 40 * day).toISOString(),
+        expires_at: null,
+      }));
+      const applications = Array.from({ length: 128 }, (_, i) => ({
+        id: `demo-app-${i}`,
+        job_id: roles[i % 3].id,
+        status: [
+          "received",
+          "opened",
+          "shortlisted",
+          "interview",
+          "offer",
+          "not_proceeding",
+        ][i % 6],
+        created_at: new Date(now - ((i % 58) + 0.2) * day).toISOString(),
+        application_events:
+          i % 6
+            ? [
+                {
+                  event_type: "opened",
+                  occurred_at: new Date(
+                    now - ((i % 58) + 0.1) * day,
+                  ).toISOString(),
+                },
+              ]
+            : [],
+      }));
+      const chosen = role ? roles.filter((r) => r.id === role) : roles;
+      setPayload({
+        statistics: summariseHiring(
+          chosen,
+          applications.filter((a) => chosen.some((r) => r.id === a.job_id)),
+          Number(period),
+          now,
+        ),
+        businesses: [
+          { id: "demo-company", name: "Fernbridge Studio · fictional" },
+        ],
+        roles: roles.map((r) => ({ id: r.id, title: r.title })),
+      });
+      return;
+    }
     if (!session.user) return;
     const controller = new AbortController();
     setLoading(true);
@@ -69,7 +131,7 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [session.user?.id, period, business, role, retry, revision]);
+  }, [session.user?.id, period, business, role, retry, revision, demo]);
   const data = payload?.statistics;
   const change = data ? data.totalApplications - data.previousApplications : 0;
   function download() {
@@ -112,7 +174,7 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  if (!session.user)
+  if (!session.user && !demo)
     return (
       <section className="hiring-insights-intro">
         <div className="insights-intro-mark">
@@ -209,11 +271,7 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
           </select>
         </label>
       </div>
-      {loading && (
-        <p className="fineprint" role="status">
-          Updating your hiring overview…
-        </p>
-      )}
+      {loading && <DashboardSkeleton />}
       {error && (
         <p className="message" role="alert">
           {error}{" "}
@@ -417,6 +475,7 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
                     <tr>
                       <th scope="col">Role</th>
                       <th scope="col">Applications</th>
+                      <th scope="col">Opened by team</th>
                       <th scope="col">Awaiting review</th>
                       <th scope="col">Shortlisted</th>
                       <th scope="col">Interviews</th>
@@ -431,6 +490,7 @@ export function EmployerInsights({ revision = 0 }: { revision?: number }) {
                           <small>{item.status}</small>
                         </th>
                         <td>{item.applications}</td>
+                        <td>{item.opened}</td>
                         <td>{item.awaiting}</td>
                         <td>{item.shortlisted}</td>
                         <td>{item.interviews}</td>

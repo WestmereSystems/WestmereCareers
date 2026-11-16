@@ -14,7 +14,11 @@ export type JobFilters = {
   cvText?: string;
 };
 
-export type PublicJobQuery = JobFilters & { page?: number; pageSize?: number };
+export type PublicJobQuery = JobFilters & {
+  page?: number;
+  pageSize?: number;
+  samples?: boolean;
+};
 
 export function parseJobQuery(params: URLSearchParams): PublicJobQuery {
   const clean = (key: string) => (params.get(key) ?? "").trim().slice(0, 120);
@@ -27,6 +31,7 @@ export function parseJobQuery(params: URLSearchParams): PublicJobQuery {
   const rawPage = Number(params.get("page"));
   const rawSort = clean("sort");
   return {
+    ...(params.get("samples") === "1" ? { samples: true } : {}),
     keyword: clean("q"),
     location: clean("where"),
     workMode: selected("workMode", ["Hybrid", "Remote", "On-site"]),
@@ -53,6 +58,7 @@ export function parseJobQuery(params: URLSearchParams): PublicJobQuery {
 /** Serialise public filters only. Private CV text and consent never enter a URL. */
 export function serialiseJobQuery(filters: PublicJobQuery): string {
   const params = new URLSearchParams();
+  if (filters.samples) params.set("samples", "1");
   if (filters.keyword) params.set("q", filters.keyword);
   if (filters.location) params.set("where", filters.location);
   filters.workMode?.forEach((value) => params.append("workMode", value));

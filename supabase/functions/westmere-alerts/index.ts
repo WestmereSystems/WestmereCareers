@@ -160,6 +160,9 @@ Deno.serve(async (req: Request) => {
     const prepared = await db.rpc("prepare_job_alerts", { p_limit: 50 });
     if (prepared.error)
       return json({ error: "Outbox preparation unavailable." }, 503);
+    const reminders = await db.rpc("queue_employer_reminders");
+    if (reminders.error)
+      return json({ error: "Hiring reminder preparation unavailable." }, 503);
     const claimed = await db.rpc("claim_job_alerts", { p_limit: 6 });
     if (claimed.error)
       return json({ error: "Delivery queue unavailable." }, 503);

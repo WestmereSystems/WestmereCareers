@@ -43,11 +43,20 @@ export async function GET(request: Request) {
     // Do not log URLs, bearer tokens, email addresses or raw provider messages.
     console.warn("Westmere sign-in callback unavailable");
   }
-  const destination = signedIn ? "/account" : "/?auth=expired";
-  return NextResponse.redirect(new URL(destination, origin), {
+  const businessIntent = (request.headers.get("cookie") || "")
+    .split(";")
+    .some((c) => c.trim() === "wm-business-intent=employer");
+  const destination = signedIn
+    ? businessIntent
+      ? "/employers/sign-in?complete=1"
+      : "/account"
+    : "/?auth=expired";
+  const response = NextResponse.redirect(new URL(destination, origin), {
     headers: {
       "Cache-Control": "private, no-store",
       "Referrer-Policy": "no-referrer",
     },
   });
+  response.cookies.delete("wm-business-intent");
+  return response;
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { businessFor } from "./business";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/server/http";
@@ -29,7 +30,12 @@ export function hasCurrentPremiumSubscription(
 export async function getSessionContext() {
   const supabase = await createClient();
   if (!supabase)
-    return { supabase: null, user: null as User | null, isPremium: false };
+    return {
+      supabase: null,
+      user: null as User | null,
+      isPremium: false,
+      business: null,
+    };
   // getUser validates with Supabase Auth; no user-editable metadata or local demo flag grants access.
   const {
     data: { user },
@@ -48,14 +54,22 @@ export async function getSessionContext() {
       "AUTH_UNAVAILABLE",
     );
   }
-  if (!user) return { supabase, user: null as User | null, isPremium: false };
+  if (!user)
+    return {
+      supabase,
+      user: null as User | null,
+      isPremium: false,
+      business: null,
+    };
   const { data: subscription } = await supabase
     .from("subscriptions")
     .select("status,current_period_start,current_period_end,price_id")
     .eq("user_id", user.id)
     .maybeSingle();
   // Fail closed when billing state is missing, stale or unreadable.
+  const business = await businessFor(supabase, user.id);
   return {
+    business,
     supabase,
     user,
     isPremium: hasCurrentPremiumSubscription(subscription),

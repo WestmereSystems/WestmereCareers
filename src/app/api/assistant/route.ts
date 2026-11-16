@@ -1,3 +1,4 @@
+import { assertIndividual } from "@/lib/server/business";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/server/auth";
@@ -27,7 +28,8 @@ const response = (body: unknown) =>
 
 export async function GET(request: Request) {
   try {
-    const { supabase, user, isPremium } = await getSessionContext();
+    const { supabase, user, isPremium, business } = await getSessionContext();
+    if (supabase && user) assertIndividual(business);
     if (!supabase)
       throw new PremiumError(
         "NOT_CONFIGURED",
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
         "AI assistance is being prepared. Your CV has not been sent anywhere.",
         503,
       );
+    if (context.user) assertIndividual(context.business);
     if (context.isPremium) return paidStudio(request);
     const parsed = studioRequestSchema.safeParse(await boundedJson(request));
     if (!parsed.success)

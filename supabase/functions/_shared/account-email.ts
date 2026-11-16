@@ -23,6 +23,8 @@ export function renderAccountEmail(
     !snapshot ||
     ![
       "/account",
+      "/account?tab=dashboard",
+      "/account?tab=verification",
       "/applications",
       "/employers/dashboard",
       "/employers/sample",

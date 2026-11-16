@@ -97,7 +97,7 @@ export async function getPublicJobs(
   const base = { page, pageSize };
   try {
     const supabase = publicClient();
-    if (!supabase) {
+    if (!supabase || filters.samples) {
       const all = filterJobs(demoJobs, filters);
       return {
         jobs: all.slice((page - 1) * pageSize, page * pageSize),
@@ -257,7 +257,7 @@ export async function getPublicJob(
 ): Promise<{ job: Job | null; source: "demo" | "live"; error?: string }> {
   try {
     const supabase = publicClient();
-    if (!supabase)
+    if (!supabase || demoJobs.some((j) => j.id === id))
       return {
         job: demoJobs.find((job) => job.id === id) ?? null,
         source: "demo",

@@ -1,4 +1,5 @@
 import "server-only";
+import { assertBusinessTerms } from "./business";
 import { requireSession } from "./auth";
 import { ApiError } from "./http";
 export async function requireEmployer(
@@ -6,6 +7,7 @@ export async function requireEmployer(
   ownerOnly = false,
 ) {
   const c = await requireSession();
+  assertBusinessTerms(c.business);
   const { data, error } = await c.supabase
     .from("organisation_members")
     .select("role,organisations(is_verified,suspended_at)")

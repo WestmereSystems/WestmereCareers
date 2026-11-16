@@ -24,7 +24,7 @@ export default function Privacy() {
       <div className="page-intro">
         <p className="eyebrow">Your information, your choice</p>
         <h1>Westmere Careers Privacy Policy</h1>
-        <p className="muted">Last updated: 15 November 2026</p>
+        <p className="muted">Last updated: 16 November 2026</p>
       </div>
       <div className="notice">
         <strong>Your CV stays private.</strong> Saving a CV does not publish it

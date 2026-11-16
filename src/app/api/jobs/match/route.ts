@@ -1,3 +1,5 @@
+import { PremiumError, premiumError } from "@/lib/premium/http";
+import { assertIndividual } from "@/lib/server/business";
 import { z } from "zod";
 import { getPublicJobs, parseJobQuery } from "@/lib/jobs-server";
 import { cvMatch, filterJobs } from "@/lib/search";
@@ -28,7 +30,7 @@ const bodySchema = z
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    const { supabase, user, isPremium } = await getSessionContext();
+    const { supabase, user, isPremium, business } = await getSessionContext();
     if (!supabase)
       throw new ApiError(
         503,
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
         "Sign in to compare your CV with roles.",
         "SIGN_IN_REQUIRED",
       );
+    assertIndividual(business);
     if (!isPremium)
       throw new ApiError(
         403,
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
       searchTotal: inventory.total,
     });
   } catch (error) {
+    if (error instanceof PremiumError) return premiumError(error);
     return apiError(error);
   }
 }

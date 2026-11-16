@@ -89,3 +89,15 @@ describe("email authentication callback", () => {
     );
   });
 });
+
+it("returns a provider sign-in to business completion without treating intent as authority", async () => {
+  const response = await GET(
+    new Request(`${origin}/auth/callback?code=valid`, {
+      headers: { cookie: "wm-business-intent=employer" },
+    }),
+  );
+  expect(response.headers.get("location")).toBe(
+    `${origin}/employers/sign-in?complete=1`,
+  );
+  expect(response.headers.get("set-cookie")).toContain("wm-business-intent=");
+});

@@ -27,6 +27,10 @@ type Verification = {
   website: string;
   contact_role: string;
   ownership_evidence: string;
+  linkedin_url?: string;
+  hr_email?: string;
+  hr_phone?: string;
+  contact_source?: string;
   status: string;
   applicant_message: string;
   created_at: string;
@@ -72,11 +76,17 @@ export function VerificationIntake() {
         website: f.get("website"),
         contactRole: f.get("role"),
         evidence: f.get("evidence"),
+        linkedin: f.get("linkedin"),
+        hrEmail: f.get("hrEmail"),
+        hrPhone: f.get("hrPhone"),
+        contactSource: f.get("contactSource"),
+        contactPermission: f.get("contactPermission") === "on",
       });
       setMessage(d.message);
       setEditing(null);
       form.reset();
       await load();
+      await session.refresh();
     } catch (e) {
       setMessage(
         e instanceof Error ? e.message : "Request could not be saved.",
@@ -93,7 +103,9 @@ export function VerificationIntake() {
       <p className="muted">
         We check the business identity and your authority to hire before giving
         publishing access. An ABN alone does not prove ownership. Never include
-        passwords, identity documents or candidate information here.
+        passwords, identity documents or candidate information here. We aim to
+        review a complete submission within 48 hours. More information may be
+        needed before approval.
       </p>
       <Message>{message}</Message>
       {requests.map((r) => (
@@ -178,6 +190,64 @@ export function VerificationIntake() {
               placeholder="Describe your relationship to the business and a public business contact or company-domain verification route. A reviewer will follow up if more evidence is needed."
             />
           </label>
+          <label className="field-label">
+            Business or authorised representative’s LinkedIn profile
+            <input
+              name="linkedin"
+              type="url"
+              required
+              pattern="https://.*"
+              maxLength={500}
+              defaultValue={editing?.linkedin_url}
+              placeholder="https://www.linkedin.com/company/your-company/"
+            />
+          </label>
+          <div className="form-grid">
+            <label className="field-label">
+              Public HR or business verification email
+              <input
+                name="hrEmail"
+                type="email"
+                required
+                maxLength={254}
+                defaultValue={editing?.hr_email}
+              />
+            </label>
+            <label className="field-label">
+              Public HR or business verification phone
+              <input
+                name="hrPhone"
+                type="tel"
+                required
+                minLength={6}
+                maxLength={40}
+                defaultValue={editing?.hr_phone}
+              />
+            </label>
+          </div>
+          <label className="field-label">
+            Public page listing these contact details
+            <input
+              name="contactSource"
+              type="url"
+              required
+              pattern="https://.*"
+              maxLength={500}
+              defaultValue={editing?.contact_source}
+              placeholder="https://your-company.com.au/contact"
+            />
+          </label>
+          <label className="checkbox-label">
+            <input name="contactPermission" type="checkbox" required />I am
+            authorised to supply these publicly listed business contact details
+            and permit Westmere to contact this business to check my identity
+            and hiring authority.
+          </label>
+          <p className="fineprint">
+            These verification contacts are available to authorised reviewers.
+            They are not added to your public company profile or used for
+            marketing. See our <Link href="/privacy">Privacy Policy</Link>.
+          </p>
           <button className="button primary" disabled={busy}>
             {busy ? "Submitting…" : "Submit for independent review"}
           </button>

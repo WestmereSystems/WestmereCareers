@@ -93,6 +93,7 @@ export function CareerAssistant({ job }: { job?: Job }) {
     }
   }
   const used = allowance?.remaining === 0;
+  if (session.business) return null;
   return (
     <aside
       className="career-assistant"

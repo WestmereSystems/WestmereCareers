@@ -13,6 +13,7 @@ import Link from "next/link";
 import { EmployerBranding, ListingDocuments } from "./employer-branding";
 import { useSession } from "./providers";
 import { VerificationIntake, TrustCaseForm, sendJson } from "./trust-workflows";
+import { DashboardSkeleton } from "./skeleton";
 import { EmployerInsights } from "./employer-insights";
 
 type Role = {
@@ -38,6 +39,7 @@ type Role = {
   skills: string[];
   contact_email?: string | null;
   listing_documents?: { id: string; filename: string; bytes: number }[];
+  expires_at?: string | null;
   listing_review_feedback: { message: string } | null;
 };
 type Membership = {
@@ -55,6 +57,7 @@ type Membership = {
   };
 };
 type Applicant = {
+  opened_at?: string | null;
   id: string;
   status: string;
   created_at: string;
@@ -74,6 +77,7 @@ export function EmployerWorkspace() {
 function EmployerWorkspaceForUser() {
   const session = useSession();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statisticsRevision, setStatisticsRevision] = useState(0);
   const [members, setMembers] = useState<Membership[]>([]);
   const postingMembers = members.filter(
@@ -101,6 +105,7 @@ function EmployerWorkspaceForUser() {
   const reviewVersion = useRef(0);
   const openVersion = useRef(0);
   async function load(signal?: AbortSignal) {
+    setLoading(true);
     try {
       const r = await fetch("/api/employers", { cache: "no-store", signal });
       const data = await r.json();
@@ -113,6 +118,8 @@ function EmployerWorkspaceForUser() {
     } catch {
       if (!signal?.aborted)
         setMessage("The hiring workspace is temporarily unavailable.");
+    } finally {
+      if (!signal?.aborted) setLoading(false);
     }
   }
   useEffect(() => {
@@ -137,6 +144,9 @@ function EmployerWorkspaceForUser() {
           ...(editing ? { id: editing.id } : {}),
           organisationId: String(data.get("organisation")),
           title: String(data.get("title")),
+          expiresAt: data.get("closingDate")
+            ? new Date(String(data.get("closingDate"))).toISOString()
+            : null,
           location: `${data.get("city")}, ${data.get("state")}`,
           city: String(data.get("city")),
           state: String(data.get("state")),
@@ -211,6 +221,17 @@ function EmployerWorkspaceForUser() {
         return;
       if (r.ok) {
         setApplication(data.application);
+        const refreshed = await fetch(
+          `/api/employers/applications?job=${encodeURIComponent(selected)}`,
+          { cache: "no-store" },
+        );
+        const refreshedData = await refreshed.json();
+        if (
+          refreshed.ok &&
+          version === reviewVersion.current &&
+          opening === openVersion.current
+        )
+          setApplicants(refreshedData.applications || []);
         setStatisticsRevision((revision) => revision + 1);
       } else setMessage(data.error);
     } catch {
@@ -247,8 +268,8 @@ function EmployerWorkspaceForUser() {
       setBusy(false);
     }
   }
-  if (session.loading)
-    return <p role="status">Loading your hiring workspace…</p>;
+  if (session.loading || (session.user && loading))
+    return <DashboardSkeleton />;
   if (!session.user)
     return (
       <div className="employer-signed-out">
@@ -305,8 +326,8 @@ function EmployerWorkspaceForUser() {
           <h3>Let’s get to know your business first.</h3>
           <p className="muted" style={{ marginTop: 14 }}>
             Your account needs an approved organisation membership before you
-            can publish or access applications. Submit the business details
-            below for independent review.
+            can publish or access applications. Submit the business details in
+            the Verification tab for independent review.
           </p>
         </div>
       ) : null}
@@ -322,28 +343,7 @@ function EmployerWorkspaceForUser() {
           </Link>
         </p>
       )}
-      <VerificationIntake />
-      {members.map((m) => (
-        <div key={m.organisation_id} className="panel">
-          <h3>{m.organisations.name}</h3>
-          <p>
-            {m.organisations.suspended_at
-              ? "Hiring access is suspended pending review."
-              : m.organisations.is_verified
-                ? "Business identity and hiring authority checked."
-                : "Business verification pending."}
-          </p>
-          {m.organisations.is_verified &&
-            !m.organisations.suspended_at &&
-            ["owner", "admin"].includes(m.role) && (
-              <EmployerBranding
-                organisation={m.organisations}
-                onSaved={() => void load()}
-              />
-            )}
-          <TrustCaseForm organisationId={m.organisation_id} />
-        </div>
-      ))}
+
       {form && (
         <form
           className="panel employer-form"
@@ -404,6 +404,28 @@ function EmployerWorkspaceForUser() {
               </select>
             </label>
           </div>
+          <label className="field-label">
+            Closing date & time · optional
+            <input
+              type="datetime-local"
+              name="closingDate"
+              defaultValue={
+                editing?.expires_at
+                  ? new Date(
+                      Date.parse(editing.expires_at) -
+                        new Date(editing.expires_at).getTimezoneOffset() *
+                          60000,
+                    )
+                      .toISOString()
+                      .slice(0, 16)
+                  : ""
+              }
+            />
+            <span className="fineprint">
+              Your device’s local timezone. New roles default to 30 days if
+              blank. Used for listing expiry and your team’s closing reminders.
+            </span>
+          </label>
           <label className="field-label">
             Category
             <input
@@ -636,29 +658,58 @@ function EmployerWorkspaceForUser() {
           </h2>
           <p className="fineprint" style={{ marginTop: 12 }}>
             Opening an application records a timestamp visible to its candidate.
-            Loading this list does not.
+            Loading this list does not. The list shows the latest 100
+            applications; the statistics above cover the selected reporting
+            period.
           </p>
           {applicants.length ? (
-            applicants.map((a, index) => (
-              <div className="application-row" key={a.id}>
-                <div>
-                  <h3>Application {index + 1}</h3>
-                  <p>
-                    {new Date(a.created_at).toLocaleDateString("en-AU")} ·{" "}
-                    {a.withdrawn_at ? "Withdrawn" : a.status}
-                  </p>
-                </div>
-                {!a.withdrawn_at && (
-                  <button
-                    className="button secondary small"
-                    onClick={() => open(a.id)}
-                  >
-                    <Eye size={15} />
-                    Open application
-                  </button>
-                )}
-              </div>
-            ))
+            <div className="insights-table-scroll employer-applicant-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Application</th>
+                    <th scope="col">Submitted</th>
+                    <th scope="col">Current stage</th>
+                    <th scope="col">Opened by team</th>
+                    <th scope="col">Review</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applicants.map((a, index) => (
+                    <tr key={a.id}>
+                      <th scope="row">
+                        Application {index + 1}
+                        <small>{a.id.slice(0, 8)}</small>
+                      </th>
+                      <td>
+                        {new Date(a.created_at).toLocaleDateString("en-AU")}
+                      </td>
+                      <td>
+                        {a.withdrawn_at
+                          ? "Withdrawn"
+                          : a.status.replaceAll("_", " ")}
+                      </td>
+                      <td>
+                        {a.opened_at
+                          ? new Date(a.opened_at).toLocaleString("en-AU")
+                          : "Not recorded"}
+                      </td>
+                      <td>
+                        {!a.withdrawn_at && (
+                          <button
+                            className="button secondary small"
+                            onClick={() => void open(a.id)}
+                          >
+                            <Eye size={15} />
+                            Open application
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="muted" style={{ marginTop: 20 }}>
               No applications to review yet.

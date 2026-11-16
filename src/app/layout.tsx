@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./refresh.css";
+import "./employer.css";
 import { Providers } from "@/components/providers";
 import { Header, Footer } from "@/components/shell";
 

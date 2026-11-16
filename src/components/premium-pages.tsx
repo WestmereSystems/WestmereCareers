@@ -694,6 +694,22 @@ function StudioEditor({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  if (session.business)
+    return (
+      <main id="main" className="container page-content">
+        <div className="panel">
+          <h1>Careers+ is for individual accounts.</h1>
+          <p>
+            Use a separate personal account for your CV and career preparation.
+            Your business account’s hiring tools are available in your
+            dashboard.
+          </p>
+          <Link href="/account?tab=dashboard" className="button primary">
+            Open your hiring dashboard
+          </Link>
+        </div>
+      </main>
+    );
   return (
     <main id="main">
       <section className="page-intro container">

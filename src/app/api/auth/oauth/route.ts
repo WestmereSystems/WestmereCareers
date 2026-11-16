@@ -13,9 +13,14 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
-    const { provider } = await parseBody(
+    const { provider, intent } = await parseBody(
       request,
-      z.object({ provider: z.enum(["google", "azure"]) }).strict(),
+      z
+        .object({
+          provider: z.enum(["google", "azure"]),
+          intent: z.literal("employer").optional(),
+        })
+        .strict(),
       1000,
     );
     if (!(await authOptions())[provider])
@@ -42,7 +47,18 @@ export async function POST(request: Request) {
     const expected = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
     if (url.origin !== expected.origin || url.pathname !== "/auth/v1/authorize")
       throw new ApiError(503, "Sign-in is temporarily unavailable.");
-    return json({ url: data.url });
+    const response = json({ url: data.url });
+    const store = response.cookies;
+    if (intent)
+      store.set("wm-business-intent", "employer", {
+        httpOnly: true,
+        secure: new URL(request.url).protocol === "https:",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 900,
+      });
+    else store.delete("wm-business-intent");
+    return response;
   } catch (e) {
     return apiError(e);
   }

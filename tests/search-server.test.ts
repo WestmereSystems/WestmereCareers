@@ -41,6 +41,19 @@ function query(data: unknown[] = [], count = 0, error: unknown = null) {
 
 beforeEach(() => vi.resetAllMocks());
 describe("public search boundaries", () => {
+  it("offers explicit fictional inventory on a connected site without reading or seeding live jobs", async () => {
+    const from = vi.fn();
+    mock.client.mockReturnValue({ from });
+    const result = await getPublicJobs({ samples: true });
+    expect(result.source).toBe("demo");
+    expect(result.total).toBe(demoJobs.length);
+    expect(from).not.toHaveBeenCalled();
+    const detail = await getPublicJob(demoJobs[0].id);
+    expect(detail.source).toBe("demo");
+    expect(detail.job?.id).toBe(demoJobs[0].id);
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("allowlists filter values and clamps user-supplied pages and lengths", () => {
     const filters = parseJobQuery(
       new URLSearchParams({

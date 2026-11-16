@@ -1,3 +1,4 @@
+import { DiscoveryEvent } from "@/components/privacy-choice";
 import Link from "next/link";
 import { RichText } from "@/components/rich-text";
 import { ContactEmail } from "@/components/contact-email";
@@ -48,6 +49,9 @@ export default async function JobDetail({
   if (!job) notFound();
   return (
     <main id="main" className="container page-intro page-content">
+      {source === "live" && job.organisationId && (
+        <DiscoveryEvent organisations={[job.organisationId]} kind="listing" />
+      )}
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <Link href="/jobs">
           <ArrowLeft size={12} />

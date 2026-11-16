@@ -34,6 +34,16 @@ export default async function JobsPage({
               hiring. Let’s find work that feels right for you.
             </p>
           </section>
+          <div className="sample-jobs-switch">
+            <span>
+              {query.samples
+                ? "Sample inventory · fictional roles for testing"
+                : "Explore current opportunities"}
+            </span>
+            <a href={query.samples ? "/jobs" : "/jobs?samples=1"}>
+              {query.samples ? "View live roles" : "Try sample jobs"}
+            </a>
+          </div>
           <section
             className="page-content"
             aria-label="Search and explore roles"

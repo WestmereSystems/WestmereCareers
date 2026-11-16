@@ -1315,3 +1315,268 @@ describe("bounded upload processing", () => {
     ).toHaveProperty("token");
   });
 });
+
+describe("business account and discovery boundaries", () => {
+  it("does not allow a user to self-award business identity or paid plans", async () => {
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "insert into public.business_accounts(user_id,kind,trading_name,terms_version,terms_sha256) values($1,'employer','Example','v1',$2)",
+        [candidate, "a".repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query(
+        "insert into public.employer_plans(organisation_id,tier,order_reference,starts_at,ends_at) values($1,'growth','order-test',now(),now()+interval '1 month')",
+        [org],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await db.exec("reset role");
+    await db.query(
+      "insert into public.business_accounts(user_id,kind,trading_name,terms_version,terms_sha256) values($1,'employer','Example','v1',$2)",
+      [candidate, "a".repeat(64)],
+    );
+    await db.query(
+      "update public.business_accounts set terms_version='v2',terms_sha256=$2 where user_id=$1",
+      [candidate, "b".repeat(64)],
+    );
+    expect(
+      (
+        await db.query(
+          "select count(*)::int as n from private.business_agreements where user_id=$1",
+          [candidate],
+        )
+      ).rows,
+    ).toEqual([{ n: 2 }]);
+    await asUser(otherCandidate);
+    expect(
+      (await db.query("select * from public.business_accounts")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query("select * from private.business_agreements"),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("requires public verification contacts and contact permission", async () => {
+    await asUser(candidate);
+    const args = [
+      null,
+      "New Example",
+      "12345678901",
+      "https://example.test",
+      "Director",
+      "Authority can be confirmed with the public HR contact.",
+      "https://www.linkedin.com/company/example/",
+      "hr@example.test",
+      "+61 3 9000 0000",
+      "https://example.test/contact",
+      false,
+    ];
+    await expect(
+      db.query(
+        "select public.submit_business_verification($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+        args,
+      ),
+    ).rejects.toThrow();
+    args[10] = true;
+    await db.query(
+      "select public.submit_business_verification($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+      args,
+    );
+    const contacts = await db.query<{
+      hr_email: string;
+      contact_permission_at: string;
+    }>(
+      "select hr_email,contact_permission_at from public.employer_verification_requests",
+    );
+    expect(contacts.rows[0].hr_email).toBe("hr@example.test");
+    expect(contacts.rows[0].contact_permission_at).toBeTruthy();
+    await asUser(otherCandidate);
+    expect(
+      (
+        await db.query(
+          "select hr_email from public.employer_verification_requests",
+        )
+      ).rows,
+    ).toHaveLength(0);
+  });
+  it("keeps discovery aggregates server-only, suppresses small breakdowns and rate limits events", async () => {
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "select public.record_discovery($1,'search','VIC','design',$2)",
+        [[org], "a".repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select public.read_discovery($1,30)", [org]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(candidate, "service_role");
+    for (let i = 0; i < 4; i++)
+      await db.query(
+        "select public.record_discovery($1,'search','VIC','design',$2)",
+        [[org], "a".repeat(64)],
+      );
+    let report = (
+      await db.query<{ d: { regions: unknown[]; keywords: unknown[] } }>(
+        "select public.read_discovery($1,30) as d",
+        [org],
+      )
+    ).rows[0].d;
+    expect(report.regions).toEqual([]);
+    expect(report.keywords).toEqual([]);
+    await db.query(
+      "select public.record_discovery($1,'search','VIC','design',$2)",
+      [[org], "a".repeat(64)],
+    );
+    report = (
+      await db.query<{ d: { regions: unknown[]; keywords: unknown[] } }>(
+        "select public.read_discovery($1,30) as d",
+        [org],
+      )
+    ).rows[0].d;
+    expect(report.regions).toEqual([{ region: "VIC", count: 5 }]);
+    expect(report.keywords).toEqual([{ keyword: "design", count: 5 }]);
+    await db.exec("reset role");
+    await db.query(
+      "update private.discovery_rate set events=120 where network=$1",
+      ["a".repeat(64)],
+    );
+    await asUser(candidate, "service_role");
+    await db.query(
+      "select public.record_discovery($1,'search','VIC','design',$2)",
+      [[org], "a".repeat(64)],
+    );
+    expect(
+      (
+        await db.query<{ d: { totals: { count: number }[] } }>(
+          "select public.read_discovery($1,30) as d",
+          [org],
+        )
+      ).rows[0].d.totals[0].count,
+    ).toBe(5);
+  });
+  it("honours employer submission preferences without dropping the candidate receipt", async () => {
+    await asUser(employer);
+    await db.query(
+      "insert into public.employer_notification_preferences(user_id,submissions) values($1,false)",
+      [employer],
+    );
+    await asUser(candidate);
+    await db.query(
+      "insert into public.applications(job_id,candidate_id,cv_text_snapshot) values($1,$2,repeat('Supported experience. ',5))",
+      [job, candidate],
+    );
+    expect(
+      (await db.query("select title from public.notifications")).rows,
+    ).toEqual([{ title: "Application received" }]);
+    await asUser(employer);
+    expect(
+      (await db.query("select title from public.notifications")).rows,
+    ).toHaveLength(0);
+    await expect(
+      db.query(
+        "update public.employer_notification_preferences set follow_up_days=0",
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+it("keeps employer reminder delivery idempotent and rechecks preference changes before sending", async () => {
+  await db.exec("reset role");
+  await db.query(
+    "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.example','https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe',true)",
+  );
+  await db.query(
+    "insert into public.employer_notification_preferences(user_id,email_enabled) values($1,true)",
+    [employer],
+  );
+  await db.query(
+    "update public.jobs set expires_at=now()+interval '2 days' where id=$1",
+    [job],
+  );
+  await asUser(employer, "service_role");
+  await db.query("select public.queue_employer_reminders()");
+  await db.query("select public.queue_employer_reminders()");
+  await db.exec("reset role");
+  expect(
+    (
+      await db.query(
+        "select count(*)::int as n from public.notifications where user_id=$1 and event_key like 'closing:%'",
+        [employer],
+      )
+    ).rows,
+  ).toEqual([{ n: 1 }]);
+  expect(
+    (
+      await db.query(
+        "select count(*)::int as n from private.alert_outbox where user_id=$1 and event_key like 'closing:%'",
+        [employer],
+      )
+    ).rows,
+  ).toEqual([{ n: 1 }]);
+  await asUser(employer);
+  await db.query(
+    "update public.employer_notification_preferences set closing_reminders=false where user_id=$1",
+    [employer],
+  );
+  await asUser(employer, "service_role");
+  expect(
+    (await db.query<{ q: unknown[] }>("select public.claim_job_alerts() q"))
+      .rows[0].q,
+  ).toEqual([]);
+  await db.exec("reset role");
+  expect(
+    (
+      await db.query(
+        "select status from private.alert_outbox where user_id=$1",
+        [employer],
+      )
+    ).rows,
+  ).toEqual([{ status: "canceled" }]);
+});
+it("queues a verification outcome email even when candidate activity email is off", async () => {
+  await db.exec("reset role");
+  await db.query(
+    "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.example','https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe',true)",
+  );
+  await db.query(
+    "insert into private.staff_members(user_id,role) values($1,'reviewer')",
+    [otherEmployer],
+  );
+  await asUser(candidate);
+  await db.query(
+    "update public.profiles set application_email_enabled=false where id=$1",
+    [candidate],
+  );
+  const result = await db.query<{ id: string }>(
+    "select public.submit_business_verification(null,'New Example','12345678901','https://example.test','Director','Authority confirmed using the public HR contact details.','https://www.linkedin.com/company/example/','hr@example.test','+61 3 9000 0000','https://example.test/contact',true) id",
+  );
+  const id = result.rows[0].id;
+  const version = (
+    await db.query<{ updated_at: string }>(
+      "select updated_at from public.employer_verification_requests where id=$1",
+      [id],
+    )
+  ).rows[0].updated_at;
+  await asUser(otherEmployer);
+  await db.query(
+    "select public.review_trust_item('verification',$1,'approve','Registration and public HR authority independently checked',$2,true,true)",
+    [id, version],
+  );
+  await asUser(candidate);
+  expect(
+    (
+      await db.query(
+        "select title from public.notifications where event_key like 'business-verified:%'",
+      )
+    ).rows,
+  ).toEqual([{ title: "Your business is verified" }]);
+  await asUser(candidate, "service_role");
+  const emails = (
+    await db.query<{ q: { snapshot: { path: string } }[] }>(
+      "select public.claim_job_alerts() q",
+    )
+  ).rows[0].q;
+  expect(emails).toHaveLength(1);
+  expect(emails[0].snapshot.path).toBe("/account?tab=dashboard");
+});

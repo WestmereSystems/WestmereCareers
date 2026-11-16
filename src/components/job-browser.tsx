@@ -1,4 +1,6 @@
 "use client";
+import { DiscoveryEvent } from "./privacy-choice";
+import { discoveryKeyword } from "@/lib/discovery";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -73,9 +75,21 @@ export function JobBrowser({
   initialDirectOnly = false,
 }: Props) {
   const session = useSession();
+  const sampleMode = useSearchParams().get("samples") === "1";
+  const [hasSearched, setHasSearched] = useState(
+    Boolean(
+      initialKeyword.trim() ||
+      initialLocation.trim() ||
+      initialWorkMode.length ||
+      initialEmploymentType.length ||
+      initialMinSalary ||
+      initialDirectOnly,
+    ),
+  );
   const navigationQuery = useSearchParams().toString();
   const loadedKey = useRef(
     serialiseJobQuery({
+      samples: sampleMode,
       keyword: initialKeyword,
       location: initialLocation,
       workMode: initialWorkMode,
@@ -119,6 +133,7 @@ export function JobBrowser({
   const query = useMemo(
     () =>
       serialiseJobQuery({
+        samples: sampleMode,
         keyword,
         location,
         workMode,
@@ -129,6 +144,7 @@ export function JobBrowser({
         page,
       }),
     [
+      sampleMode,
       keyword,
       location,
       workMode,
@@ -368,6 +384,8 @@ export function JobBrowser({
     employmentType.length +
     Number(Boolean(minSalary)) +
     Number(directOnly);
+  const savedQuery = new URLSearchParams(query);
+  savedQuery.delete("samples");
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
   useEffect(() => {
     if (!busy && !result.error && page > totalPages) setPage(totalPages);
@@ -378,11 +396,27 @@ export function JobBrowser({
 
   return (
     <>
-      <div className="search-save-row">
-        <Link className="text-link" href={`/saved-searches?${query}`}>
-          Save this search & choose email alerts →
-        </Link>
-      </div>
+      {source === "live" && !busy && !result.error && (
+        <DiscoveryEvent
+          organisations={result.jobs.flatMap((j) =>
+            j.organisationId ? [j.organisationId] : [],
+          )}
+          kind="search"
+          keyword={discoveryKeyword(keyword)}
+        />
+      )}
+      {hasSearched && (
+        <div className="search-save-row">
+          <Link className="text-link" href={`/saved-searches?${savedQuery}`}>
+            Save this search & choose email alerts →
+          </Link>
+          {sampleMode && (
+            <span className="fineprint">
+              Saved alerts use live vacancies, not sample roles.
+            </span>
+          )}
+        </div>
+      )}
       <SearchBar
         key={`${keyword}|${location}`}
         initialKeyword={keyword}
@@ -390,6 +424,7 @@ export function JobBrowser({
         compact
         onSearch={(q, where) =>
           updateFilter(() => {
+            setHasSearched(true);
             setKeyword(q);
             setLocation(where);
           })

@@ -1,3 +1,4 @@
+import { assertBusinessTerms } from "@/lib/server/business";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
 import {
@@ -60,7 +61,25 @@ export async function GET(request: Request) {
         "APPLICATIONS_UNAVAILABLE",
       );
     // Merely loading a list must never count as opening an application.
-    return json({ applications: data || [] });
+    const applications = Array.isArray(data) ? data : [];
+    if (!applications.length) return json({ applications: [] });
+    const { data: openings, error: eventsError } = await supabase
+      .from("application_events")
+      .select("application_id,occurred_at")
+      .in(
+        "application_id",
+        applications.map((a) => a.id),
+      )
+      .eq("event_type", "opened");
+    if (eventsError)
+      throw new ApiError(503, "Recorded review activity could not be loaded.");
+    return json({
+      applications: applications.map((a) => ({
+        ...a,
+        opened_at:
+          openings?.find((e) => e.application_id === a.id)?.occurred_at || null,
+      })),
+    });
   } catch (error) {
     return apiError(error);
   }
@@ -74,7 +93,8 @@ export async function POST(request: Request) {
       z.object({ applicationId: z.uuid() }).strict(),
       2_000,
     );
-    const { supabase } = await requireSession();
+    const { supabase, business } = await requireSession();
+    assertBusinessTerms(business);
     // RPC atomically rechecks current membership, records an intentional first open and returns the private snapshot.
     const { data, error } = await supabase.rpc("open_application", {
       p_application_id: applicationId,
@@ -120,7 +140,8 @@ export async function PATCH(request: Request) {
         .strict(),
       8_000,
     );
-    const { supabase } = await requireSession();
+    const { supabase, business } = await requireSession();
+    assertBusinessTerms(business);
     const { data, error } = await supabase.rpc("update_application_stage", {
       p_application_id: body.applicationId,
       p_status: body.status,

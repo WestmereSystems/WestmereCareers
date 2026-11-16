@@ -696,7 +696,7 @@ function AccountForUser({ section }: { section: "profile" | "settings" }) {
           </Link>
         </p>
       )}
-      {!session.user.fullName && (
+      {!session.user.fullName && !session.business && (
         <p className="notice">
           Welcome. Add your name below to finish setting up your profile.
         </p>
@@ -777,40 +777,49 @@ function AccountForUser({ section }: { section: "profile" | "settings" }) {
               <h2 style={{ marginTop: 20 }}>Your account</h2>
               <p>{session.user.email}</p>
               <ChangeEmail />
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={applicationEmails}
-                  onChange={(e) => setApplicationEmails(e.target.checked)}
-                />
-                Email me application activity and employer updates
-              </label>
-              <p className="fineprint">
-                Save your profile to apply this preference. Site notifications
-                remain available. Job-alert preferences are separate.
-              </p>
-              <button
-                className="button primary"
-                disabled={busy || !loaded}
-                onClick={() => void save()}
-              >
-                Save preferences <Check size={16} />
-              </button>
-              <p>
-                {session.isPremium
-                  ? "Careers+ · Active membership"
-                  : "Free Westmere account"}
-              </p>
-              {session.isPremium ? (
-                <button className="button secondary" onClick={portal}>
-                  Manage billing and cancellation
-                  <ArrowRight size={15} />
-                </button>
-              ) : (
-                <Link href="/careers-plus" className="button secondary">
-                  Explore Careers+
-                  <ArrowRight size={15} />
-                </Link>
+              {!session.business && (
+                <>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={applicationEmails}
+                      onChange={(e) => setApplicationEmails(e.target.checked)}
+                    />
+                    Email me application activity and employer updates
+                  </label>
+                  <p className="fineprint">
+                    Save your profile to apply this preference. Site
+                    notifications remain available. Job-alert preferences are
+                    separate.
+                  </p>
+                  <button
+                    className="button primary"
+                    disabled={busy || !loaded}
+                    onClick={() => void save()}
+                  >
+                    Save preferences <Check size={16} />
+                  </button>
+                </>
+              )}
+              {!session.business && (
+                <>
+                  <p>
+                    {session.isPremium
+                      ? "Careers+ · Active membership"
+                      : "Free Westmere account"}
+                  </p>
+                  {session.isPremium ? (
+                    <button className="button secondary" onClick={portal}>
+                      Manage billing and cancellation
+                      <ArrowRight size={15} />
+                    </button>
+                  ) : (
+                    <Link href="/careers-plus" className="button secondary">
+                      Explore Careers+
+                      <ArrowRight size={15} />
+                    </Link>
+                  )}
+                </>
               )}
               <button
                 className="text-button"

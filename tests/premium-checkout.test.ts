@@ -70,3 +70,16 @@ describe("Checkout retries", () => {
     expect(remaining).toBeLessThanOrEqual(2160);
   });
 });
+
+it("rejects a business account before billing or candidate processing", async () => {
+  mocks.session.mockResolvedValue({
+    supabase: {},
+    user: { id: "business", email_confirmed_at: "2026-11-16T00:00:00Z" },
+    isPremium: true,
+    business: { kind: "employer" },
+  });
+  const response = await POST(request());
+  expect(response.status).toBe(403);
+  expect((await response.json()).code).toBe("INDIVIDUAL_ACCOUNT_REQUIRED");
+  expect(mocks.create).not.toHaveBeenCalled();
+});

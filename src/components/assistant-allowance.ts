@@ -13,7 +13,7 @@ export function useAssistantAllowance() {
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
-    if (session.loading) return;
+    if (session.loading || session.business) return;
     controller.current?.abort();
     const request = new AbortController();
     controller.current = request;
@@ -41,7 +41,12 @@ export function useAssistantAllowance() {
         );
       }
     }
-  }, [session.loading, session.user?.id, session.isPremium]);
+  }, [
+    session.loading,
+    session.user?.id,
+    session.isPremium,
+    Boolean(session.business),
+  ]);
   useEffect(() => {
     setAllowance(null);
     void refresh();

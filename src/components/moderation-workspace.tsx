@@ -189,6 +189,19 @@ function ModerationWorkspaceForUser() {
                   "Review item",
               )}
             </h2>
+            {kind === "verification" && (
+              <p className="notice">
+                Review target:{" "}
+                {new Date(
+                  Date.parse(item.created_at) + 48 * 3600000,
+                ).toLocaleString("en-AU", {
+                  timeZone: "Australia/Melbourne",
+                })}{" "}
+                Melbourne time · complete submissions. Check the public contact
+                source and applicant’s permission before contacting the
+                business.
+              </p>
+            )}
             <dl className="review-facts">
               {Object.entries(item)
                 .filter(

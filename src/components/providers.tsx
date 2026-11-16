@@ -20,7 +20,10 @@ import {
 } from "lucide-react";
 import { NotificationProvider } from "./notifications";
 
+import type { BusinessSummary } from "@/lib/business";
+
 type Profile = {
+  business?: BusinessSummary | null;
   configured: boolean;
   user: { id: string; email?: string; fullName?: string } | null;
   sampleWorkspace?: boolean;
@@ -76,6 +79,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setProfile({
+          business: data.business ?? null,
           configured: Boolean(data.configured),
           user: data.user ?? null,
           sampleWorkspace: data.sampleWorkspace === true,
@@ -89,6 +93,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setProfile((previous) => ({
           ...previous,
           user: null,
+          business: null,
           isPremium: false,
           loading: false,
           staffRole: null,
@@ -97,6 +102,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setProfile((previous) => ({
         ...previous,
         user: null,
+        business: null,
         isPremium: false,
         loading: false,
         staffRole: null,
@@ -105,6 +111,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+  useEffect(() => {
+    let last = Date.now();
+    const focus = () => {
+      if (Date.now() - last < 30000) return;
+      last = Date.now();
+      void refresh();
+    };
+    window.addEventListener("focus", focus);
+    return () => window.removeEventListener("focus", focus);
   }, [refresh]);
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -263,9 +279,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <NotificationProvider>{children}</NotificationProvider>
-      {profile.user && !profile.user.fullName && !profile.loading && (
-        <NameOnboarding onComplete={refresh} />
-      )}
+      {profile.user &&
+        !profile.business &&
+        !profile.user.fullName &&
+        !profile.loading && <NameOnboarding onComplete={refresh} />}
       {authOpen && (
         <div className="modal-backdrop" onClick={() => setAuthOpen(false)}>
           <section

@@ -1,3 +1,4 @@
+import { assertBusinessTerms } from "@/lib/server/business";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
 import {
@@ -31,6 +32,7 @@ const input = z
     skills: z.array(z.string().trim().max(100)).max(30).default([]),
     contactEmail: z.union([z.email().max(254), z.literal("")]).default(""),
     publish: z.boolean().default(false),
+    expiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
   })
   .strict()
   .refine((value) => value.salaryMax >= value.salaryMin, {
@@ -43,7 +45,7 @@ export async function GET() {
     const { data: memberships, error } = await supabase
       .from("organisation_members")
       .select(
-        "organisation_id,role,organisations(id,name,slug,is_verified,suspended_at,description,careers_email,avatar_path,banner_path)",
+        "organisation_id,role,organisations(id,name,slug,is_verified,suspended_at,description,careers_email,avatar_path,banner_path,website,social_links)",
       )
       .eq("user_id", user.id);
     if (error)
@@ -86,7 +88,8 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const body = await parseBody(request, input);
-    const { supabase, user } = await requireSession();
+    const { supabase, user, business } = await requireSession();
+    assertBusinessTerms(business);
     const { data: membership, error: membershipError } = await supabase
       .from("organisation_members")
       .select("role")
@@ -131,6 +134,7 @@ export async function POST(request: Request) {
     const values = {
       organisation_id: body.organisationId,
       title: body.title,
+      ...(body.expiresAt ? { expires_at: body.expiresAt } : {}),
       company: organisation.name,
       location: body.location,
       city: body.city,
@@ -188,7 +192,8 @@ export async function PATCH(request: Request) {
       z.object({ id: z.uuid(), action: z.enum(["submit", "close"]) }).strict(),
       1000,
     );
-    const { supabase } = await requireSession();
+    const { supabase, business } = await requireSession();
+    assertBusinessTerms(business);
     const { data, error } = await supabase
       .from("jobs")
       .update(
