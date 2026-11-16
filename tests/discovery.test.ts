@@ -78,7 +78,8 @@ describe("Discovery privacy and access", () => {
         )
       ).status,
     ).toBe(200);
-    expect(m.rpc).toHaveBeenCalledWith("read_discovery", {
+    expect(m.rpc).toHaveBeenCalledWith("read_discovery_by_region", {
+      p_region: null,
       p_org: org,
       p_days: 90,
     });

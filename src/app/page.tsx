@@ -280,7 +280,7 @@ export default function Home() {
               Get personal CV guidance and tailor your next application.
             </p>
             <Link className="button purple" href="/careers-plus">
-              Meet your application studio
+              Meet your Careers+ Studio
               <ArrowRight size={17} />
             </Link>
             <small>

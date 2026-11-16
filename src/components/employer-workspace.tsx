@@ -549,8 +549,7 @@ function EmployerWorkspaceForUser() {
           </label>
           <label className="checkbox-label">
             <input type="checkbox" name="publish" />
-            Submit for publication review (verified businesses only); otherwise
-            save a draft
+            Publish directly (verified businesses only); otherwise save a draft
           </label>
           <p className="fineprint">
             Check pay against the applicable award or agreement. Only include
@@ -576,7 +575,7 @@ function EmployerWorkspaceForUser() {
                 <p>
                   {role.location} · {role.status} ·{" "}
                   {role.publication_requested
-                    ? "Awaiting review"
+                    ? "Moderation review"
                     : role.moderation_status}
                 </p>
               </div>
@@ -595,7 +594,7 @@ function EmployerWorkspaceForUser() {
                     Reviewer feedback: {role.listing_review_feedback.message}
                   </p>
                 )}
-                {role.status !== "published" && !role.publication_requested && (
+                {role.status !== "published" && (
                   <button
                     className="button secondary"
                     onClick={async () => {
@@ -614,7 +613,7 @@ function EmployerWorkspaceForUser() {
                       }
                     }}
                   >
-                    Submit for review
+                    Publish listing
                   </button>
                 )}
                 {role.status !== "closed" && (

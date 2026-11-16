@@ -41,6 +41,8 @@ async function rawBody(request: Request) {
 
 const handled = new Set([
   "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -81,6 +83,12 @@ export async function POST(request: Request) {
         "Webhook signature is invalid.",
       );
     }
+    if (event.livemode)
+      throw new PremiumError(
+        "WRONG_MODE",
+        "Only sandbox events are accepted.",
+        400,
+      );
     const admin = premiumAdmin();
     const object = event.data.object;
     const objectId =
@@ -113,6 +121,43 @@ export async function POST(request: Request) {
       const customer =
         "customer" in object ? stripeCustomerId(object.customer) : null;
       if (customer) await reconcileCustomer(customer, event.created);
+    }
+    if (
+      [
+        "charge.dispute.created",
+        "charge.dispute.closed",
+        "charge.refunded",
+        "radar.early_fraud_warning.created",
+      ].includes(event.type)
+    ) {
+      const chargeRef = "charge" in object ? object.charge : null;
+      const chargeId =
+        typeof chargeRef === "string"
+          ? chargeRef
+          : chargeRef && typeof chargeRef === "object" && "id" in chargeRef
+            ? String(chargeRef.id)
+            : event.type === "charge.refunded"
+              ? objectId
+              : null;
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId);
+        const customer = stripeCustomerId(charge.customer);
+        if (customer) {
+          const logged = await admin.rpc("record_billing_risk", {
+            p_event: event.id,
+            p_customer: customer,
+            p_type: event.type,
+            p_object: chargeId,
+          });
+          if (logged.error)
+            throw new PremiumError(
+              "RISK_CAPTURE_FAILED",
+              "Billing review could not be recorded.",
+              503,
+            );
+          await reconcileCustomer(customer, event.created);
+        }
+      }
     }
     const { error: completeError } = await admin
       .from("stripe_events")

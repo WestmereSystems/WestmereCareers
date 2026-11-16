@@ -1,3 +1,4 @@
+import { getSessionContext } from "@/lib/server/auth";
 import { cookies } from "next/headers";
 import { createHmac } from "node:crypto";
 import { isIP } from "node:net";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       request,
       z
         .object({
+          view: z.uuid(),
           organisations: z.array(z.uuid()).min(1).max(24),
           kind: z.enum(["search", "listing", "profile"]),
           keyword: z.string().max(80).default(""),
@@ -28,6 +30,12 @@ export async function POST(request: Request) {
         .strict(),
       2500,
     );
+    const context = await getSessionContext();
+    if (context.business) return json({ recorded: false });
+    if (context.user && context.supabase) {
+      const { data: role } = await context.supabase.rpc("my_staff_role");
+      if (role) return json({ recorded: false });
+    }
     const forwarded = (request.headers.get("x-vercel-forwarded-for") || "")
       .split(",")[0]
       .trim();
@@ -36,7 +44,8 @@ export async function POST(request: Request) {
         `discovery-abuse:${new Date().toISOString().slice(0, 10)}:${isIP(forwarded) ? forwarded : "unknown"}`,
       )
       .digest("hex");
-    const { error } = await premiumAdmin().rpc("record_discovery", {
+    const { error } = await premiumAdmin().rpc("record_discovery_view", {
+      p_view: b.view,
       p_orgs: [...new Set(b.organisations)],
       p_kind: b.kind,
       p_region: discoveryRegion(request.headers, process.env.VERCEL === "1"),

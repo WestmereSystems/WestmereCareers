@@ -56,7 +56,21 @@ export async function GET(request: Request) {
         "Scheduled reconciliation is temporarily unavailable.",
         503,
       );
-    const selected = customers ?? [];
+    const { data: businessCustomers, error: businessError } = await admin
+      .from("organisation_billing_accounts")
+      .select("stripe_customer_id")
+      .order("last_reconciliation_attempt_at", {
+        ascending: true,
+        nullsFirst: true,
+      })
+      .limit(50);
+    if (businessError)
+      throw new PremiumError(
+        "RECONCILIATION_UNAVAILABLE",
+        "Business reconciliation is temporarily unavailable.",
+        503,
+      );
+    const selected = [...(customers ?? []), ...(businessCustomers ?? [])];
     const counts = {
       selected: selected.length,
       updated: 0,

@@ -18,7 +18,7 @@ const run = promisify(execFile),
   root = fileURLToPath(new URL("../", import.meta.url));
 // Copy exactly the files in each function's deployment trace, then execute the
 // compiled worker there. The complete checkout must not hide missing deployment files.
-for (const route of ["profile/cvs", "employers/assets"]) {
+for (const route of ["profile/cvs", "employers/assets", "assistant/document"]) {
   const manifest = path.join(
     root,
     `.next/server/app/api/${route}/route.js.nft.json`,

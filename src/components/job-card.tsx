@@ -80,7 +80,7 @@ export function JobCard({
         <SaveButton id={job.id} compact />
       </div>
       <div className="job-card-title">
-        <Link href={`/jobs/${job.id}`}>
+        <Link className="job-primary-link" href={`/jobs/${job.id}`}>
           <h3>{job.title}</h3>
         </Link>
         <Link

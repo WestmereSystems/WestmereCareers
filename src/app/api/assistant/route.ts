@@ -28,7 +28,8 @@ const response = (body: unknown) =>
 
 export async function GET(request: Request) {
   try {
-    const { supabase, user, isPremium, business } = await getSessionContext();
+    const { supabase, user, isPremium, business, testingAccess } =
+      await getSessionContext();
     if (supabase && user) assertIndividual(business);
     if (!supabase)
       throw new PremiumError(
@@ -37,12 +38,19 @@ export async function GET(request: Request) {
         503,
       );
     if (isPremium && user) {
-      const { data: subscription, error } = await supabase
+      const { data: paidSubscription, error } = await supabase
         .from("subscriptions")
         .select("current_period_start,current_period_end")
         .eq("user_id", user.id)
         .single();
-      if (error || !subscription)
+      const subscription =
+        testingAccess?.tier === "careers_plus"
+          ? {
+              current_period_start: testingAccess.startsAt,
+              current_period_end: testingAccess.expiresAt,
+            }
+          : paidSubscription;
+      if ((!testingAccess && error) || !subscription)
         throw new PremiumError(
           "USAGE_UNAVAILABLE",
           "Your studio allowance is temporarily unavailable.",

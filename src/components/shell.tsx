@@ -85,9 +85,18 @@ export function Header() {
             </span>
           ) : session.user ? (
             <>
-              <span className="header-greeting">
+              <span
+                className="header-greeting"
+                title={
+                  session.business?.tradingName
+                    ? `Hello, ${session.business.tradingName}`
+                    : undefined
+                }
+              >
                 Hello,{" "}
-                {session.user.fullName?.trim().split(/\s+/)[0] || "there"}
+                {session.business?.tradingName ||
+                  session.user.fullName?.trim().split(/\s+/)[0] ||
+                  "there"}
               </span>
               <NotificationPreview />
               <Link href="/account" className="button small secondary">
@@ -142,9 +151,7 @@ export function Footer() {
             <Link href="/account?tab=alerts">Saved searches & alerts</Link>
             <Link href="/account?tab=trust">My trust activity</Link>
             <Link href="/account?tab=applications">My applications</Link>
-            {!session.business && (
-              <Link href="/studio">Careers+ Application Studio</Link>
-            )}
+            {!session.business && <Link href="/studio">Careers+ Studio</Link>}
           </div>
           <div>
             <h3>A better experience</h3>

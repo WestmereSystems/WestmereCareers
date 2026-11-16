@@ -34,23 +34,29 @@ const demoCompany = (j: Job): Company => ({
   suspended_at: null,
   verified_at: null,
 });
-export async function getCompanies(page = 1) {
+export async function getCompanies(page = 1, query = "") {
+  const q = query.trim().slice(0, 80);
+  const preview = demoJobs.filter(
+    (j) => !q || j.company.toLowerCase().includes(q.toLowerCase()),
+  );
   const client = publicClient();
   if (!client)
     return {
-      companies: demoJobs.slice((page - 1) * 12, page * 12).map(demoCompany),
+      companies: preview.slice((page - 1) * 12, page * 12).map(demoCompany),
       source: "demo" as const,
-      total: demoJobs.length,
+      total: preview.length,
       error: undefined,
     };
-  const { data, error, count } = await client
+  let request = client
     .from("organisations")
     .select(
       "id,name,description,website,is_verified,suspended_at,verified_at,careers_email,avatar_path,banner_path,social_links",
       { count: "exact" },
     )
     .eq("is_verified", true)
-    .is("suspended_at", null)
+    .is("suspended_at", null);
+  if (q) request = request.ilike("name", `%${q.replace(/[\\%_]/g, "\\$&")}%`);
+  const { data, error, count } = await request
     .order("name")
     .order("id")
     .range((page - 1) * 12, page * 12 - 1);

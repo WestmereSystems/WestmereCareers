@@ -206,7 +206,7 @@ export default async function JobDetail({
               style={{ color: "var(--purple)" }}
               href={`/studio?job=${job.id}`}
             >
-              Explore Application Studio
+              Explore Careers+ Studio
               <ArrowRight size={16} />
             </Link>
           </section>

@@ -61,18 +61,31 @@ export async function getSessionContext() {
       isPremium: false,
       business: null,
     };
-  const { data: subscription } = await supabase
+  const subscriptionQuery = supabase
     .from("subscriptions")
     .select("status,current_period_start,current_period_end,price_id")
     .eq("user_id", user.id)
     .maybeSingle();
+  const [{ data: subscription }, { data: testing }] = await Promise.all([
+    subscriptionQuery,
+    supabase.rpc("my_testing_access"),
+  ]);
   // Fail closed when billing state is missing, stale or unreadable.
-  const business = await businessFor(supabase, user.id);
+  const business = await businessFor(supabase, user.id, testing || null);
+  const testingAccess = testing as {
+    tier: string;
+    startsAt: string;
+    expiresAt: string;
+  } | null;
   return {
     business,
     supabase,
     user,
-    isPremium: hasCurrentPremiumSubscription(subscription),
+    isPremium:
+      !business &&
+      (hasCurrentPremiumSubscription(subscription) ||
+        testingAccess?.tier === "careers_plus"),
+    testingAccess,
   };
 }
 

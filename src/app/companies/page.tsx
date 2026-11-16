@@ -1,3 +1,4 @@
+import { DiscoveryEvent } from "@/components/privacy-choice";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { getCompanies } from "@/lib/companies-server";
@@ -5,13 +6,16 @@ export const metadata = { title: "Explore employers" };
 export default async function Companies({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const requested = Number(params.page || 1);
   const page =
     Number.isInteger(requested) && requested > 0 ? Math.min(requested, 100) : 1;
-  const { companies, source, error, total } = await getCompanies(page);
+  const { companies, source, error, total } = await getCompanies(
+    page,
+    params.q,
+  );
   const pages = Math.max(1, Math.ceil(total / 12));
   return (
     <main id="main" className="container">
@@ -23,7 +27,28 @@ export default async function Companies({
           clearer picture of the people behind the work.
         </p>
       </div>
+      {source === "live" && (
+        <DiscoveryEvent
+          key={`${page}:${params.q || ""}`}
+          organisations={companies.map((c) => c.id)}
+          kind="search"
+          keyword={params.q ? "employer name search" : ""}
+        />
+      )}
       <div className="page-content">
+        <form className="company-search" action="/companies">
+          <label className="field-label">
+            Employer name
+            <input
+              type="search"
+              name="q"
+              maxLength={80}
+              defaultValue={params.q || ""}
+              placeholder="Find a company…"
+            />
+          </label>
+          <button className="button primary">Search employers</button>
+        </form>
         {source === "demo" && (
           <p className="demo-note">
             <span />
@@ -38,9 +63,19 @@ export default async function Companies({
         )}
         <div className="company-grid">
           {companies.map((company) => (
-            <article className="company-card" key={company.id}>
+            <article
+              className="company-card clickable-company-card"
+              key={company.id}
+            >
               <span className="company-monogram tone-0">{company.name[0]}</span>
-              <h2>{company.name}</h2>
+              <h2>
+                <Link
+                  href={`/companies/${company.id}`}
+                  className="company-primary-link"
+                >
+                  {company.name}
+                </Link>
+              </h2>
               <span className="fineprint">
                 {company.is_verified
                   ? "Business identity checked"
@@ -74,7 +109,7 @@ export default async function Companies({
             {page > 1 ? (
               <Link
                 className="button secondary small"
-                href={`/companies?page=${page - 1}`}
+                href={`/companies?page=${page - 1}&q=${encodeURIComponent(params.q || "")}`}
               >
                 <ArrowLeft size={15} />
                 Previous
@@ -88,7 +123,7 @@ export default async function Companies({
             {page < pages ? (
               <Link
                 className="button secondary small"
-                href={`/companies?page=${page + 1}`}
+                href={`/companies?page=${page + 1}&q=${encodeURIComponent(params.q || "")}`}
               >
                 Next
                 <ArrowRight size={15} />

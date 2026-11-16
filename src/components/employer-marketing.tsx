@@ -23,12 +23,15 @@ export function EmployerMarketing() {
     if (session.user && session.business)
       router.replace("/account?tab=dashboard");
   }, [session.user, session.business, router]);
-  const start = `/employers/sign-in${agency ? "?kind=agency" : ""}`;
+  const start = session.business
+    ? "/account?tab=billing"
+    : `/employers/sign-in${agency ? "?kind=agency" : ""}`;
   const plans = agency
     ? [
         {
           name: "Agency Starter",
-          price: "Contact us",
+          price: "A$199",
+          suffix: "/month",
           description: "A clear foundation for your recruitment desk.",
           features: [
             "Verified agency profile",
@@ -39,7 +42,8 @@ export function EmployerMarketing() {
         },
         {
           name: "Agency Growth",
-          price: "Contact us",
+          price: "A$399",
+          suffix: "/month",
           description: "Understand your reach as your client portfolio grows.",
           features: [
             "Everything in Agency Starter",
@@ -51,13 +55,14 @@ export function EmployerMarketing() {
         },
         {
           name: "Agency Enterprise",
-          price: "Contact us",
+          price: "A$799",
+          suffix: "/month",
           description: "An agreed service for your recruitment operation.",
           features: [
             "Everything in Agency Growth",
             "Multiple authorised organisations",
             "Organisation and role filters",
-            "A separately agreed service scope",
+            "Sandbox access to current hiring tools",
           ],
         },
       ]
@@ -76,7 +81,8 @@ export function EmployerMarketing() {
         },
         {
           name: "Growth",
-          price: "Contact us",
+          price: "A$249",
+          suffix: "/month",
           description: "Make your next chapter a bigger one.",
           features: [
             "Everything in Starter",
@@ -88,13 +94,14 @@ export function EmployerMarketing() {
         },
         {
           name: "Enterprise",
-          price: "Contact us",
+          price: "A$499",
+          suffix: "/month",
           description: "A considered fit for established hiring teams.",
           features: [
             "Everything in Growth",
             "Multiple authorised organisations",
             "Organisation and role filters",
-            "A separately agreed service scope",
+            "Sandbox access to current hiring tools",
           ],
         },
       ];
@@ -212,6 +219,10 @@ export function EmployerMarketing() {
             </button>
           </div>
         </div>
+        <p className="notice">
+          Sandbox-only monthly test prices. No real money is charged. These are
+          not approved live offers. GST collection is disabled.
+        </p>
         <div className="business-plan-grid">
           {plans.map((p) => (
             <article
@@ -248,19 +259,21 @@ export function EmployerMarketing() {
           ))}
         </div>
         <p className="fineprint">
-          Prices in Australian dollars, including any applicable GST. Business
-          subscriptions are arranged through a separately accepted order.
-          Listing allowances, duration, service scope and any additional charges
-          are confirmed before purchase. Signing in does not start a paid plan.
-          We give at least 30 days’ notice of renewal price increases.
+          Prices in Australian dollars, including any applicable GST. Sandbox
+          subscriptions use a separately confirmed checkout. Live business
+          services require an accepted order. Listing allowances, duration,
+          service scope and any additional charges are confirmed before
+          purchase. Signing in does not start a paid plan. We give at least 30
+          days’ notice of renewal price increases.
         </p>
         <div className="ad-prices">
           <div>
             <p className="eyebrow">One opportunity at a time</p>
             <h3>Prefer an individual advertisement?</h3>
             <p className="muted">
-              Choose what suits this hire. Publication follows business and
-              listing review.
+              Choose what suits this hire. Publication requires verified hiring
+              authority. Listings publish directly and notify our moderation
+              team.
             </p>
           </div>
           <div>

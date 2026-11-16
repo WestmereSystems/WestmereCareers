@@ -5,6 +5,11 @@ const config: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["pdfjs-dist"],
   outputFileTracingIncludes: {
+    "/api/assistant/document": [
+      "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/@napi-rs/canvas*/**/*",
+      "./src/lib/server/pdf-text-worker.mjs",
+    ],
     "/api/profile/cvs": [
       "./node_modules/pdfjs-dist/**/*",
       "./node_modules/@napi-rs/canvas*/**/*",

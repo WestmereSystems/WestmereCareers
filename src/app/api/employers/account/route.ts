@@ -39,6 +39,15 @@ export async function POST(request: Request) {
         409,
         "This account has Careers+. Use a separate business account, or contact support before changing its account type.",
       );
+    if (
+      !user.last_sign_in_at ||
+      Date.now() - Date.parse(user.last_sign_in_at) > 15 * 60_000
+    )
+      throw new ApiError(
+        401,
+        "Sign out and sign in again to confirm this account change. Business authority still requires independent verification.",
+        "REAUTHENTICATION_REQUIRED",
+      );
     const { error } = await premiumAdmin()
       .from("business_accounts")
       .upsert({

@@ -34,7 +34,19 @@ beforeEach(() => {
   mocks.validated.mockResolvedValue(undefined);
   mocks.list.mockResolvedValue({ data: [], error: null });
   mocks.admin.mockReturnValue({
-    from: () => ({ select: () => ({ order: () => ({ limit: mocks.list }) }) }),
+    from: (table: string) => ({
+      select: () => ({
+        order: () => ({
+          limit:
+            table === "organisation_billing_accounts"
+              ? async () => ({
+                  data: [{ stripe_customer_id: "cus_business" }],
+                  error: null,
+                })
+              : mocks.list,
+        }),
+      }),
+    }),
   });
   mocks.reconcile.mockResolvedValue(true);
 });
@@ -80,8 +92,8 @@ describe("scheduled billing reconciliation", () => {
     const response = await GET(request());
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      selected: 2,
-      updated: 2,
+      selected: 3,
+      updated: 3,
       failed: 0,
       busy: 0,
       ignored: 0,
@@ -99,9 +111,9 @@ describe("scheduled billing reconciliation", () => {
     const response = await GET(request());
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      selected: 1,
+      selected: 2,
       updated: 0,
-      failed: 1,
+      failed: 2,
       busy: 0,
       ignored: 0,
       deferred: 0,

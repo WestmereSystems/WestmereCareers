@@ -43,7 +43,8 @@ export async function POST(request: Request) {
       );
     // Same response for existing and new accounts; Supabase handles email throttling.
     return json({
-      message: "Check your inbox for your one-time sign-in code.",
+      message:
+        "Check your inbox. The newest one-time sign-in code expires after 15 minutes.",
     });
   } catch (error) {
     return apiError(error);

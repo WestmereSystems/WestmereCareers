@@ -28,6 +28,7 @@ beforeEach(() => {
       id: "owner",
       email: "owner@example.test",
       email_confirmed_at: "2026-11-16T00:00:00Z",
+      last_sign_in_at: new Date().toISOString(),
     },
     isPremium: false,
   });
@@ -49,10 +50,23 @@ describe("business onboarding", () => {
       expect.objectContaining({
         user_id: "owner",
         kind: "employer",
-        terms_version: "2026-11-16.1",
+        terms_version: "2026-11-16.2",
         terms_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     );
+  });
+  it("requires a recent sign-in before converting an existing account", async () => {
+    m.session.mockResolvedValue({
+      user: {
+        id: "owner",
+        email: "owner@example.test",
+        email_confirmed_at: "2026-11-16T00:00:00Z",
+        last_sign_in_at: new Date(Date.now() - 16 * 60_000).toISOString(),
+      },
+      isPremium: false,
+    });
+    expect((await POST(request(payload))).status).toBe(401);
+    expect(m.write).not.toHaveBeenCalled();
   });
   it("does not attach a business email different from the authenticated identity", async () => {
     expect(
@@ -70,6 +84,7 @@ describe("business onboarding", () => {
         id: "owner",
         email: "owner@example.test",
         email_confirmed_at: "2026-11-16T00:00:00Z",
+        last_sign_in_at: new Date().toISOString(),
       },
       isPremium: true,
     });

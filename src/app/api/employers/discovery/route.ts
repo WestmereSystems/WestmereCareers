@@ -30,13 +30,34 @@ export async function GET(request: Request) {
     if (!hasDiscovery(org.tier))
       throw new ApiError(
         403,
-        "Discovery is included in Growth and higher plans. Contact us to arrange a plan.",
+        "Discovery is included in Growth and higher plans. Compare plans in your Billing tab.",
         "DISCOVERY_PLAN_REQUIRED",
       );
-    const { data, error } = await premiumAdmin().rpc("read_discovery", {
-      p_org: id.data,
-      p_days: Number(days.data),
-    });
+    const region = z
+      .enum([
+        "ACT",
+        "NSW",
+        "NT",
+        "QLD",
+        "SA",
+        "TAS",
+        "VIC",
+        "WA",
+        "OTHER",
+        "UNKNOWN",
+      ])
+      .nullable()
+      .safeParse(params.get("region"));
+    if (!region.success)
+      throw new ApiError(400, "Choose a valid visitor region.");
+    const { data, error } = await premiumAdmin().rpc(
+      "read_discovery_by_region",
+      {
+        p_region: region.data,
+        p_org: id.data,
+        p_days: Number(days.data),
+      },
+    );
     if (error) throw new ApiError(503, "Discovery could not be loaded.");
     return json(data);
   } catch (e) {

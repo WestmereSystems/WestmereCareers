@@ -593,54 +593,64 @@ describe("independent trust review", () => {
         .rows,
     ).toHaveLength(0);
   });
-  it("keeps edited listings private until reviewed and rejects stale decisions", async () => {
+  it("publishes verified listings directly, notifies staff and preserves quarantine", async () => {
+    await staff();
+    await asUser(employer);
+    const inserted = (
+      await db.query<{ id: string }>(
+        "insert into public.jobs(organisation_id,title,company,location,city,state,work_mode,employment_type,salary_min,salary_max,description,status,publication_requested) values($1,'Service Designer','Fern Studio','Melbourne VIC','Melbourne','VIC','Hybrid','Full time',100000,130000,'Design thoughtful services with the team.','draft',true) returning id",
+        [org],
+      )
+    ).rows[0].id;
+    expect(
+      (
+        await db.query(
+          "select status,moderation_status,publication_requested from public.jobs where id=$1",
+          [inserted],
+        )
+      ).rows[0],
+    ).toEqual({
+      status: "published",
+      moderation_status: "approved",
+      publication_requested: false,
+    });
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select id from public.notifications where path='/account?tab=admin'",
+        )
+      ).rows.length,
+    ).toBeGreaterThan(0);
+    await staff();
+    const version = (
+      await db.query<{ v: string }>(
+        "select moderation_updated_at v from public.jobs where id=$1",
+        [inserted],
+      )
+    ).rows[0].v;
+    await db.query(
+      "select public.review_trust_item('job',$1,'quarantine','Listing safety investigation pending',$2,false,false)",
+      [inserted, version],
+    );
     await asUser(employer);
     await db.query(
-      "update public.jobs set title='Service Designer' where id=$1",
-      [job],
+      "update public.jobs set title='Edited Service Designer',status='draft',publication_requested=true where id=$1",
+      [inserted],
     );
-    const state = (
-      await db.query(
-        "select status,moderation_status,publication_requested from public.jobs where id=$1",
-        [job],
-      )
-    ).rows[0];
-    expect(state).toEqual({
-      status: "draft",
-      moderation_status: "pending",
-      publication_requested: true,
-    });
-    await expect(
-      db.query(
-        "update public.jobs set moderation_status='approved' where id=$1",
-        [job],
-      ),
-    ).rejects.toMatchObject({ code: "42501" });
+    expect(
+      (
+        await db.query(
+          "select status,moderation_status from public.jobs where id=$1",
+          [inserted],
+        )
+      ).rows[0],
+    ).toEqual({ status: "draft", moderation_status: "quarantined" });
     await asUser("", "anon");
-    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
-    await staff();
-    const queue = await db.query<{
-      q: { items: { id: string; moderation_updated_at: string }[] };
-    }>("select public.admin_queue('job') as q");
-    expect(queue.rows[0].q.items).toHaveLength(1);
-    const v = queue.rows[0].q.items[0].moderation_updated_at;
-    await expect(
-      db.query(
-        "select public.review_trust_item('job',$1,'approve','Reviewed pay and role requirements','2000-01-01',false,false)",
-        [job],
-      ),
-    ).rejects.toMatchObject({ code: "40001" });
-    await db.query(
-      "select public.review_trust_item('job',$1,'approve','Reviewed pay and role requirements',$2,false,false)",
-      [job, v],
-    );
-    await asUser("", "anon");
-    expect((await db.query("select id from public.jobs")).rows).toEqual([
-      { id: job },
-    ]);
-    await expect(
-      db.query("select * from public.listing_review_feedback"),
-    ).rejects.toMatchObject({ code: "42501" });
+    expect(
+      (await db.query("select id from public.jobs where id=$1", [inserted]))
+        .rows,
+    ).toHaveLength(0);
   });
 
   it("respects an employer's explicit private-draft choice when editing a published role", async () => {
@@ -659,7 +669,7 @@ describe("independent trust review", () => {
     ).toEqual({
       status: "draft",
       publication_requested: false,
-      moderation_status: "pending",
+      moderation_status: "approved",
     });
     await staff();
     expect(
@@ -1587,4 +1597,152 @@ it("queues a verification outcome email even when candidate activity email is of
   ).rows[0].q;
   expect(emails).toHaveLength(1);
   expect(emails[0].snapshot.path).toBe("/account?tab=dashboard");
+});
+
+describe("sandbox administration and measured discovery", () => {
+  it("restricts test assignment to scoped staff, requires designation and expires separately from paid billing", async () => {
+    await db.exec(
+      `insert into private.staff_members(user_id,role) values('${otherCandidate}','reviewer');insert into private.testing_operators(user_id) values('${otherCandidate}');`,
+    );
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "select public.manage_test_entitlement('candidate@example.test','careers_plus',7,'Dedicated synthetic account',true)",
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await asUser(otherCandidate);
+    await expect(
+      db.query(
+        "select public.manage_test_entitlement('candidate@example.test','careers_plus',7,'Dedicated synthetic account',false)",
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await db.query(
+      "select public.manage_test_entitlement('candidate@example.test','careers_plus',7,'Dedicated synthetic account',true)",
+    );
+    await asUser(candidate);
+    const access = (
+      await db.query<{ t: { tier: string } }>(
+        "select public.my_testing_access() t",
+      )
+    ).rows[0].t;
+    expect(access.tier).toBe("careers_plus");
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select stripe_subscription_id from public.subscriptions where user_id=$1",
+          [candidate],
+        )
+      ).rows[0],
+    ).toEqual({ stripe_subscription_id: "sub_candidate" });
+    await db.query(
+      "update private.test_entitlements set expires_at=now()-interval '1 second' where user_id=$1",
+      [candidate],
+    );
+    await asUser(candidate);
+    expect(
+      (await db.query("select public.my_testing_access() t")).rows[0],
+    ).toEqual({ t: null });
+  });
+  it("does not grant business authority or allow an agency test tier on an employer account", async () => {
+    await db.exec(
+      `insert into private.staff_members(user_id,role) values('${otherCandidate}','reviewer');insert into private.testing_operators(user_id) values('${otherCandidate}');`,
+    );
+    await asUser(otherCandidate);
+    await expect(
+      db.query(
+        "select public.manage_test_entitlement('employer@example.test','agency_growth',7,'Dedicated synthetic account',true)",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      db.query(
+        "select public.manage_test_entitlement('employer@example.test','careers_plus',7,'Dedicated synthetic account',true)",
+      ),
+    ).rejects.toThrow();
+  });
+  it("deduplicates the same view and suppresses small keyword-state groups", async () => {
+    await asUser("", "service_role");
+    const view = "40000000-0000-4000-8000-000000000001";
+    for (let i = 0; i < 5; i++)
+      await db.query(
+        "select public.record_discovery_view($1,array[$2::uuid],'search','VIC','designer',$3)",
+        [
+          i === 0
+            ? view
+            : `40000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
+          org,
+          "a".repeat(64),
+        ],
+      );
+    await db.query(
+      "select public.record_discovery_view($1,array[$2::uuid],'search','VIC','designer',$3)",
+      [view, org, "b".repeat(64)],
+    );
+    await db.query(
+      "select public.record_discovery_view('40000000-0000-4000-8000-000000000010',array[$1::uuid],'search','NSW','designer',$2)",
+      [org, "c".repeat(64)],
+    );
+    const data = (
+      await db.query<{ d: { keywordRegions: unknown[] } }>(
+        "select public.read_discovery_by_region($1,30,null) d",
+        [org],
+      )
+    ).rows[0].d;
+    expect(data.keywordRegions).toEqual([
+      { keyword: "designer", region: "VIC", count: 5 },
+    ]);
+    await asUser(candidate);
+    await expect(
+      db.query(
+        "select public.record_discovery_view($1,array[$2::uuid],'search','VIC','designer',$3)",
+        [view, org, "b".repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+  });
+});
+
+describe("business billing fencing", () => {
+  it("requires the current trusted customer mapping and a live service-only billing lease", async () => {
+    await db.query(
+      "insert into public.organisation_billing_accounts(organisation_id,billing_user_id,stripe_customer_id,audience) values($1,$2,'cus_business','employer')",
+      [org, employer],
+    );
+    await asUser(employer, "service_role");
+    const token = (
+      await db.query<{ t: string }>(
+        "select public.acquire_billing_lease($1) t",
+        [employer],
+      )
+    ).rows[0].t;
+    const apply = () =>
+      db.query(
+        "select public.apply_business_subscription($1,'cus_business','sub_business','price_sandbox','growth','active',now(),now()+interval '1 month',false,$2,$3)",
+        [org, employer, token],
+      );
+    await apply();
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select tier from public.business_subscriptions where organisation_id=$1",
+          [org],
+        )
+      ).rows[0],
+    ).toEqual({ tier: "growth" });
+    await db.query(
+      "update private.billing_leases set expires_at=now()-interval '1 second' where user_id=$1",
+      [employer],
+    );
+    await asUser(employer, "service_role");
+    await expect(apply()).rejects.toMatchObject({ code: "42501" });
+    await asUser(otherEmployer);
+    expect(
+      (
+        await db.query(
+          "select organisation_id from public.business_subscriptions",
+        )
+      ).rows,
+    ).toHaveLength(0);
+    await expect(apply()).rejects.toMatchObject({ code: "42501" });
+  });
 });

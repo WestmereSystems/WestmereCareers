@@ -2,7 +2,7 @@
 import { discoveryKeyword } from "@/lib/discovery";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 export function PrivacyChoice() {
   const path = usePathname();
   const [choice, setChoice] = useState<string | null>(null);
@@ -66,9 +66,10 @@ export function PrivacyChoice() {
           <p>
             Allow optional first-party analytics to help employers understand
             search appearances, listing views and broad visitor regions. We
-            record aggregate counts and recognised career keywords, without your
-            CV, account ID or precise location. A daily keyed network identifier
-            limits misuse for up to 48 hours. Your choice is stored for a year.{" "}
+            record aggregate counts and recognised career keywords by broad
+            visitor state, without your CV, account ID or precise location. A
+            daily keyed network identifier limits misuse for up to 48 hours.
+            Your choice is stored for a year.{" "}
             <Link href="/privacy#privacy-13">Read more</Link>.
           </p>
           <div className="hero-actions">
@@ -108,37 +109,44 @@ export function DiscoveryEvent({
   keyword?: string;
 }) {
   const key = JSON.stringify([...new Set(organisations)].sort());
+  const views = useRef<{ key: string; id: string; recorded: boolean } | null>(
+    null,
+  );
   useEffect(() => {
     const ids = JSON.parse(key) as string[];
     if (!ids.length) return;
-    let recorded = false;
-    const controller = new AbortController();
+    const viewKey = JSON.stringify([key, kind, keyword]);
+    if (views.current?.key !== viewKey)
+      views.current = {
+        key: viewKey,
+        id: crypto.randomUUID(),
+        recorded: false,
+      };
+    const view = views.current;
     async function record() {
       try {
         const pref = await fetch("/api/privacy/analytics", {
           cache: "no-store",
-          signal: controller.signal,
         }).then((r) => r.json());
-        if (pref.choice !== "allow" || recorded || controller.signal.aborted)
-          return;
-        recorded = true;
-        await fetch("/api/discovery", {
+        if (pref.choice !== "allow" || view.recorded) return;
+        const response = await fetch("/api/discovery", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          keepalive: true,
           body: JSON.stringify({
+            view: view.id,
             organisations: ids,
             kind,
             keyword: discoveryKeyword(keyword),
           }),
-          signal: controller.signal,
         });
+        if (response.ok) view.recorded = true;
       } catch {}
     }
     void record();
     const changed = () => void record();
     window.addEventListener("westmere-analytics-change", changed);
     return () => {
-      controller.abort();
       window.removeEventListener("westmere-analytics-change", changed);
     };
   }, [key, kind, keyword]);

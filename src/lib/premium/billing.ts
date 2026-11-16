@@ -1,4 +1,5 @@
 import "server-only";
+import { reconcileBusinessCustomer } from "./business-billing";
 import type Stripe from "stripe";
 import { isCareersPrice, selectCurrentSubscription } from "./contracts";
 import { PremiumError } from "./http";
@@ -118,6 +119,7 @@ export async function validatedCareersPrice(stripe: Stripe) {
   const priceId = careersPriceId();
   const price = await stripe.prices.retrieve(priceId);
   if (
+    price.livemode ||
     !price.active ||
     !isCareersPrice(price, priceId) ||
     price.tax_behavior !== "inclusive"
@@ -164,7 +166,7 @@ export async function reconcileCustomer(
     );
   // Unmapped Stripe customers are outside this application; never grant an
   // entitlement based on user-controllable event/customer metadata.
-  if (!mapping) return false;
+  if (!mapping) return reconcileBusinessCustomer(customerId);
   return withBillingLease(mapping.user_id, async (lease) => {
     const { error: attemptError } = await admin
       .from("billing_customers")

@@ -31,10 +31,10 @@ export function openAIClient() {
 
 export function stripeClient() {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key)
+  if (!key || !/^(sk|rk)_test_/.test(key))
     throw new PremiumError(
       "NOT_CONFIGURED",
-      "Careers+ subscriptions are not available yet.",
+      "Sandbox billing is not configured. No payment has been taken.",
       503,
     );
   // Keep each operation bounded below the 90-second per-user billing lease.

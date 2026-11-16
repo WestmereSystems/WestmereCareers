@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  cvReviewSchema,
+  cvReadinessScore,
   isCareersPrice,
   selectCurrentSubscription,
   studioRequestSchema,
@@ -183,5 +185,60 @@ describe("Careers+ subscription selection", () => {
         "price_careers",
       ),
     ).toBeNull();
+  });
+});
+
+describe("CV readiness scoring", () => {
+  it("accepts field review without requiring a vacancy", () => {
+    expect(
+      studioRequestSchema.safeParse({
+        mode: "review",
+        cv,
+        goals: "Product design",
+        consent: true,
+      }).success,
+    ).toBe(true);
+  });
+  it("sums five distinct bounded criteria and never scores an unassessable document", () => {
+    const report = cvReviewSchema.parse({
+      assessable: true,
+      intendedField: "Product design",
+      explanation: "Writing rubric only",
+      criteria: [
+        "clarity",
+        "structure",
+        "evidence",
+        "skills",
+        "roleAlignment",
+      ].map((criterion) => ({
+        criterion,
+        points: 12,
+        feedback: "Add supported examples.",
+      })),
+    });
+    expect(cvReadinessScore(report)).toBe(60);
+    expect(
+      cvReadinessScore(
+        cvReviewSchema.parse({
+          assessable: false,
+          intendedField: "",
+          explanation: "Not a CV",
+          criteria: [],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      cvReviewSchema.safeParse({
+        ...report,
+        criteria: [
+          report.criteria[0],
+          report.criteria[0],
+          ...report.criteria.slice(2),
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      cvReviewSchema.safeParse({ ...report, assessable: false }).success,
+    ).toBe(false);
   });
 });

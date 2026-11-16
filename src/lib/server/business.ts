@@ -8,6 +8,7 @@ import type { BusinessSummary } from "@/lib/business";
 export async function businessFor(
   supabase: SupabaseClient,
   userId: string,
+  testing?: { tier: string; startsAt: string; expiresAt: string } | null,
 ): Promise<BusinessSummary | null> {
   const [account, members, requests] = await Promise.all([
     supabase
@@ -46,7 +47,38 @@ export async function businessFor(
     : { data: [], error: null };
   if (plans.error)
     throw new ApiError(503, "Your business plan could not be checked.");
+  const [{ data: subscriptions, error: paidError }, { data: test }] =
+    await Promise.all([
+      ids.length
+        ? supabase
+            .from("business_subscriptions")
+            .select(
+              "organisation_id,tier,status,current_period_start,current_period_end",
+            )
+            .in("organisation_id", ids)
+        : Promise.resolve({ data: [], error: null }),
+      testing === undefined
+        ? supabase.rpc("my_testing_access")
+        : Promise.resolve({ data: testing }),
+    ]);
+  if (paidError)
+    throw new ApiError(503, "Your business plan could not be checked.");
   const organisations = (members.data || []).map((m) => {
+    const paid = subscriptions?.find(
+      (p) =>
+        p.organisation_id === m.organisation_id &&
+        ["active", "trialing"].includes(p.status) &&
+        Date.parse(p.current_period_start) <= Date.now() &&
+        Date.parse(p.current_period_end) > Date.now(),
+    );
+    const testTier =
+      m.role === "owner" &&
+      test?.tier !== "careers_plus" &&
+      (test?.tier?.startsWith("agency_")
+        ? account.data?.kind === "agency"
+        : account.data?.kind === "employer")
+        ? test?.tier
+        : null;
     const org = m.organisations as unknown as {
       name: string;
       is_verified: boolean;
@@ -58,8 +90,11 @@ export async function businessFor(
       role: m.role,
       verified: org.is_verified && !org.suspended_at,
       tier:
+        testTier ||
+        paid?.tier ||
         plans.data?.find((p) => p.organisation_id === m.organisation_id)
-          ?.tier ?? null,
+          ?.tier ||
+        null,
     };
   });
   return {

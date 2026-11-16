@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { CareerChat, CvScore, extractCv } from "./career-assistant";
+import { useNotice, individualNotice } from "./notices";
 import { AnimatedArt } from "./animated-art";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -64,6 +66,7 @@ async function billingRedirect(
 
 export function CareersPlus() {
   const session = useSession();
+  const notify = useNotice();
   return <CareersPlusContent key={session.user?.id ?? "signedout"} />;
 }
 function CheckoutNotice({
@@ -75,6 +78,7 @@ function CheckoutNotice({
 }) {
   const status = useSearchParams().get("checkout");
   const session = useSession();
+  const notify = useNotice();
   useEffect(() => {
     onComplete(status === "complete");
     if (status === "complete") {
@@ -91,6 +95,7 @@ function CheckoutNotice({
 }
 function CareersPlusContent() {
   const session = useSession();
+  const notify = useNotice();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [checkoutComplete, setCheckoutComplete] = useState(false);
@@ -102,6 +107,10 @@ function CareersPlusContent() {
     [],
   );
   async function billing(kind: "checkout" | "portal") {
+    if (session.business) {
+      notify(individualNotice);
+      return;
+    }
     if (billingRequest.current) return;
     if (!session.configured) {
       setMessage(
@@ -281,7 +290,7 @@ function CareersPlusContent() {
         <aside className="price-card">
           <span className="badge purple">
             <Sparkles size={13} />
-            Your application studio
+            Your Careers+ Studio
           </span>
           <div className="price-value">
             A$25<span> / month</span>
@@ -473,6 +482,7 @@ function StudioEditor({
   initialNotice,
 }: StudioProps) {
   const session = useSession();
+  const notify = useNotice();
   const { allowance, refresh: refreshAllowance } = useAssistantAllowance();
   const owner = useRef(session.user?.id);
   const initialJob = jobs.find((job) => job.id === initialJobId);
@@ -545,40 +555,31 @@ function StudioEditor({
     const file = event.target.files?.[0];
     if (!file) return;
     setMessage("");
-    if (!file.name.toLowerCase().endsWith(".txt")) {
-      setMessage(
-        "Please choose a plain-text .txt file, or paste the text from your CV.",
-      );
-      event.target.value = "";
-      return;
-    }
-    if (file.size > 60000) {
-      setMessage("Please choose a text file smaller than 60 KB.");
+    if (session.business) {
+      notify(individualNotice);
       event.target.value = "";
       return;
     }
     try {
-      const text = await file.text();
-      if (text.length > 24000) {
-        setMessage(
-          "Keep your CV under 24,000 characters. You can paste the sections you want help with.",
-        );
-      } else {
-        setCv(text);
-        setConsent(false);
-        setMessage(
-          "Your text file is in the editor. It has not been sent to OpenAI.",
-        );
-      }
-    } catch {
-      setMessage(
-        "We couldn’t read that file. You can paste your CV text instead.",
-      );
+      const parsed = await extractCv(file);
+      setCv(parsed.text);
+      setConsent(false);
+      setMessage(parsed.message);
+    } catch (e) {
+      notify({
+        title: "CV upload",
+        message: e instanceof Error ? e.message : "Try another document.",
+        tone: "error",
+      });
     }
     event.target.value = "";
   }
   async function generate(event: React.FormEvent) {
     event.preventDefault();
+    if (session.business) {
+      notify(individualNotice);
+      return;
+    }
     setMessage("");
     if (studioRequest.current) return;
     if (!session.configured) {
@@ -590,9 +591,13 @@ function StudioEditor({
     if (allowance?.remaining === 0) {
       if (!session.user) session.openAuth();
       else
-        setMessage(
-          "Your available reviews are used. Explore Careers+ or return when your billing-period allowance renews. Your existing review stays here.",
-        );
+        notify({
+          title: "Your available reviews are used",
+          message:
+            "Explore Careers+ or return when your billing-period allowance renews. Your existing review stays here.",
+          href: "/careers-plus",
+          label: "Explore Careers+",
+        });
       return;
     }
     if (cv.trim().length < 100) {
@@ -694,25 +699,15 @@ function StudioEditor({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  if (session.business)
-    return (
-      <main id="main" className="container page-content">
-        <div className="panel">
-          <h1>Careers+ is for individual accounts.</h1>
-          <p>
-            Use a separate personal account for your CV and career preparation.
-            Your business account’s hiring tools are available in your
-            dashboard.
-          </p>
-          <Link href="/account?tab=dashboard" className="button primary">
-            Open your hiring dashboard
-          </Link>
-        </div>
-      </main>
-    );
+  useEffect(() => {
+    if (!session.loading && session.business) notify(individualNotice);
+  }, [session.loading, session.business, notify]);
   return (
     <main id="main">
-      <section className="page-intro container">
+      <section className="page-intro container studio-intro">
+        <span className="studio-floating-icon" aria-hidden="true">
+          <Sparkles size={45} />
+        </span>
         <div className="plus-wordmark" style={{ marginBottom: 18 }}>
           <Sparkles size={18} />
           Careers<span>+</span>
@@ -748,14 +743,25 @@ function StudioEditor({
             </p>
           </div>
         )}
+        <section className="studio-chat-panel panel dot-surface">
+          <h2>Talk through your next step.</h2>
+          <CareerChat
+            job={initialJob}
+            cv={cv}
+            onCvChange={setCv}
+            onResult={showResult}
+          />
+        </section>
+        {result && <CvScore result={result} />}
         <div className="studio-layout">
           <section className="panel" aria-labelledby="studio-editor-heading">
             <h2 id="studio-editor-heading">
               A little context goes a long way.
             </h2>
             <p className="fineprint">
-              Paste your CV or bring a plain-text file. This editor keeps its
-              contents in this page’s memory; refresh or leave to clear it.
+              Paste your CV or upload a PDF, DOCX or text file. This editor
+              keeps its contents in this page’s memory; refresh or leave to
+              clear it.
             </p>
             <form onSubmit={generate} style={{ marginTop: 22 }}>
               <label className="field-label" htmlFor="studio-mode">
@@ -789,13 +795,13 @@ function StudioEditor({
                     size={13}
                     style={{ marginRight: 5, verticalAlign: "middle" }}
                   />
-                  Import .txt
+                  Upload CV
                 </button>
               </div>
               <input
                 ref={uploadRef}
                 type="file"
-                accept=".txt,text/plain"
+                accept=".pdf,.docx,.txt"
                 onChange={(event) => void readFile(event)}
                 aria-label="Import a plain-text CV"
                 hidden

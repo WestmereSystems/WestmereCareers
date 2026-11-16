@@ -11,6 +11,7 @@ import {
   Search,
   ShieldCheck,
   Settings2,
+  CreditCard,
   ArrowUpRight,
 } from "lucide-react";
 import { Building2, BarChart3, Compass } from "lucide-react";
@@ -28,6 +29,7 @@ import { Account, Applications, SavedRoles } from "./candidate-pages";
 import { SavedSearches } from "./saved-searches";
 import { TrustActivity } from "./trust-workflows";
 import { Notifications } from "./notifications";
+import { Billing, TestingControls } from "./billing";
 import { useSession } from "./providers";
 
 const candidateTabs = [
@@ -37,6 +39,7 @@ const candidateTabs = [
   { id: "alerts", label: "Searches & alerts", icon: Search },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "trust", label: "Trust activity", icon: ShieldCheck },
+  { id: "billing", label: "Billing", icon: CreditCard },
   { id: "settings", label: "Settings", icon: Settings2 },
 ] as const;
 
@@ -50,6 +53,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
         { id: "discovery", label: "Discovery", icon: Compass },
         { id: "notifications", label: "Notifications", icon: Bell },
         { id: "verification", label: "Verification", icon: ShieldCheck },
+        { id: "billing", label: "Billing", icon: CreditCard },
         { id: "settings", label: "Settings", icon: Settings2 },
       ]
     : [...candidateTabs];
@@ -99,6 +103,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
         </div>
         <div className="profile-heading-actions">
           <span className={session.isPremium ? "badge premium-badge" : "badge"}>
+            {session.testingAccess ? "Testing · " : ""}
             {business
               ? business.tier
                 ? `${planLabels[business.tier]} · Business account`
@@ -109,7 +114,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
           </span>
           {session.user && !business ? (
             <Link href="/studio" className="text-link">
-              Careers+ Application Studio <ArrowUpRight size={16} />
+              Careers+ Studio <ArrowUpRight size={16} />
             </Link>
           ) : !session.user ? (
             <button className="button primary" onClick={session.openAuth}>
@@ -190,9 +195,11 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
                 {session.staffRole}. Access is checked on the server.
               </p>
             </div>
+            <TestingControls />
             <ModerationWorkspace />
           </>
         )}
+        {active === "billing" && <Billing />}
         {active === "settings" && <Account section="settings" />}
         {active === "applications" && <Applications />}
         {active === "saved" && <SavedRoles source={source} />}

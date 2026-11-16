@@ -3,7 +3,8 @@ import { apiError, json } from "@/lib/server/http";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    const { supabase, user, isPremium, business } = await getSessionContext();
+    const { supabase, user, isPremium, business, testingAccess } =
+      await getSessionContext();
     const [staff, profile, sample] =
       user && supabase
         ? await Promise.all([
@@ -27,6 +28,7 @@ export async function GET() {
         : null,
       business,
       isPremium,
+      testingAccess,
       sampleWorkspace: sample?.data === true,
       staffRole: staff?.error ? null : (staff?.data ?? null),
     });

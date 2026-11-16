@@ -16,6 +16,7 @@ export type BusinessSummary = {
 };
 export const planLabels: Record<string, string> = {
   starter: "Starter",
+  agency_starter: "Agency Starter",
   growth: "Growth",
   enterprise: "Enterprise",
   agency_growth: "Agency Growth",

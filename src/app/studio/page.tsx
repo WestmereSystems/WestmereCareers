@@ -3,7 +3,7 @@ import { ApplicationStudio } from "@/components/premium-pages";
 import { getPublicJob, getPublicJobs } from "@/lib/jobs-server";
 
 export const metadata: Metadata = {
-  title: "Application Studio — Careers+",
+  title: "Careers+ Studio",
   description:
     "Bring your experience into focus. Improve your CV or tailor it to the next role you want to apply for.",
 };

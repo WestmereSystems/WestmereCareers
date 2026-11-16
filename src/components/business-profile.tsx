@@ -182,10 +182,13 @@ export function EmployerDiscovery() {
     ) || [];
   const [org, setOrg] = useState(orgs[0]?.id || "");
   const [days, setDays] = useState("30");
+  const [region, setRegion] = useState("");
+  const [revision, setRevision] = useState(0);
   type Data = {
     totals: { kind: string; count: number }[];
     regions: { region: string; count: number }[];
     keywords: { keyword: string; count: number }[];
+    keywordRegions: { keyword: string; region: string; count: number }[];
   };
   const [data, setData] = useState<Data | null>(null);
   const [message, setMessage] = useState("");
@@ -198,10 +201,13 @@ export function EmployerDiscovery() {
     setLoading(true);
     setData(null);
     setMessage("");
-    fetch(`/api/employers/discovery?organisation=${org}&days=${days}`, {
-      cache: "no-store",
-      signal: c.signal,
-    })
+    fetch(
+      `/api/employers/discovery?organisation=${org}&days=${days}${region ? `&region=${region}` : ""}`,
+      {
+        cache: "no-store",
+        signal: c.signal,
+      },
+    )
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
@@ -214,7 +220,7 @@ export function EmployerDiscovery() {
         if (!c.signal.aborted) setLoading(false);
       });
     return () => c.abort();
-  }, [org, days, enabled]);
+  }, [org, days, enabled, region, revision]);
   return (
     <section className="panel dot-surface">
       <div className="section-heading">
@@ -247,6 +253,37 @@ export function EmployerDiscovery() {
           </select>
         </label>
       </div>
+      <div className="insights-filters">
+        <label className="field-label">
+          Visitor state
+          <select value={region} onChange={(e) => setRegion(e.target.value)}>
+            <option value="">All regions</option>
+            {[
+              "ACT",
+              "NSW",
+              "NT",
+              "QLD",
+              "SA",
+              "TAS",
+              "VIC",
+              "WA",
+              "OTHER",
+              "UNKNOWN",
+            ].map((r) => (
+              <option key={r} value={r}>
+                {r === "OTHER" ? "Overseas" : r === "UNKNOWN" ? "Unknown" : r}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="button secondary small"
+          disabled={loading}
+          onClick={() => setRevision((v) => v + 1)}
+        >
+          Refresh insights
+        </button>
+      </div>
       {!enabled ? (
         <div className="discovery-upgrade">
           <Compass size={32} />
@@ -256,15 +293,9 @@ export function EmployerDiscovery() {
             included in Growth and higher plans. Your private application
             dashboard remains available in Dashboard.
           </p>
-          <Link href="/employers#plans" className="button secondary">
+          <Link href="/account?tab=billing" className="button secondary">
             Compare business plans
           </Link>
-          <a
-            href="mailto:support@westmere.com.au?subject=Westmere%20business%20plans"
-            className="text-link"
-          >
-            Contact us about Growth →
-          </a>
         </div>
       ) : loading ? (
         <DashboardSkeleton />
@@ -281,7 +312,7 @@ export function EmployerDiscovery() {
                 <strong>
                   {data.totals
                     .find((t) => t.kind === k)
-                    ?.count.toLocaleString() || "0"}
+                    ?.count.toLocaleString() || (region ? "<5 or none" : "0")}
                 </strong>
               </div>
             ))}
@@ -314,14 +345,42 @@ export function EmployerDiscovery() {
               </p>
             </div>
           </div>
+          <div className="keyword-state-table">
+            <h3>Search queries by visitor state</h3>
+            {data.keywordRegions?.length ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Recognised query</th>
+                    <th>Visitor region</th>
+                    <th>Appearances</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.keywordRegions.map((k) => (
+                    <tr key={`${k.keyword}:${k.region}`}>
+                      <td>{k.keyword}</td>
+                      <td>{k.region}</td>
+                      <td>{k.count.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="muted">
+                Each query and state combination needs at least five recorded
+                events before it appears.
+              </p>
+            )}
+          </div>
           <p className="fineprint">
             Recorded events from visitors who allow optional analytics. These
             are event counts, not unique people, complete traffic totals or
-            evidence of an application. Repeated visits can count again. Known
-            automated traffic is excluded where identifiable. Search appearances
-            count a displayed results page containing your business’s roles.
-            Keywords use recognised career terms only. Aggregates are retained
-            for up to 12 months.
+            evidence of an application. Repeated visits can count again.
+            Business accounts, staff and known automated traffic is excluded
+            where identifiable. Search appearances count a displayed results
+            page containing your business’s roles. Keywords use recognised
+            career terms only. Aggregates are retained for up to 12 months.
           </p>
         </>
       ) : null}

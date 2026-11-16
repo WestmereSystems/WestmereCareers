@@ -174,8 +174,10 @@ export async function POST(request: Request) {
       {
         job: data,
         message: body.publish
-          ? "Your role was submitted for independent review. It will appear after approval."
-          : "Your role draft is saved. Edited listings need review before publication.",
+          ? data.status === "published"
+            ? "Your role is published. The moderation team has been notified."
+            : "This listing remains restricted by moderation. Review its feedback before requesting reinstatement."
+          : "Your private role draft is saved.",
       },
       201,
     );
@@ -214,7 +216,9 @@ export async function PATCH(request: Request) {
       message:
         body.action === "close"
           ? "Listing closed."
-          : "Listing submitted for independent review.",
+          : data.status === "published"
+            ? "Listing published. The moderation team has been notified."
+            : "This listing is restricted by moderation. Review its feedback.",
     });
   } catch (error) {
     return apiError(error);

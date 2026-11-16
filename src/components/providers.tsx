@@ -18,11 +18,15 @@ import {
   Moon,
   Monitor,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { NoticeProvider, useNotice } from "./notices";
 import { NotificationProvider } from "./notifications";
 
 import type { BusinessSummary } from "@/lib/business";
 
 type Profile = {
+  testingAccess?: { tier: string; startsAt: string; expiresAt: string } | null;
   business?: BusinessSummary | null;
   configured: boolean;
   user: { id: string; email?: string; fullName?: string } | null;
@@ -51,6 +55,15 @@ const SessionContext = createContext<SessionValue>({
 export const useSession = () => useContext(SessionContext);
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <NoticeProvider>
+      <SessionProviders>{children}</SessionProviders>
+    </NoticeProvider>
+  );
+}
+function SessionProviders({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const notify = useNotice();
   const [profile, setProfile] = useState<Profile>({
     configured: false,
     user: null,
@@ -205,10 +218,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
       if (r.ok) {
         setCodeSent(true);
-        setStatus("Enter the newest sign-in code from your inbox.");
-      } else setStatus(data.error || "Sign-in is temporarily unavailable.");
+        notify({
+          title: "Your sign-in code is on its way",
+          message:
+            "Enter the newest code from your inbox. It expires 15 minutes after it is issued and can only be used once. Request a new code if it expires.",
+        });
+      } else {
+        setStatus("");
+        notify({
+          title: codeSent
+            ? "That code could not be verified"
+            : "Sign-in unavailable",
+          message: data.error || "Please try again.",
+          tone: "error",
+        });
+      }
     } catch {
-      setStatus("We couldn’t connect. Please try again.");
+      notify({
+        title: "Sign-in unavailable",
+        message: "We couldn’t connect. Please try again.",
+        tone: "error",
+      });
     } finally {
       setBusy(false);
     }
@@ -281,13 +311,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <NotificationProvider>{children}</NotificationProvider>
       {profile.user &&
         !profile.business &&
+        !pathname.startsWith("/employers") &&
         !profile.user.fullName &&
         !profile.loading && <NameOnboarding onComplete={refresh} />}
       {authOpen && (
         <div className="modal-backdrop" onClick={() => setAuthOpen(false)}>
           <section
             ref={modalRef}
-            className="modal"
+            className="modal personal-auth-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="signin-title"
@@ -303,46 +334,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <div className="round-icon">
               <Mail size={24} />
             </div>
+            <div className="auth-audience-switch">
+              <span>For job seekers</span>
+              <Link
+                href="/employers/sign-in"
+                onClick={() => setAuthOpen(false)}
+              >
+                Hiring? Employer sign in →
+              </Link>
+            </div>
             <p className="eyebrow">A little closer to your next chapter</p>
-            <h2 id="signin-title">Welcome to Westmere.</h2>
+            <h2 id="signin-title">Your next chapter starts here.</h2>
             <p className="muted">
-              Sign in with a one-time email code. No password to remember.
+              Sign up or log in to save roles, follow your applications and
+              prepare with Careers+.
             </p>
-            {!codeSent && (
-              <>
-                <div className="auth-options">
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy || !authProviders.google}
-                    onClick={() => void oauth("google")}
-                  >
-                    Continue with Google
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy || !authProviders.azure}
-                    onClick={() => void oauth("azure")}
-                  >
-                    Continue with Microsoft
-                  </button>
-                </div>
-                <p className="fineprint">
-                  {!authProviders.google && !authProviders.azure
-                    ? "Google and Microsoft sign-in are being connected. Email codes are available below."
-                    : "Or use your email"}
-                </p>
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={newAccount}
-                    onChange={(e) => setNewAccount(e.target.checked)}
-                  />
-                  I’m creating a new account
-                </label>
-              </>
-            )}
+            <div className="personal-auth-benefits dot-surface">
+              <h3>Make more of your next move.</h3>
+              <p>
+                Keep your saved roles, private CV and application activity
+                together.
+              </p>
+              <ul>
+                <li>Follow recorded application progress</li>
+                <li>Save roles and choose job alerts</li>
+                <li>Prepare your CV with optional Careers+ tools</li>
+              </ul>
+            </div>
             <form onSubmit={signIn}>
               {newAccount && !codeSent && (
                 <label className="field-label">
@@ -398,6 +416,41 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 <ArrowRight size={17} />
               </button>
             </form>
+            {!codeSent && (
+              <>
+                <div className="auth-options">
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || !authProviders.google}
+                    onClick={() => void oauth("google")}
+                  >
+                    Continue with Google
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || !authProviders.azure}
+                    onClick={() => void oauth("azure")}
+                  >
+                    Continue with Microsoft
+                  </button>
+                </div>
+                <p className="fineprint">
+                  {!authProviders.google && !authProviders.azure
+                    ? "Google and Microsoft sign-in are being connected. Use an email code above."
+                    : "Or continue with a provider"}
+                </p>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={newAccount}
+                    onChange={(e) => setNewAccount(e.target.checked)}
+                  />
+                  I’m creating a new account
+                </label>
+              </>
+            )}
             {codeSent && (
               <button
                 className="text-button"
@@ -413,7 +466,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </button>
             )}
             {status && (
-              <p role="status" className="message">
+              <p role="alert" className="message error-message">
                 {status}
               </p>
             )}

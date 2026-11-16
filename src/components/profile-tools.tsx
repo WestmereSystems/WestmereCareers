@@ -238,7 +238,7 @@ export function CVHistory({ onSelect }: { onSelect: (text: string) => void }) {
         </p>
       )}
       <Link href="/studio" className="text-link">
-        Open Application Studio →
+        Open Careers+ Studio →
       </Link>
     </section>
   );

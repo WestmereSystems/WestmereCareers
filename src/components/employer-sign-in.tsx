@@ -3,10 +3,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRight, Building2, CheckCircle2, Mail } from "lucide-react";
+import { useNotice } from "./notices";
 import { useSession } from "./providers";
 import { sendJson } from "./trust-workflows";
 import type { BusinessKind } from "@/lib/business";
 export function EmployerSignIn() {
+  const notify = useNotice();
   const session = useSession(),
     params = useSearchParams();
   const [kind, setKind] = useState<BusinessKind>(
@@ -59,11 +61,19 @@ export function EmployerSignIn() {
       }
       await sendJson("/api/auth/sign-in", { email });
       setSent(true);
-      setMessage("Enter the newest sign-in code from your business inbox.");
+      notify({
+        title: "Check your business inbox",
+        message:
+          "Your newest sign-in code expires after 15 minutes and can only be used once. Enter it here, or request a new one if it expires.",
+      });
     } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : "Sign-in could not be completed.",
-      );
+      notify({
+        title: sent
+          ? "That code could not be verified"
+          : "Business sign-in unavailable",
+        message: e instanceof Error ? e.message : "Please try again.",
+        tone: "error",
+      });
     } finally {
       setBusy(false);
     }
@@ -83,9 +93,11 @@ export function EmployerSignIn() {
       });
       window.location.assign(d.url);
     } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : "Provider sign-in is unavailable.",
-      );
+      notify({
+        title: "Provider sign-in unavailable",
+        message: e instanceof Error ? e.message : "Please use an email code.",
+        tone: "error",
+      });
       setBusy(false);
     }
   }
@@ -205,6 +217,16 @@ export function EmployerSignIn() {
               .
             </span>
           </label>
+          {session.user && !session.business && (
+            <p className="notice">
+              You are signed in with {session.user.email}. Continuing changes
+              this account to a business account. Your existing private
+              candidate records are not shared with a company, and a personal
+              card is not transferred. Use a separate email if you want to
+              retain a personal account. Business verification is still required
+              before hiring.
+            </p>
+          )}
           <button className="button primary" disabled={busy || session.loading}>
             <Mail size={18} />
             {busy
