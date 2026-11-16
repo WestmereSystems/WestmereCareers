@@ -1378,6 +1378,14 @@ describe("business account and discovery boundaries", () => {
       ),
     ).rejects.toThrow();
     args[10] = true;
+    const missing = [...args];
+    missing[6] = null;
+    await expect(
+      db.query(
+        "select public.submit_business_verification($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+        missing,
+      ),
+    ).rejects.toThrow();
     await db.query(
       "select public.submit_business_verification($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
       args,
