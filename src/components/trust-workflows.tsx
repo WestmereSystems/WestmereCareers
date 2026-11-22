@@ -5,6 +5,7 @@ import { VerificationProgress } from "./verification-progress";
 import { useSession } from "./providers";
 import { PageControls } from "./page-controls";
 import type { BusinessRegistrationCapacity } from "@/lib/business-registration";
+import { ConfirmAction } from "./confirm-action";
 
 export async function sendJson(url: string, body: unknown, method = "POST") {
   const r = await fetch(url, {
@@ -40,6 +41,8 @@ type Verification = {
   status: string;
   applicant_message: string;
   created_at: string;
+  updated_at: string;
+  withdrawn_at?: string;
 };
 export function VerificationIntake() {
   const session = useSession();
@@ -62,6 +65,7 @@ export function VerificationIntake() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [newBusiness, setNewBusiness] = useState(false);
+  const [withdrawing, setWithdrawing] = useState<Verification | null>(null);
   useEffect(() => {
     setNewBusiness(
       new URLSearchParams(window.location.search).get("newBusiness") === "1",
@@ -197,9 +201,25 @@ export function VerificationIntake() {
           {r.applicant_message && (
             <p className="notice">Reviewer feedback: {r.applicant_message}</p>
           )}
+          {r.status === "withdrawn" && (
+            <p className="notice">
+              You withdrew this verification application. It is no longer
+              awaiting review. You can submit a new application when you are
+              ready.
+            </p>
+          )}
           {r.status === "needs_information" && (
             <button className="button secondary" onClick={() => setEditing(r)}>
               Add requested information
+            </button>
+          )}
+          {["pending", "needs_information"].includes(r.status) && (
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setWithdrawing(r)}
+            >
+              Withdraw verification application
             </button>
           )}
         </article>
@@ -212,6 +232,36 @@ export function VerificationIntake() {
         onPage={setPage}
         busy={loading}
       />
+      {withdrawing && (
+        <ConfirmAction
+          title="Withdraw this verification application?"
+          confirmLabel="Withdraw application"
+          businessName={withdrawing.business_name}
+          onClose={() => setWithdrawing(null)}
+          onConfirm={async () => {
+            const d = await sendJson(
+              "/api/employers/verification",
+              {
+                id: withdrawing.id,
+                version: withdrawing.updated_at,
+                confirmation: true,
+              },
+              "PATCH",
+            );
+            if (editing?.id === withdrawing.id) setEditing(null);
+            setMessage(d.message);
+            await load();
+            await session.refresh();
+          }}
+        >
+          <p>
+            This stops review of <strong>{withdrawing.business_name}</strong>{" "}
+            and releases its pending business slot. It does not delete your
+            account, erase the review history or cancel a subscription. An
+            application that has already been decided cannot be withdrawn.
+          </p>
+        </ConfirmAction>
+      )}
       {capacity && (
         <p className="notice" role="status">
           Business allowance: {capacity.used} of {capacity.limit} slots used (

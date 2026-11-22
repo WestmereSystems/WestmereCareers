@@ -130,3 +130,34 @@ export async function POST(request: Request) {
     return apiError(error);
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    assertSameOrigin(request);
+    const body = await parseBody(
+      request,
+      z
+        .object({
+          id: z.uuid(),
+          version: z.iso.datetime({ offset: true }),
+          reason: z.string().trim().max(1000).default(""),
+          confirmation: z.literal(true),
+        })
+        .strict(),
+      2000,
+    );
+    const { supabase } = await requireSession();
+    const result = await supabase.rpc("withdraw_business_verification", {
+      p_id: body.id,
+      p_version: body.version,
+      p_reason: body.reason,
+    });
+    checkRpc(result.error);
+    return json({
+      message:
+        "Verification application withdrawn. It is no longer awaiting review and its business slot is available again. Your account remains open.",
+    });
+  } catch (error) {
+    return apiError(error);
+  }
+}

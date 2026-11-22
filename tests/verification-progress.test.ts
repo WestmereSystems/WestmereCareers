@@ -8,6 +8,7 @@ it("presents verification as three accessible steps with distinct approved and r
     "needs_information",
     "approved",
     "rejected",
+    "withdrawn",
   ]) {
     const html = renderToStaticMarkup(
       createElement(VerificationProgress, { status }),
@@ -19,9 +20,11 @@ it("presents verification as three accessible steps with distinct approved and r
         ? "Approved"
         : status === "rejected"
           ? "Not approved"
-          : status === "needs_information"
-            ? "More information needed"
-            : "Under review",
+          : status === "withdrawn"
+            ? "Withdrawn"
+            : status === "needs_information"
+              ? "More information needed"
+              : "Under review",
     );
     if (status === "rejected") expect(html).toContain("is-rejected");
   }
