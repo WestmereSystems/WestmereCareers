@@ -4,7 +4,7 @@ Prepared 15 November 2026 for Louis Jacques Pierre Sibul, trading as Westmere Sy
 
 The companion [privacy policy](privacy-policy.md) covers the implemented feature set and explains which communications and reporting features are still unavailable. It is a researched publication draft, not a certification of legal compliance. Its commitments must match the production service and actual business procedures. An Australian privacy solicitor should review the final policy and the applicability decisions below before public recruitment or paid launch.
 
-The owner supplied the sole-trader identity, ABN, support@westmere.com.au and postal address used in the policy. The ABN passes the ABR's published format checksum, but the individual registration record could not be retrieved during preparation. Confirm the current registration details against the ABR before publication. Do not describe Westmere Systems as an incorporated company or invent an ACN.
+The owner supplied the sole-trader identity, ABN, hello@westmere.com.au and postal address used in the policy. The ABN passes the ABR's published format checksum, but the individual registration record could not be retrieved during preparation. Confirm the current registration details against the ABR before publication. Do not describe Westmere Systems as an incorporated company or invent an ACN.
 
 ## 1 Required publication decisions and controls
 
@@ -38,7 +38,7 @@ Record APP 8 reasonable steps and any applicable Victorian health-information tr
 
 ### Make privacy requests work
 
-Monitor support@westmere.com.au and assign a responsible person with a backup. Test receipt of a privacy request. Establish a secure manual access, correction, export and deletion process before accepting live candidates. A self-service button is not itself a statutory requirement, but the repository explicitly records the full workflow as unfinished.
+Monitor hello@westmere.com.au and assign a responsible person with a backup. Test receipt of a privacy request. Establish a secure manual access, correction, export and deletion process before accepting live candidates. A self-service button is not itself a statutory requirement, but the repository explicitly records the full workflow as unfinished.
 
 Cover Auth users and sessions, profiles, submitted snapshots, events, reports, memberships, billing references, usage records, relevant provider records and backups. Verify identity proportionately and export only the requesting person's information. Revoke relevant sessions as part of account closure; deleting an Auth user alone does not invalidate all existing access tokens. Coordinate subscription cancellation without making access or correction contingent on payment.
 
@@ -116,7 +116,7 @@ These periods are recommendations, not legally prescribed recruitment retention 
 
 Use these alongside the full policy after final publication and adapt to the actual screen. Do not combine the optional marketing choice with sign-in, application sharing or AI consent. These notices must identify the same operator and link the full policy; the operator line can be shown once prominently above a form group.
 
-**Operator line:** Westmere Careers is operated by Louis Jacques Pierre Sibul, trading as Westmere Systems, ABN 16 319 214 903. Privacy enquiries: support@westmere.com.au. Our Privacy Policy explains access, correction, complaints and overseas handling, including Japan, the United States, Singapore and any additional countries confirmed in the final policy.
+**Operator line:** Westmere Careers is operated by Louis Jacques Pierre Sibul, trading as Westmere Systems, ABN 16 319 214 903. Privacy enquiries: hello@westmere.com.au. Our Privacy Policy explains access, correction, complaints and overseas handling, including Japan, the United States, Singapore and any additional countries confirmed in the final policy.
 
 ### Sign in
 
@@ -150,7 +150,7 @@ We record your account/application reference, employer, dates and response infor
 
 ### Future optional marketing
 
-**Optional unticked choice:** Email me [SPECIFY NEWSLETTER OR JOB-ALERT CATEGORY] from Westmere Careers. This is optional. I can unsubscribe at any time using the email link or support@westmere.com.au. See the Privacy Policy for how my email and preferences are handled overseas.
+**Optional unticked choice:** Email me [SPECIFY NEWSLETTER OR JOB-ALERT CATEGORY] from Westmere Careers. This is optional. I can unsubscribe at any time using the email link or hello@westmere.com.au. See the Privacy Policy for how my email and preferences are handled overseas.
 
 Do not add this control until consent evidence, sending rules and unsubscribe/suppression processing are operational. A subscription checkbox cannot, on its own, authorise introducing a new provider or unrelated message category.
 

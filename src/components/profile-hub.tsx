@@ -200,10 +200,10 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
           <strong>Your founding workspace is private.</strong>
           <p>
             Your business details and vacancies are not public during founding
-            onboarding. After verification, prepare them and record permission
-            in Launch preparation. Only Westmere can release approved content
-            after the public marketplace opens. Subscribing does not publish
-            your content.
+            onboarding. Job publication is enabled by default; you can opt out
+            in Launch preparation. Business profiles need separate permission.
+            Only Westmere can release approved content after the public
+            marketplace opens. Subscribing does not publish your content.
           </p>
         </div>
       )}

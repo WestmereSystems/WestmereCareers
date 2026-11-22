@@ -96,8 +96,9 @@ export function FoundingHome() {
           </p>
           <p>
             During the founding phase, your business profile and vacancies
-            remain private. You can record publication permission in Launch
-            preparation; Westmere reviews and releases content separately after
+            remain private. Job publication is enabled by default, and you can
+            opt out in Launch preparation. Business profiles need separate
+            permission. Westmere reviews and releases content separately after
             the public marketplace opens.
           </p>
           <div className="hero-actions">

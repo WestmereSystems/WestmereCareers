@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       request,
       z
         .object({
-          kind: z.enum(["profile", "job"]),
+          kind: z.enum(["profile", "job", "business_jobs"]),
           id: z.uuid(),
           action: z.enum(["consent", "withdraw"]),
         })
@@ -35,9 +35,13 @@ export async function POST(request: Request) {
     checkRpc(error);
     return json({
       message:
-        b.action === "consent"
-          ? "Permission saved. Westmere will review this content before releasing it publicly."
-          : "Permission withdrawn. This content is private.",
+        b.kind === "business_jobs"
+          ? b.action === "consent"
+            ? "Job publication enabled for this business. Current and future listings are eligible for launch review; Westmere must release each approved listing."
+            : "Job publication disabled for this business. Its current and future listings remain private until you enable publication again and Westmere reviews and releases them."
+          : b.action === "consent"
+            ? "Permission saved. Westmere will review this content before releasing it publicly."
+            : "Permission withdrawn. This content is private.",
     });
   } catch (e) {
     return apiError(e);

@@ -750,7 +750,7 @@ function AccountForUser({ section }: { section: "profile" | "settings" }) {
             </section>
             <p className="fineprint" style={{ marginTop: 20 }}>
               Request an account copy, correction or deletion through our
-              Privacy Officer at support@westmere.com.au. See our privacy policy
+              Privacy Officer at hello@westmere.com.au. See our privacy policy
               for details.
             </p>
           </div>

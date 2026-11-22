@@ -7,7 +7,7 @@
 
 Westmere Careers is a service operated by **Louis Jacques Pierre Sibul**, a sole trader trading as **Westmere Systems**, **ABN 16 319 214 903** (Westmere, we, us or our).
 
-Our Privacy Officer is responsible for privacy enquiries, requests and complaints. Email **[support@westmere.com.au](mailto:support@westmere.com.au)** or write to **Privacy Officer, Westmere Systems, Suite 1208/530 Little Collins Street, Melbourne, VIC 3000, Australia**. You can also request an alternative accessible way to communicate with us.
+Our Privacy Officer is responsible for privacy enquiries, requests and complaints. Email **[hello@westmere.com.au](mailto:hello@westmere.com.au)** or write to **Privacy Officer, Westmere Systems, Suite 1208/530 Little Collins Street, Melbourne, VIC 3000, Australia**. You can also request an alternative accessible way to communicate with us.
 
 This policy explains how we collect, hold, use and disclose personal information when you browse our website, use a candidate or employer account, prepare or submit applications, use Careers+ and Application Studio, report an application experience, or contact us. It also explains overseas processing, your choices and how to raise a concern.
 

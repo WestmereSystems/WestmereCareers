@@ -83,7 +83,7 @@ export default function Terms() {
         </section>
       ))}
       <p>
-        <a href="mailto:support@westmere.com.au">Contact Westmere</a> ·{" "}
+        <a href="mailto:hello@westmere.com.au">Contact Westmere</a> ·{" "}
         <Link href="/privacy">Privacy Policy</Link> ·{" "}
         <Link href="/transparency">Our transparency promise</Link>
       </p>

@@ -18,6 +18,9 @@ type Content = {
   review?: string;
   status?: string;
   organisationId?: string;
+  jobsPublicationEnabled?: boolean;
+  publicationAllowed?: boolean;
+  publicationOptedOut?: boolean;
   consentedAt: string | null;
   releasedAt: string | null;
 };
@@ -123,8 +126,10 @@ export function FoundingAdmin() {
               ? "Released publicly"
               : item.releasedAt
                 ? "Private · public launch is closed"
-                : item.consentedAt
-                  ? "Owner permission recorded · awaiting release"
+                : (kind === "job" ? item.publicationAllowed : item.consentedAt)
+                  ? kind === "job" && !item.consentedAt
+                    ? "Default job publication enabled · awaiting release"
+                    : "Owner permission recorded · awaiting release"
                   : "Private · owner permission required"}
           {item.review && ` · Review: ${item.review}`}
         </p>
@@ -171,7 +176,9 @@ export function FoundingAdmin() {
                 busy ||
                 (!item.releasedAt && !data?.marketplaceOpen) ||
                 (!item.releasedAt &&
-                  (!item.consentedAt ||
+                  (!(kind === "job"
+                    ? item.publicationAllowed
+                    : item.consentedAt) ||
                     (kind === "profile" && !item.verified) ||
                     (kind === "job" && item.review !== "approved")))
               }
@@ -375,7 +382,15 @@ export function FoundingContent() {
       const d = await sendJson("/api/employers/launch", {
         id: item.id,
         kind,
-        action: item.consentedAt ? "withdraw" : "consent",
+        action: (
+          kind === "business_jobs"
+            ? item.jobsPublicationEnabled
+            : kind === "job"
+              ? item.publicationAllowed
+              : item.consentedAt
+        )
+          ? "withdraw"
+          : "consent",
       });
       setMessage(d.message);
       await load();
@@ -396,14 +411,16 @@ export function FoundingContent() {
             ? "Released publicly"
             : item.releasedAt
               ? "Private · public launch is closed"
-              : item.consentedAt
-                ? "Permission recorded · awaiting Westmere’s release"
-                : "Private · no publication permission recorded"}
+              : (kind === "job" ? item.publicationAllowed : item.consentedAt)
+                ? kind === "job" && !item.consentedAt
+                  ? "Default publication enabled · awaiting Westmere’s release"
+                  : "Permission recorded · awaiting Westmere’s release"
+                : "Private · publication permission is off"}
           {item.review && ` · Review: ${item.review}`}
         </p>
         {item.owner && (
           <form onSubmit={(e) => void change(e, item, kind)}>
-            {!item.consentedAt && (
+            {!(kind === "job" ? item.publicationAllowed : item.consentedAt) && (
               <label className="checkbox-label">
                 <input type="checkbox" required />I approve this{" "}
                 {kind === "job" ? "vacancy" : "business profile"} for public
@@ -411,8 +428,17 @@ export function FoundingContent() {
                 review. I have checked it is current and authorised.
               </label>
             )}
-            <button className="button secondary small" disabled={busy}>
-              {item.consentedAt
+            <button
+              className="button secondary small"
+              disabled={
+                busy ||
+                item.test ||
+                (kind === "job" &&
+                  !data?.profiles.find((p) => p.id === item.organisationId)
+                    ?.jobsPublicationEnabled)
+              }
+            >
+              {(kind === "job" ? item.publicationAllowed : item.consentedAt)
                 ? "Withdraw permission and make private"
                 : "Approve for launch"}
             </button>
@@ -428,10 +454,13 @@ export function FoundingContent() {
       <p>
         Your business details and vacancies are not public during founding
         onboarding. They can only become public after the public marketplace
-        opens, you give permission and Westmere releases them. Business
-        verification and subscriptions do not publish them. Editing content
-        withdraws its publication permission, so approve the updated version
-        here.
+        opens and Westmere releases them. Job publication is enabled by default
+        for each business. Turn it off below to keep that business’s current and
+        future job listings private. You can also withdraw permission for an
+        individual vacancy. Business profiles still need separate approval.
+        Verification, payment and this preference do not bypass listing review.
+        Content or document changes require Westmere to release the updated
+        version again; your opt-out remains in place.
       </p>
       {message && (
         <p role="status" className="notice">
@@ -440,6 +469,37 @@ export function FoundingContent() {
       )}
       {data ? (
         <>
+          <h3>Job publication at launch</h3>
+          {data.profiles.map((item) => (
+            <article key={item.id}>
+              <h4>{item.name}</h4>
+              <p>
+                {item.test
+                  ? "Test business · public release remains blocked"
+                  : item.jobsPublicationEnabled
+                    ? "On by default · reviewed listings may be published after launch and Westmere’s release."
+                    : "Off · this business’s current and future job listings remain private."}
+              </p>
+              {item.owner ? (
+                <form onSubmit={(e) => void change(e, item, "business_jobs")}>
+                  <button
+                    type="submit"
+                    className="button secondary small"
+                    disabled={busy || item.test}
+                    aria-label={`${item.jobsPublicationEnabled ? "Turn off" : "Enable"} job publication for ${item.name}`}
+                  >
+                    {item.jobsPublicationEnabled
+                      ? "Turn off job publication"
+                      : "Enable job publication"}
+                  </button>
+                </form>
+              ) : (
+                <p className="fineprint">
+                  The business owner can change this preference.
+                </p>
+              )}
+            </article>
+          ))}
           <h3>Business profiles</h3>
           {list(data.profiles, "profile")}
           <h3>Vacancies</h3>
