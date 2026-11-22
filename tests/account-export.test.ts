@@ -179,3 +179,32 @@ it("includes an owned business's current branding assets without leaking source 
   expect(strFromU8(zip[json.files[0].archive])).toBe("test");
   expect(json.data.ownedBusinesses[0]).not.toHaveProperty("avatar_path");
 });
+
+it("preserves user-provided answer keys while removing only internal file metadata paths", async () => {
+  const data = {
+    ...sections(),
+    applications: [
+      {
+        answers: {
+          storage_path: "An answer supplied by this user",
+          avatar_path: "Another answer",
+        },
+      },
+    ],
+  };
+  m.rpc.mockImplementation(async (name, args) => ({
+    error: null,
+    data:
+      name === "account_export_control" && args.p_action === "begin"
+        ? fileId
+        : name === "account_information_export"
+          ? data
+          : {},
+  }));
+  const zip = unzipSync(await accountArchive(user));
+  const json = JSON.parse(strFromU8(zip["account.json"]));
+  expect(json.data.applications[0].answers.storage_path).toBe(
+    "An answer supplied by this user",
+  );
+  expect(json.data.cvs[0]).not.toHaveProperty("storage_path");
+});

@@ -159,13 +159,18 @@ export async function accountArchive(user: User) {
     );
     if (failure) throw failure;
     // Source bucket paths are not capabilities and are not needed in the downloaded account data.
-    const clean = JSON.parse(
-      JSON.stringify(sections, (key, value) =>
-        ["storage_path", "avatar_path", "banner_path"].includes(key)
-          ? undefined
-          : value,
-      ),
-    );
+    const clean = structuredClone(sections);
+    for (const category of [
+      "cvs",
+      "applicationUploads",
+      "applicationDocuments",
+      "listingDocuments",
+    ])
+      for (const row of clean[category] || []) delete row.storage_path;
+    for (const row of clean.ownedBusinesses || []) {
+      delete row.avatar_path;
+      delete row.banner_path;
+    }
     archive["account.json"] = strToU8(
       JSON.stringify(
         {
