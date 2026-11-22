@@ -160,30 +160,30 @@ export async function recoveryFiles(name: string) {
 }
 export async function verifyRecoveryRoundTrip() {
   const id = randomUUID(),
-    path = `__recovery_verify__/${id}.png`,
+    path = `__recovery_verify__/${id}.txt`,
     copy = `verification/${id}.wmr`,
     db = premiumAdmin();
-  // A disposable valid PNG has no document or business record and is never public.
-  const bytes = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1cAAAAASUVORK5CYII=",
-    "base64",
-  );
+  // Inert synthetic text uses a MIME type allowed by the private document bucket.
+  // It has no document or account record and is removed after the restore check.
+  const bytes = Buffer.from("Westmere private file recovery verification.\n");
   let created = false;
   try {
     const initial = await db.storage
-      .from("employer-assets")
-      .upload(path, bytes, { contentType: "image/png", upsert: false });
+      .from("candidate-documents")
+      .upload(path, bytes, { contentType: "text/plain", upsert: false });
     if (initial.error) throw new Error("RESTORE_CHECK_UPLOAD_FAILED");
     created = true;
     await writeCopy(copy, bytes, 1);
-    const removed = await db.storage.from("employer-assets").remove([path]);
+    const removed = await db.storage.from("candidate-documents").remove([path]);
     if (removed.error) throw new Error("RESTORE_CHECK_DELETE_FAILED");
     const restored = openRecovery(await readCopy(copy), key(), copy);
     const upload = await db.storage
-      .from("employer-assets")
-      .upload(path, restored, { contentType: "image/png", upsert: false });
+      .from("candidate-documents")
+      .upload(path, restored, { contentType: "text/plain", upsert: false });
     if (upload.error) throw new Error("RESTORE_CHECK_FAILED");
-    const downloaded = await db.storage.from("employer-assets").download(path);
+    const downloaded = await db.storage
+      .from("candidate-documents")
+      .download(path);
     if (
       downloaded.error ||
       !downloaded.data ||
@@ -194,7 +194,9 @@ export async function verifyRecoveryRoundTrip() {
     return true;
   } finally {
     if (created) {
-      const cleanup = await db.storage.from("employer-assets").remove([path]);
+      const cleanup = await db.storage
+        .from("candidate-documents")
+        .remove([path]);
       if (cleanup.error) throw new Error("RESTORE_CHECK_CLEANUP_FAILED");
     }
     await del(copy).catch(() => undefined);
@@ -208,11 +210,13 @@ export async function backupFiles(actor?: string) {
     throw new ApiError(409, "A file backup is already running.");
   const deadline = performance.now() + 240000,
     db = premiumAdmin();
+  let stage = "inventory";
   try {
     const inventory = await db.rpc("file_recovery_inventory");
     if (inventory.error) throw new Error("INVENTORY_UNAVAILABLE");
     const sources = z.array(source).max(5000).parse(inventory.data),
       files: Manifest["files"] = [];
+    stage = "file_copies";
     for (const [i, s] of sources.entries()) {
       if (performance.now() > deadline) throw new Error("RECOVERY_RUN_TIMEOUT");
       const original = await db.storage.from(s.bucket).download(s.path);
@@ -229,6 +233,7 @@ export async function backupFiles(actor?: string) {
         sha256: recoveryHash(bytes),
       });
     }
+    stage = "restore_check";
     const verified = await verifyRecoveryRoundTrip(),
       name = `manifests/${Date.now()}-${token}.wmr`;
     const manifest: Manifest = {
@@ -237,6 +242,7 @@ export async function backupFiles(actor?: string) {
       createdAt: new Date().toISOString(),
       files,
     };
+    stage = "manifest";
     await writeCopy(name, Buffer.from(JSON.stringify(manifest)), 30);
     const result = {
       name,
@@ -244,10 +250,12 @@ export async function backupFiles(actor?: string) {
       bytes: files.reduce((n, f) => n + f.bytes, 0),
       verified,
     };
+    stage = "record_completion";
     await control("complete", result, token, actor);
     return result;
   } catch {
-    await control("fail", {}, token, actor).catch(() => undefined);
+    console.error("File recovery incomplete", { stage });
+    await control("fail", { stage }, token, actor).catch(() => undefined);
     throw new ApiError(
       503,
       "File backup did not complete. Previous recovery copies remain available.",

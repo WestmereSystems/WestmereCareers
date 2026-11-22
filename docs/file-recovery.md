@@ -2,7 +2,7 @@
 
 Westmere keeps encrypted file copies in the private `westmere-file-recovery` Vercel Blob store in Sydney, separate from the Supabase project in Tokyo. It covers candidate documents, application attachments and employer assets. It does not publish these files or include their contents in GitHub.
 
-The daily Vercel Cron runs at 15:10 UTC. The protected administrator can also use **Profile → Admin → File recovery → Back up files now**. A complete snapshot is published only after every encrypted file is downloaded again and its decrypted checksum matches. A disposable private PNG is also deleted and restored to test the complete storage path. The probe has no account, vacancy or document record and is removed afterwards.
+The daily Vercel Cron runs at 15:10 UTC. The protected administrator can also use **Profile → Admin → File recovery → Back up files now**. A complete snapshot is published only after every encrypted file is downloaded again and its decrypted checksum matches. Disposable private synthetic text is also deleted and restored to test the complete storage path, using the document bucket's allowed MIME type. The probe has no account, vacancy or document record and is removed afterwards.
 
 Snapshots are retained for 30 days. Their encrypted file objects expire within 31 days, allowing a margin around manifest expiry. File names and manifests are encrypted using AES-256-GCM with fresh nonces and authenticated destination paths. The v1 encryption key and storage token are production-only Vercel Secrets. Keep `FILE_RECOVERY_KEY_V1` available while v1 copies exist: replacing it makes those copies unreadable. Do not copy it into source, screenshots or support messages.
 
