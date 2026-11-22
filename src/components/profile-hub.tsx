@@ -42,6 +42,8 @@ import { PrivacyChoice } from "./privacy-choice";
 import { MarketingPreferences } from "./marketing-preferences";
 import { MarketingAdministration } from "./marketing-administration";
 import { FileRecovery } from "./file-recovery";
+import { AccountPrivacy } from "./account-privacy";
+import { AccountPrivacyAdministration } from "./account-privacy-administration";
 
 const candidateTabs = [
   { id: "profile", label: "Profile", icon: UserRound },
@@ -265,6 +267,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
             <FoundingAdmin />
             <MarketingAdministration />
             {session.staffRole === "admin" && <FileRecovery />}
+            <AccountPrivacyAdministration />
             <ModerationWorkspace />
             <TestingControls />
             <AdminActivity />
@@ -276,6 +279,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
         {active === "settings" && (
           <>
             <Account section="settings" />
+            <AccountPrivacy />
             <MarketingPreferences />
             <PrivacyChoice inline />
             {business && <BusinessTypeChanges />}

@@ -270,70 +270,80 @@ function ModerationWorkspaceForUser() {
                   )}
               </>
             )}
-            {kind !== "audit" && (
-              <form
-                className="form-stack"
-                onSubmit={(e) => void decide(e, item)}
-              >
-                <label className="field-label">
-                  Decision
-                  <select name="action">
-                    {actions[kind].map((a) => (
-                      <option key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {kind === "verification" && (
-                  <>
-                    <label className="field-label">
-                      Approve business as
-                      <select
-                        name="approvedKind"
-                        defaultValue={String(item.requested_kind || "employer")}
-                      >
-                        <option value="employer">Employer</option>
-                        <option value="agency">Recruitment agency</option>
-                      </select>
-                      <span className="fineprint">
-                        The reviewed type determines Billing plans. Existing
-                        paid accounts require the account-type correction
-                        workflow.
-                      </span>
-                    </label>
-                    {Boolean(item.shared_abn) && (
-                      <label className="checkbox-label">
-                        <input name="sharedAbn" type="checkbox" />I checked that
-                        this is a separate authorised trading brand sharing an
-                        existing ABN. This approval grants no access to the
-                        other business.
-                      </label>
-                    )}
-                    <label className="checkbox-label">
-                      <input name="identity" type="checkbox" />I independently
-                      checked the registered business identity and ABN
-                    </label>
-                    <label className="checkbox-label">
-                      <input name="ownership" type="checkbox" />I independently
-                      confirmed this applicant’s authority to hire
-                    </label>
-                  </>
-                )}
-                <label className="field-label">
-                  Reason and evidence summary
-                  <textarea
-                    name="reason"
-                    minLength={10}
-                    maxLength={2000}
-                    required
-                  />
-                </label>
-                <button className="button primary" disabled={busy}>
-                  Record decision
-                </button>
-              </form>
+            {kind === "verification" && item.status === "withdrawn" && (
+              <p className="notice">
+                The applicant withdrew this verification request. It is retained
+                as history and cannot be approved.
+              </p>
             )}
+            {kind !== "audit" &&
+              !(kind === "verification" && item.status === "withdrawn") && (
+                <form
+                  className="form-stack"
+                  onSubmit={(e) => void decide(e, item)}
+                >
+                  <label className="field-label">
+                    Decision
+                    <select name="action">
+                      {actions[kind].map((a) => (
+                        <option key={a} value={a}>
+                          {a.replaceAll("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {kind === "verification" && (
+                    <>
+                      <label className="field-label">
+                        Approve business as
+                        <select
+                          name="approvedKind"
+                          defaultValue={String(
+                            item.requested_kind || "employer",
+                          )}
+                        >
+                          <option value="employer">Employer</option>
+                          <option value="agency">Recruitment agency</option>
+                        </select>
+                        <span className="fineprint">
+                          The reviewed type determines Billing plans. Existing
+                          paid accounts require the account-type correction
+                          workflow.
+                        </span>
+                      </label>
+                      {Boolean(item.shared_abn) && (
+                        <label className="checkbox-label">
+                          <input name="sharedAbn" type="checkbox" />I checked
+                          that this is a separate authorised trading brand
+                          sharing an existing ABN. This approval grants no
+                          access to the other business.
+                        </label>
+                      )}
+                      <label className="checkbox-label">
+                        <input name="identity" type="checkbox" />I independently
+                        checked the registered business identity and ABN
+                      </label>
+                      <label className="checkbox-label">
+                        <input name="ownership" type="checkbox" />I
+                        independently confirmed this applicant’s authority to
+                        hire
+                      </label>
+                    </>
+                  )}
+                  <label className="field-label">
+                    Reason and evidence summary
+                    <textarea
+                      name="reason"
+                      minLength={10}
+                      maxLength={2000}
+                      required
+                    />
+                  </label>
+                  <button className="button primary" disabled={busy}>
+                    Record decision
+                  </button>
+                </form>
+              )}
           </details>
         ))}
       </section>
