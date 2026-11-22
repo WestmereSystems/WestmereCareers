@@ -1,6 +1,7 @@
+import { companyPath } from "@/lib/company-urls";
 import { DiscoveryEvent } from "@/components/privacy-choice";
 import Link from "next/link";
-import { RichText } from "@/components/rich-text";
+import { ListingCopy } from "@/components/listing-copy";
 import { ContactEmail } from "@/components/contact-email";
 import { notFound } from "next/navigation";
 import {
@@ -9,6 +10,7 @@ import {
   MapPin,
   Clock3,
   ShieldCheck,
+  CircleCheck,
   Sparkles,
 } from "lucide-react";
 import { getPublicJob } from "@/lib/jobs-server";
@@ -50,7 +52,11 @@ export default async function JobDetail({
   return (
     <main id="main" className="container page-intro page-content">
       {source === "live" && job.organisationId && (
-        <DiscoveryEvent organisations={[job.organisationId]} kind="listing" />
+        <DiscoveryEvent
+          organisations={[job.organisationId]}
+          kind="listing"
+          jobId={job.id}
+        />
       )}
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <Link href="/jobs">
@@ -67,6 +73,13 @@ export default async function JobDetail({
           are not sent.
         </p>
       )}
+      {job.isTest && (
+        <p className="notice">
+          Fictional test role · No employment opportunity. Use synthetic
+          application details and documents only. Applications are recorded for
+          testing.
+        </p>
+      )}
       <div className="detail-grid">
         <article className="detail-card">
           {job.bannerPath && job.organisationId && (
@@ -81,7 +94,7 @@ export default async function JobDetail({
           <div className="detail-header">
             <Link
               className="company-monogram tone-0"
-              href={`/companies/${job.organisationId ?? job.id}`}
+              href={companyPath(job.company, job.organisationId ?? job.id)}
             >
               {job.avatarPath && job.organisationId ? (
                 <img
@@ -96,10 +109,27 @@ export default async function JobDetail({
             </Link>
             <div>
               <h1>{job.title}</h1>
+              {job.advertiserKind === "agency" && (
+                <p className="notice">
+                  <strong>Recruitment agency advertisement</strong>
+                  <br />
+                  Hiring for {job.clientLabel || "Confidential client"}. Your
+                  application is first received by {job.company}.
+                  {job.recruitmentLead &&
+                    ` Recruitment lead: ${job.recruitmentLead}.`}
+                </p>
+              )}
               <Link
                 className="company-name"
-                href={`/companies/${job.organisationId ?? job.id}`}
+                href={companyPath(job.company, job.organisationId ?? job.id)}
               >
+                {job.isVerified && !job.isTest && (
+                  <CircleCheck
+                    size={17}
+                    className="business-verified-icon"
+                    aria-label="Business identity and hiring authority checked"
+                  />
+                )}
                 {job.company} ↗
               </Link>
             </div>
@@ -121,26 +151,7 @@ export default async function JobDetail({
             ))}
           </div>
           <ResponseInsight job={job} />
-          <h2>A little about the opportunity</h2>
-          <RichText text={job.description} />
-          <h2>What you’ll be doing</h2>
-          <ul>
-            {job.responsibilities.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <h2>What you’ll bring</h2>
-          <ul>
-            {job.requirements.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <h2>Skills for this role</h2>
-          <div className="job-tags">
-            {job.skills.map((skill) => (
-              <span key={skill}>{skill}</span>
-            ))}
-          </div>
+          <ListingCopy job={job} />
           {job.documents?.length ? (
             <section>
               <h2>More about this role</h2>
@@ -185,7 +196,7 @@ export default async function JobDetail({
             </p>
             <Link
               className="text-link"
-              href={`/companies/${job.organisationId ?? job.id}`}
+              href={companyPath(job.company, job.organisationId ?? job.id)}
             >
               Explore employer profile
               <ArrowRight size={16} />

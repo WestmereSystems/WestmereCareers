@@ -1,4 +1,10 @@
 import { authOptions } from "@/lib/server/auth-options";
+import { marketplaceOpen } from "@/lib/server/launch";
+import {
+  businessOAuthCookie,
+  businessOAuthCookiePath,
+  createBusinessOAuthIntent,
+} from "@/lib/server/business-oauth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -18,16 +24,29 @@ export async function POST(request: Request) {
       z
         .object({
           provider: z.enum(["google", "azure"]),
-          intent: z.literal("employer").optional(),
+          intent: z.enum(["employer", "agency"]).optional(),
+          // Accept earlier clients without using their supplied email for OAuth.
+          email: z.string().max(254).optional(),
         })
         .strict(),
       1000,
     );
+    const open = await marketplaceOpen();
+    if (!open) {
+      if (!intent)
+        throw new ApiError(
+          403,
+          "Applicant registration opens at public launch.",
+          "FOUNDING_ACCESS_REQUIRED",
+        );
+    }
     if (!(await authOptions())[provider])
       throw new ApiError(
         503,
         "This provider is still being connected. Use an email code to continue.",
       );
+    const businessFlow =
+      !open && intent ? createBusinessOAuthIntent(intent, provider) : null;
     const supabase = await createClient();
     if (!supabase) throw new ApiError(503, "Sign-in is being prepared.");
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -35,6 +54,7 @@ export async function POST(request: Request) {
       options: {
         redirectTo: `${applicationOrigin(request)}/auth/callback`,
         skipBrowserRedirect: true,
+        ...(intent ? { queryParams: { prompt: "select_account" } } : {}),
         ...(provider === "azure" ? { scopes: "email" } : {}),
       },
     });
@@ -49,8 +69,16 @@ export async function POST(request: Request) {
       throw new ApiError(503, "Sign-in is temporarily unavailable.");
     const response = json({ url: data.url });
     const store = response.cookies;
+    if (businessFlow)
+      store.set(businessOAuthCookie, businessFlow, {
+        httpOnly: true,
+        secure: new URL(request.url).protocol === "https:",
+        sameSite: "lax",
+        path: businessOAuthCookiePath,
+        maxAge: 900,
+      });
     if (intent)
-      store.set("wm-business-intent", "employer", {
+      store.set("wm-business-intent", intent, {
         httpOnly: true,
         secure: new URL(request.url).protocol === "https:",
         sameSite: "lax",

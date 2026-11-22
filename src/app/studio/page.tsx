@@ -1,3 +1,6 @@
+import { marketplaceOpen } from "@/lib/server/launch";
+import { getSessionContext } from "@/lib/server/auth";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ApplicationStudio } from "@/components/premium-pages";
 import { getPublicJob, getPublicJobs } from "@/lib/jobs-server";
@@ -13,6 +16,10 @@ export default async function StudioPage({
 }: {
   searchParams: Promise<{ job?: string | string[] }>;
 }) {
+  if (!(await marketplaceOpen())) {
+    const session = await getSessionContext().catch(() => null);
+    if (!session?.user) redirect("/launch/careers-plus");
+  }
   const { job } = await searchParams;
   const requestedJobId =
     typeof job === "string" && job.length <= 100 ? job : undefined;
@@ -36,7 +43,7 @@ export default async function StudioPage({
     selection?.error ||
     inventory.error ||
     (requestedJobId && !selected
-      ? "The selected role is unavailable. You can choose another role or paste a job description below."
+      ? "The selected role is unavailable. Paste a job description into Westmere Assistant, or choose a position type in Role Strength below."
       : undefined);
   return (
     <ApplicationStudio

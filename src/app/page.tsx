@@ -1,6 +1,10 @@
+import { HomeHero } from "@/components/home-hero";
+import { marketplaceOpen } from "@/lib/server/launch";
+import { redirect } from "next/navigation";
 import { AustraliaIcon } from "@/components/australia-icon";
 import { Suspense } from "react";
 import { FeaturedRoles } from "@/components/featured-roles";
+import { HomeRolesSkeleton } from "@/components/home-skeleton";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -17,82 +21,38 @@ import {
 import { SearchBar } from "@/components/search-bar";
 import { getPublicJobs } from "@/lib/jobs-server";
 
-export default function Home() {
+export default async function Home() {
+  if (!(await marketplaceOpen())) redirect("/launch");
   return (
     <main id="main" className="home-page">
-      <section className="hero">
-        <div className="container">
-          <div className="hero-grid">
-            <div className="hero-copy">
-              <div className="eyebrow">
-                <span className="small-sun" />A little clarity. A world of
-                possibility.
-              </div>
-              <h1>
-                Your career
-                <br />
-                starts with{" "}
-                <span>
-                  Westmere<span className="heading-dot">.</span>
-                </span>
-              </h1>
-              <p>
-                Good work is out there. Find your next chapter with clear pay,
-                honest insights, and a little more confidence.
-              </p>
-              <div className="hero-reassurance">
-                <span>
-                  <Check size={15} />
-                  Free to find your next role
-                </span>
-                <span>
-                  <AustraliaIcon />
-                  Made for Australia
-                </span>
-              </div>
-            </div>
-            <figure className="hero-photograph">
-              <img
-                src="/images/focused-work.webp"
-                alt="A person considering their next step while working on a laptop"
-                width="1260"
-                height="840"
-                fetchPriority="high"
-              />
-              <figcaption>
-                Good work is out there.
-                <small>Your career starts with Westmere.</small>
-              </figcaption>
-            </figure>
-          </div>
-          <SearchBar />
-          <div className="popular-searches">
-            <span>Somewhere to start</span>
-            {[
-              "Design",
-              "Technology",
-              "Customer success",
-              "Healthcare",
-              "All opportunities",
-            ].map((x, i) => (
-              <Link
-                key={x}
-                href={i === 4 ? "/jobs" : `/jobs?q=${encodeURIComponent(x)}`}
-              >
-                {x}
-                <ArrowUpRight size={12} />
-              </Link>
-            ))}
-          </div>
+      <HomeHero>
+        <SearchBar />
+        <div className="popular-searches">
+          <span>Somewhere to start</span>
+          {[
+            "Design",
+            "Technology",
+            "Customer success",
+            "Healthcare",
+            "All opportunities",
+          ].map((x, i) => (
+            <Link
+              key={x}
+              href={i === 4 ? "/jobs" : `/jobs?q=${encodeURIComponent(x)}`}
+            >
+              {x}
+              <ArrowUpRight size={12} />
+            </Link>
+          ))}
         </div>
-      </section>
+      </HomeHero>
       <section className="container human-story">
         <figure className="people-photo">
           <img
-            src="/images/creative-colleagues.webp"
-            alt="Creative colleagues working together"
-            width="1260"
-            height="709"
+            src="/images/healthcare-team.webp"
+            alt="Two healthcare workers in blue scrubs and masks working together"
+            width="1920"
+            height="1280"
             loading="lazy"
           />
         </figure>
@@ -142,13 +102,7 @@ export default function Home() {
             <ArrowRight size={18} />
           </Link>
         </div>
-        <Suspense
-          fallback={
-            <p className="notice" role="status">
-              Finding a few possibilities…
-            </p>
-          }
-        >
+        <Suspense fallback={<HomeRolesSkeleton />}>
           <FreshRoles />
         </Suspense>
       </section>
@@ -157,10 +111,10 @@ export default function Home() {
           <div className="clarity-art">
             <div className="timeline-preview">
               <div className="timeline-title">
-                <span className="company-monogram tone-0">f</span>
+                <span className="company-monogram tone-0"><Check size={18} /></span>
                 <div>
-                  <strong>Senior Product Designer</strong>
-                  <small>Example application</small>
+                  <strong>Your application</strong>
+                  <small>Keep track of each step</small>
                 </div>
                 <span className="live-dot" />
               </div>
@@ -236,13 +190,12 @@ export default function Home() {
       >
         <div className="australia-story-photo">
           <img
-            src="/images/australian-wildlife-worker.webp"
-            alt="An illustrative scene of an Australian wildlife carer with two wallabies in a eucalyptus sanctuary"
+            src="/images/kangaroo-visit.webp"
+            alt="A man spending time with kangaroos"
             width="1600"
-            height="900"
+            height="2131"
             loading="lazy"
           />
-          <span className="image-context">Illustrative image</span>
         </div>
         <div className="australia-story-copy">
           <span className="australia-story-label">

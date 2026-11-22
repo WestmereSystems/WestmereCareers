@@ -1,4 +1,5 @@
 "use client";
+import { useSession } from "./providers";
 import { useState } from "react";
 type Org = {
   id: string;
@@ -17,6 +18,7 @@ export function EmployerBranding({
   organisation: Org;
   onSaved: () => void;
 }) {
+  const session = useSession();
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   async function upload(file: File, kind: string) {
@@ -34,6 +36,7 @@ export function EmployerBranding({
       if (!r.ok) throw new Error(d.error);
       setMessage(d.message);
       onSaved();
+      await session.refresh();
     } catch (e) {
       setMessage(
         e instanceof Error ? e.message : "Your image could not be saved.",
@@ -193,6 +196,7 @@ export function ListingDocuments({
         <div key={d.id} className="document-row">
           <a href={`/api/listing-documents?id=${d.id}`}>{d.filename}</a>
           <button
+            type="button"
             className="text-button"
             disabled={busy}
             onClick={async () => {

@@ -1,3 +1,6 @@
+import { withBillingLease } from "@/lib/premium/billing";
+import { revokePersonalSubscription } from "@/lib/premium/convert-business";
+import { premiumError } from "@/lib/premium/http";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import terms from "@/content/terms-and-conditions.json";
@@ -21,11 +24,12 @@ export async function POST(request: Request) {
           tradingName: z.string().trim().min(2).max(180),
           businessEmail: z.email().max(254),
           termsAccepted: z.literal(true),
+          conversionAccepted: z.boolean().default(false),
         })
         .strict(),
       2000,
     );
-    const { user, isPremium } = await requireSession();
+    const { user } = await requireSession();
     if (
       !user.email_confirmed_at ||
       user.email?.toLowerCase() !== body.businessEmail.toLowerCase()
@@ -33,11 +37,6 @@ export async function POST(request: Request) {
       throw new ApiError(
         400,
         "Sign in with the business email entered here before completing your business account.",
-      );
-    if (isPremium)
-      throw new ApiError(
-        409,
-        "This account has Careers+. Use a separate business account, or contact support before changing its account type.",
       );
     if (
       !user.last_sign_in_at ||
@@ -48,25 +47,43 @@ export async function POST(request: Request) {
         "Sign out and sign in again to confirm this account change. Business authority still requires independent verification.",
         "REAUTHENTICATION_REQUIRED",
       );
-    const { error } = await premiumAdmin()
+    const admin = premiumAdmin();
+    const existing = await admin
       .from("business_accounts")
-      .upsert({
-        user_id: user.id,
-        kind: body.kind,
-        trading_name: body.tradingName,
-        terms_version: terms.version,
-        terms_sha256: createHash("sha256")
-          .update(JSON.stringify(terms))
-          .digest("hex"),
-        accepted_at: new Date().toISOString(),
-      });
-    if (error)
+      .select("kind")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existing.error)
       throw new ApiError(
         503,
-        "Your business account could not be completed. Please try again.",
+        "Your business account type could not be checked.",
       );
+    if (!existing.data && !body.conversionAccepted)
+      throw new ApiError(
+        409,
+        "Confirm this permanent change: your Careers+ subscription will be cancelled immediately. Careers+ access on a business or agency account requires Enterprise or higher. This account cannot return to a standard applicant account.",
+        "CONVERSION_CONFIRMATION_REQUIRED",
+      );
+    await withBillingLease(user.id, async (lease) => {
+      if (!existing.data) await revokePersonalSubscription(user, lease);
+      const { error } = await admin.rpc("complete_business_registration", {
+        p_user: user.id,
+        p_kind: existing.data?.kind || body.kind,
+        p_name: body.tradingName,
+        p_terms: terms.version,
+        p_hash: createHash("sha256")
+          .update(JSON.stringify(terms))
+          .digest("hex"),
+        p_confirmed: body.conversionAccepted || Boolean(existing.data),
+      });
+      if (error)
+        throw new ApiError(
+          503,
+          "Your business account could not be completed. Please try again. Any personal subscription already cancelled will remain cancelled.",
+        );
+    });
     return json({ redirect: "/account?tab=verification" });
   } catch (e) {
-    return apiError(e);
+    return e instanceof ApiError ? apiError(e) : premiumError(e);
   }
 }

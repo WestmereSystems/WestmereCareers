@@ -15,10 +15,7 @@ export function EmailPreferences() {
         essential sign-in emails are unchanged.
       </p>
       {valid ? (
-        <form
-          method="post"
-          action={`https://ldmwqupidlgrkkjjpcvn.supabase.co/functions/v1/westmere-alerts/unsubscribe?token=${token}`}
-        >
+        <form method="post" action={`/api/alerts/unsubscribe?token=${token}`}>
           <button className="button primary" type="submit">
             Unsubscribe from this search
           </button>

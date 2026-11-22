@@ -1,3 +1,5 @@
+// These regressions exercise the public-launch behaviour; founding access has dedicated API/database coverage.
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { readFile } from "node:fs/promises";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 const m = vi.hoisted(() => ({ session: vi.fn(), rpc: vi.fn() }));
@@ -47,15 +49,29 @@ describe("temporary assistant CV extraction", () => {
       expect.objectContaining({ p_token: expect.any(String) }),
     );
   }, 20000);
-  it("blocks business accounts before document processing or allocating a guest upload", async () => {
-    m.session.mockResolvedValue({
-      user: { id: "business" },
-      business: { kind: "employer" },
-    });
-    const r = await POST(request(new File(["unneeded"], "cv.txt")));
-    expect(r.status).toBe(403);
-    expect(m.rpc).not.toHaveBeenCalled();
-  });
+  it.each(["employer", "agency"])(
+    "lets a free %s attach temporary text for its Assistant requests",
+    async (kind) => {
+      m.session.mockResolvedValue({
+        user: { id: "business" },
+        business: { kind },
+      });
+      const r = await POST(
+        request(
+          new File(
+            ["Synthetic office support experience. ".repeat(5)],
+            "cv.txt",
+          ),
+        ),
+      );
+      expect(r.status).toBe(200);
+      expect((await r.json()).text).toContain("Synthetic office support");
+      expect(m.rpc).toHaveBeenCalledWith(
+        "release_assistant_upload",
+        expect.any(Object),
+      );
+    },
+  );
   it("rejects unreadable content and always releases the processing lease", async () => {
     const r = await POST(request(new File(["not a PDF"], "cv.pdf")));
     expect(r.status).toBe(400);

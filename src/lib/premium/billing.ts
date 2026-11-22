@@ -2,8 +2,10 @@ import "server-only";
 import { reconcileBusinessCustomer } from "./business-billing";
 import type Stripe from "stripe";
 import { isCareersPrice, selectCurrentSubscription } from "./contracts";
+import { subscriptionTiming } from "./subscription-timing";
 import { PremiumError } from "./http";
 import { careersPriceId, premiumAdmin, stripeClient } from "./providers";
+import { billingModeFor, type BillingMode } from "./billing-mode";
 
 export type BillingLease = { userId: string; token: string; deadline: number };
 
@@ -61,11 +63,12 @@ export async function customerFor(
   user: { id: string; email?: string },
   create = false,
   lease?: BillingLease,
+  mode: BillingMode = billingModeFor(user, "individual"),
 ): Promise<string | null> {
   const admin = premiumAdmin();
   const { data: mapping, error } = await admin
     .from("billing_customers")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id,livemode")
     .eq("user_id", user.id)
     .maybeSingle();
   if (error)
@@ -74,7 +77,11 @@ export async function customerFor(
       "Your billing account is temporarily unavailable.",
       503,
     );
-  if (mapping?.stripe_customer_id) return mapping.stripe_customer_id as string;
+  if (
+    mapping?.stripe_customer_id &&
+    Boolean(mapping.livemode) === (mode === "live")
+  )
+    return mapping.stripe_customer_id as string;
   if (!create) return null;
   if (!lease || lease.userId !== user.id)
     throw new PremiumError(
@@ -83,18 +90,38 @@ export async function customerFor(
       503,
     );
   assertBillingLeaseFresh(lease);
-  const customer = await stripeClient().customers.create(
+  if (mapping) {
+    if (mode !== "live" || mapping.livemode)
+      throw new PremiumError(
+        "WRONG_MODE",
+        "This billing account needs review.",
+        409,
+      );
+    const archived = await admin.rpc("archive_individual_test_billing", {
+      p_user: user.id,
+      p_token: lease.token,
+    });
+    if (archived.error)
+      throw new PremiumError(
+        "BILLING_UNAVAILABLE",
+        "Your billing account could not be prepared.",
+        503,
+      );
+  }
+  const customer = await stripeClient(mode).customers.create(
     { email: user.email, metadata: { westmere_user_id: user.id } },
-    { idempotencyKey: `westmere-customer-${user.id}` },
+    { idempotencyKey: `westmere-customer-${mode}-${user.id}` },
   );
   // A concurrent request may have stored the same mapping first. Never replace a
   // trusted mapping with client input or an unrelated Stripe customer.
-  const { error: insertError } = await admin
-    .from("billing_customers")
-    .upsert(
-      { user_id: user.id, stripe_customer_id: customer.id },
-      { onConflict: "user_id", ignoreDuplicates: true },
-    );
+  const { error: insertError } = await admin.from("billing_customers").upsert(
+    {
+      user_id: user.id,
+      stripe_customer_id: customer.id,
+      livemode: mode === "live",
+    },
+    { onConflict: "user_id", ignoreDuplicates: true },
+  );
   if (insertError)
     throw new PremiumError(
       "BILLING_UNAVAILABLE",
@@ -103,10 +130,14 @@ export async function customerFor(
     );
   const { data: saved, error: readError } = await admin
     .from("billing_customers")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id,livemode")
     .eq("user_id", user.id)
     .single();
-  if (readError || !saved?.stripe_customer_id)
+  if (
+    readError ||
+    !saved?.stripe_customer_id ||
+    Boolean(saved.livemode) !== (mode === "live")
+  )
     throw new PremiumError(
       "BILLING_UNAVAILABLE",
       "Your billing account is temporarily unavailable.",
@@ -115,11 +146,14 @@ export async function customerFor(
   return saved.stripe_customer_id as string;
 }
 
-export async function validatedCareersPrice(stripe: Stripe) {
-  const priceId = careersPriceId();
+export async function validatedCareersPrice(
+  stripe: Stripe,
+  mode: BillingMode = "test",
+) {
+  const priceId = careersPriceId(mode);
   const price = await stripe.prices.retrieve(priceId);
   if (
-    price.livemode ||
+    price.livemode !== (mode === "live") ||
     !price.active ||
     !isCareersPrice(price, priceId) ||
     price.tax_behavior !== "inclusive"
@@ -149,13 +183,13 @@ export function stripeCustomerId(value: unknown): string | null {
 export async function reconcileCustomer(
   customerId: string,
   eventCreated: number,
+  mode: BillingMode = "test",
 ) {
-  const stripe = stripeClient();
+  const stripe = stripeClient(mode);
   const admin = premiumAdmin();
-  const priceId = careersPriceId();
   const { data: mapping, error } = await admin
     .from("billing_customers")
-    .select("user_id")
+    .select("user_id,livemode")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
   if (error)
@@ -166,7 +200,10 @@ export async function reconcileCustomer(
     );
   // Unmapped Stripe customers are outside this application; never grant an
   // entitlement based on user-controllable event/customer metadata.
-  if (!mapping) return reconcileBusinessCustomer(customerId);
+  if (!mapping) return reconcileBusinessCustomer(customerId, mode);
+  const priceId = careersPriceId(mode);
+  if (Boolean(mapping.livemode) !== (mode === "live"))
+    throw new PremiumError("WRONG_MODE", "Billing mode mismatch.", 400);
   return withBillingLease(mapping.user_id, async (lease) => {
     const { error: attemptError } = await admin
       .from("billing_customers")
@@ -230,6 +267,7 @@ export async function reconcileCustomer(
       }
     } else {
       const item = current.items.data[0];
+      const timing = subscriptionTiming(current, item);
       const { error: applyError } = await admin.rpc(
         "apply_subscription_state",
         {
@@ -238,13 +276,9 @@ export async function reconcileCustomer(
           p_stripe_subscription_id: current.id,
           p_status: current.status,
           p_price_id: item.price.id,
-          p_current_period_start: new Date(
-            item.current_period_start * 1000,
-          ).toISOString(),
-          p_current_period_end: new Date(
-            item.current_period_end * 1000,
-          ).toISOString(),
-          p_cancel_at_period_end: current.cancel_at_period_end,
+          p_current_period_start: timing.start,
+          p_current_period_end: timing.end,
+          p_cancel_at_period_end: timing.cancelScheduled,
           p_event_created: eventCreated,
           p_lease_token: lease.token,
         },

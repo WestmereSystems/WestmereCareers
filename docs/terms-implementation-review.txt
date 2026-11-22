@@ -1,0 +1,164 @@
+WESTMERE CAREERS TERMS IMPLEMENTATION AND REVIEW NOTES
+Prepared 16 November 2026
+Internal operating notes — separate from the public Terms
+
+DELIVERED CONTENT
+
+The public copy contains 34 sections and 151 numbered clauses. It is held in
+src/content/terms-and-conditions.json and rendered by the existing /terms route.
+The editable Word and plain-text editions are generated from that same source by
+scripts/export-terms.py. The Word edition has 19 pages, linked contents, clause
+numbers, version information and page numbers. It contains no drafting prompts,
+placeholder prices or internal launch instructions.
+
+The copy identifies Louis Jacques Pierre Sibul, sole trader trading as Westmere
+Systems, ABN 16 319 214 903; support@westmere.com.au; and the postal address the
+operator supplied. No company or corporate structure has been invented.
+
+CONFIRMED COMMERCIAL CHOICES
+
+- Account holders must be at least 16, with guardian involvement where needed.
+  Purchases and business-account representation require an authorised adult.
+- Careers+ remains A$25 per month including any applicable GST, 30 shared AI
+  requests per paid billing period, monthly renewal and online cancellation.
+- Guest and verified free-account AI previews are one plus three introductory
+  uses. They do not automatically become a paid subscription.
+- Employer and agency services carry a charge only under a separately accepted
+  order. The current code has no employer/agency paid checkout or public tariffs.
+- Increases affecting an existing renewal require at least 30 days' direct
+  notice and a genuine opportunity to cancel. No increase applies retrospectively
+  or changes an accepted fixed-price commitment without the necessary agreement.
+
+CURRENT IMPLEMENTATION GAP — AFFIRMATIVE TERMS ACCEPTANCE
+
+The existing email-code and OAuth flows authenticate an account but do not contain
+an affirmative Terms acceptance control or a durable, versioned acceptance
+record. The document does not treat entering a code as acceptance, or claim that
+an email OTP is a separate two-factor authentication feature. This document task
+does not implement a new authentication or acceptance system.
+
+Before relying on the Terms as an account contract, add an accessible, unticked
+agreement checkbox with links to the Terms and Privacy Policy. Apply it to every
+account-creation/completion path, including an account implicitly created through
+an email code, Google, Microsoft or another enabled method. A shared completion
+step after verified authentication can cover all methods consistently. Existing
+accounts need an appropriate notice and acceptance process; do not backdate it.
+
+Suggested account agreement text
+
+"I agree to the Westmere Careers Terms and Conditions and confirm that I am at
+least 16 years old, with parent or guardian permission where required."
+
+Separate accompanying notice
+
+"The Privacy Policy explains how we handle your information. Agreeing to the
+Terms does not subscribe you to marketing or authorise optional AI processing."
+
+Suggested completion button
+
+"Agree and continue"
+
+Record acceptance only after an authenticated person's deliberate action, tied
+to the account, exact Terms version/content hash, server timestamp and completion
+method. Validate the version on the server, protect records against ordinary
+client alteration and retain the exact accepted wording. Do not depend on an
+editable user-metadata flag or a browser checkbox as the only audit record. Use
+proportionate retention; there is no need to collect identity documents or raw
+IP addresses just to record agreement. Update the Privacy Policy if acceptance
+records introduce a new information-handling practice.
+
+Declining new Terms must still allow access to the legal pages, support, privacy
+rights, cancellation of an existing paid renewal and account-closure assistance.
+Do not automatically accept on behalf of a user, conflate accepting Terms with
+marketing/AI consent, or regard a successful OAuth callback as agreement.
+
+BILLING AND OPERATIONAL ALIGNMENT
+
+Show the renewal total, period, shared allowance, cancellation method and links
+to the current Terms immediately before a paid purchase. Record the accepted
+version with the purchase or order. Confirm that Stripe's live portal actually
+permits online cancellation and invoice access; the existing release notes still
+list end-to-end live-billing validation as a launch gate. These Terms do not
+enable live charging or amend existing Stripe prices.
+
+The code currently validates a specific A$25 Stripe price and exact-price
+entitlement. A future price increase needs an intentional product/billing
+migration that preserves existing paid access, the required notice and an
+opportunity to cancel. Editing this document or replacing an environment price
+identifier alone is not a compliant subscription migration.
+
+Implement the promised notice, cancellation/refund support, moderation and appeal
+procedures in daily operations. Staff must distinguish an application open, a
+meaningful response, delivery and reading. The Terms cannot make incomplete
+employer activity complete or certify external application delivery.
+
+The 16+ service rule does not itself verify age. Add an appropriate attestation
+and a lawful handling route for underage accounts. Do not collect full dates of
+birth or identity documents merely because they are technically available.
+
+Future employer/agency orders must state quantities, duration, seats/client use,
+tax, total price, any minimum term, renewal, credit expiry and cancellation. The
+current Terms deliberately do not invent fees, automatic annual commitments,
+placement commissions, unlimited seats or undisclosed sponsored ranking.
+
+Keep a dated archive of each published version and use direct notices when the
+material-change clause requires them. A publication date alone does not show
+that an existing user accepted a variation. Provider changes, new advertising
+products or materially different AI/hiring automation require a fresh review.
+
+LEGAL REVIEW
+
+This is complete public-facing drafting based on the inspected implementation
+and operator-confirmed choices. It is not a solicitor's opinion, a guarantee of
+enforceability or certification that the service is ready for a paid public
+launch. Obtain Australian legal review of the contract, assent flow and actual
+business operations before relying on it in production. In particular, review
+minor users, consumer/small-business protections, agency/licensing activities,
+report publication/defamation risk, data handling and any negotiated business
+liability or payment provisions. Do not replace that review with a general
+"use at your own risk" or "no refunds" clause.
+
+The Terms preserve non-excludable rights, permit fair correction and appeal,
+avoid an unlimited consumer indemnity or blanket negligence exclusion, and do
+not impose compulsory arbitration, exclusive Victorian consumer venue, shortened
+statutory claim periods or an entire-agreement exclusion of actionable promises.
+
+PRIMARY SOURCES CHECKED ON 16 NOVEMBER 2026
+
+1. Competition and Consumer Act 2010, current compilation 168, 27 October 2026,
+   Schedule 2: misleading conduct including employment (ss 18, 29, 31), unfair
+   terms (ss 23–28), pricing (s 48), service guarantees (ss 60–64) and remedies.
+   https://www.legislation.gov.au/C2004A00109/latest/text
+2. ACCC guidance on contracts and unfair terms in consumer/small-business contracts.
+   https://www.accc.gov.au/business/selling-products-and-services/contracts
+3. ACCC guidance on service remedies and cancellation.
+   https://www.accc.gov.au/consumers/problem-with-a-product-or-service-you-bought/repair-replace-refund-cancel
+4. Electronic Transactions (Victoria) Act 2000, in-force version 004.
+   https://www.legislation.vic.gov.au/in-force/acts/electronic-transactions-victoria-act-2000/004
+5. Fair Work Ombudsman guidance on job-advertised pay and piecework notices.
+   https://www.fairwork.gov.au/about-us/workplace-laws/legislation-changes/secure-jobs-better-pay/pay-secrecy-job-ads-and-flexible-work
+6. Victorian Equal Opportunity and Human Rights Commission recruitment guidance.
+   https://www.humanrights.vic.gov.au/for-individuals/recruitment-and-designated-roles/
+7. Victorian Labour Hire Authority guidance, including changes from 1 October 2026.
+   https://www.labourhireauthority.vic.gov.au/provider/key-industries/recruitment-and-placement-services/
+8. OAIC guidance on consent and bundled consent.
+   https://www.oaic.gov.au/privacy/your-privacy-rights/your-personal-information/consent-to-the-handling-of-personal-information
+9. ACMA guidance on commercial-message consent, identification and unsubscribe.
+   https://www.acma.gov.au/spam-compliance-alerts
+10. Consumer Affairs Victoria complaint-resolution guidance.
+    https://www.consumer.vic.gov.au/contact-us/resolve-your-problem
+11. ACCC Scamwatch jobs and employment scams guidance.
+    https://www.scamwatch.gov.au/types-of-scams/jobs-and-employment-scams
+
+IMPLEMENTATION EVIDENCE
+
+Read the current auth, applications, public search/matching, billing/Studio,
+employer membership and dashboard, trust methodology, saved-search, notification,
+CV/document, privacy and release-readiness source and notes. No private CVs,
+candidate records or payment details were needed for this task.
+
+TypeScript checks, all 149 existing tests and the production build passed using
+the required Node 24 runtime. The built upload-document workers also passed.
+All 19 Word pages were rendered and visually inspected. Browser verification
+checks the Terms page, contents anchors and responsive reading layout. These
+checks validate content delivery and layout, not legal enforceability.

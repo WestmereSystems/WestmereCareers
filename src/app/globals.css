@@ -2954,6 +2954,13 @@ summary {
 .notification-list h3 {
   margin: 12px 0 8px;
 }
+.billing-notice-icon {
+  color: var(--primary);
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
 .account-email,
 .brand-editor,
 .listing-documents {
@@ -3190,3 +3197,8 @@ summary {
 .page-main > h1 {
   margin-bottom: 32px;
 }
+.agency-workspace { margin-block: 1.5rem; }
+.agency-client { margin-top: 1.2rem; display: grid; gap: .8rem; }
+.agency-workspace details { margin-block: 1rem; }
+.agency-role-fields { border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: grid; gap: 14px; }
+.agency-assignment { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-block: 12px; }

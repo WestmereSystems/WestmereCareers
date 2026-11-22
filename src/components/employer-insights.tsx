@@ -196,7 +196,7 @@ export function EmployerInsights({
     );
   return (
     <section
-      className="hiring-insights"
+      className="hiring-insights panel dashboard-panel"
       aria-labelledby="hiring-insights-heading"
       aria-busy={loading}
     >

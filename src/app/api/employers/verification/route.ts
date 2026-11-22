@@ -1,10 +1,19 @@
 import { assertBusinessTerms } from "@/lib/server/business";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
-import { apiError, assertSameOrigin, json, parseBody } from "@/lib/server/http";
+import {
+  apiError,
+  ApiError,
+  assertSameOrigin,
+  json,
+  parseBody,
+} from "@/lib/server/http";
 import { checkRpc } from "@/lib/server/trust";
 const input = z
   .object({
+    kind: z.enum(["employer", "agency"]).optional(),
+    specialisms: z.array(z.string().trim().min(2).max(100)).max(20).default([]),
+    regions: z.array(z.string().trim().min(2).max(100)).max(20).default([]),
     requestId: z.uuid().nullable().optional(),
     businessName: z.string().trim().min(2).max(180),
     abn: z.string().regex(/^\d{11}$/),
@@ -37,17 +46,52 @@ const input = z
     contactPermission: z.literal(true),
   })
   .strict();
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { supabase, user } = await requireSession();
-    const { data, error } = await supabase
-      .from("employer_verification_requests")
-      .select("*")
-      .eq("applicant_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    checkRpc(error);
-    return json({ requests: data });
+    const params = new URL(request.url).searchParams;
+    const pageInput = z.coerce.number().int().min(1).max(10000);
+    const paging = z
+      .object({ page: pageInput, businessPage: pageInput })
+      .safeParse({
+        page: params.get("page") || 1,
+        businessPage: params.get("businessPage") || 1,
+      });
+    if (!paging.success)
+      throw new ApiError(400, "Choose an available verification page.");
+    const { page, businessPage } = paging.data;
+    const [requests, businesses, capacity] = await Promise.all([
+      supabase
+        .from("employer_verification_requests")
+        .select("*", { count: "exact" })
+        .eq("applicant_id", user.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range((page - 1) * 5, page * 5 - 1),
+      supabase
+        .from("organisation_members")
+        .select(
+          "role,organisations!inner(id,name,is_verified,suspended_at,created_at)",
+          { count: "exact" },
+        )
+        .eq("user_id", user.id)
+        .eq("organisations.is_verified", true)
+        .order("organisation_id", { ascending: true })
+        .range((businessPage - 1) * 5, businessPage * 5 - 1),
+      supabase.rpc("my_business_registration_capacity"),
+    ]);
+    checkRpc(requests.error);
+    checkRpc(businesses.error);
+    checkRpc(capacity.error);
+    return json({
+      requests: requests.data,
+      total: requests.count || 0,
+      page,
+      verifiedBusinesses: businesses.data,
+      businessTotal: businesses.count || 0,
+      businessPage,
+      capacity: capacity.data,
+    });
   } catch (error) {
     return apiError(error);
   }
@@ -58,19 +102,21 @@ export async function POST(request: Request) {
     const body = await parseBody(request, input, 8000);
     const { supabase, business } = await requireSession();
     assertBusinessTerms(business);
-    const { data, error } = await supabase.rpc("submit_business_verification", {
-      p_request_id: body.requestId ?? null,
-      p_name: body.businessName,
-      p_abn: body.abn,
-      p_website: body.website,
-      p_contact_role: body.contactRole,
-      p_evidence: body.evidence,
-      p_linkedin: body.linkedin,
-      p_hr_email: body.hrEmail,
-      p_hr_phone: body.hrPhone,
-      p_contact_source: body.contactSource,
-      p_contact_permission: body.contactPermission,
-    });
+    const { data, error } = await supabase.rpc(
+      "submit_typed_business_verification",
+      {
+        p_details: {
+          ...body,
+          kind: body.kind || business?.kind || "employer",
+          requestId: body.requestId ?? null,
+        },
+      },
+    );
+    if (error?.code === "23514")
+      throw new ApiError(
+        409,
+        "Your business allowance is full. Existing businesses and pending reviews count towards your subscription limit. Review your plan before submitting another business.",
+      );
     checkRpc(error);
     return json(
       {

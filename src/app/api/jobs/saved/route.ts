@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getPublicJobsByIds } from "@/lib/jobs-server";
+import { jobFromRecord, getPublicJobsByIds } from "@/lib/jobs-server";
 import { requireSession } from "@/lib/server/auth";
 import {
   ApiError,
@@ -24,6 +24,32 @@ export async function GET(request: Request) {
     if (new URL(request.url).searchParams.get("idsOnly") === "1")
       return json({ ids });
     const result = await getPublicJobsByIds(ids);
+    const retained = await supabase.rpc("my_retained_roles");
+    if (retained.error)
+      throw new ApiError(
+        503,
+        "Your saved role history is temporarily unavailable.",
+      );
+    const copies = new Map<
+      string,
+      { snapshot: Record<string, unknown>; closed: boolean }
+    >(
+      (retained.data || []).map(
+        (r: {
+          id: string;
+          snapshot: Record<string, unknown>;
+          closed: boolean;
+        }) => [r.id, r],
+      ),
+    );
+    const live = new Map(result.jobs.map((j) => [j.id, j]));
+    result.jobs = ids.flatMap((id) => {
+      const copy = copies.get(id);
+      if (copy?.closed && copy.snapshot)
+        return [{ ...jobFromRecord(copy.snapshot), isClosed: true }];
+      const open = live.get(id);
+      return open ? [open] : [];
+    });
     return json({ ...result, ids }, result.error ? 503 : 200);
   } catch (e) {
     return apiError(e);

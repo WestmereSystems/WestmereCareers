@@ -1,21 +1,17 @@
-import { Suspense } from "react";
-import { ProfileHub } from "@/components/profile-hub";
-import { getPublicJobsByIds } from "@/lib/jobs-server";
+import { redirect } from "next/navigation";
+import { marketplaceOpen } from "@/lib/server/launch";
+import { routeQuery } from "@/lib/launch-paths";
+import { AccountPage } from "@/components/account-page";
 export const metadata = {
   title: "Profile",
   robots: { index: false, follow: false },
 };
-export default async function Page() {
-  const { source } = await getPublicJobsByIds([]);
-  return (
-    <Suspense
-      fallback={
-        <main id="main" className="container page-content">
-          <p role="status">Loading your profile…</p>
-        </main>
-      }
-    >
-      <ProfileHub source={source} />
-    </Suspense>
-  );
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  if (!(await marketplaceOpen()))
+    redirect(`/launch/account${routeQuery(await searchParams)}`);
+  return <AccountPage />;
 }

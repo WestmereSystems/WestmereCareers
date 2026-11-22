@@ -42,6 +42,8 @@ const input = z
     version: z.iso.datetime({ offset: true }).nullable(),
     identityChecked: z.boolean().default(false),
     ownershipChecked: z.boolean().default(false),
+    approvedKind: z.enum(["employer", "agency"]).optional(),
+    sharedAbnChecked: z.boolean().default(false),
   })
   .strict();
 async function staffSession() {
@@ -101,15 +103,30 @@ export async function POST(request: Request) {
     assertSameOrigin(request);
     const b = await parseBody(request, input, 6000);
     const { supabase } = await staffSession();
-    const { data, error } = await supabase.rpc("review_trust_item", {
-      p_kind: b.kind,
-      p_id: b.id,
-      p_action: b.action,
-      p_reason: b.reason,
-      p_version: b.version,
-      p_identity_checked: b.identityChecked,
-      p_ownership_checked: b.ownershipChecked,
-    });
+    const { data, error } = await supabase.rpc(
+      b.kind === "verification"
+        ? "review_business_verification"
+        : "review_trust_item",
+      {
+        ...(b.kind === "verification"
+          ? {
+              p_approved_kind: b.approvedKind || null,
+              p_shared_abn_checked: b.sharedAbnChecked,
+            }
+          : { p_kind: b.kind }),
+        p_id: b.id,
+        p_action: b.action,
+        p_reason: b.reason,
+        p_version: b.version,
+        p_identity_checked: b.identityChecked,
+        p_ownership_checked: b.ownershipChecked,
+      },
+    );
+    if (error?.code === "22023" || error?.code === "23505")
+      throw new ApiError(
+        400,
+        "Check the identity, hiring authority, shared-ABN evidence and chosen business type. An existing paid account needs a reviewed account-type correction.",
+      );
     checkRpc(error);
     return json({
       result: data,

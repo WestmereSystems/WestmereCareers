@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { CursorControls } from "./page-controls";
 import { RichText } from "./rich-text";
 import { useSession } from "./providers";
 import { sendJson } from "./trust-workflows";
@@ -31,10 +32,12 @@ function ModerationWorkspaceForUser() {
     [items, setItems] = useState<Item[]>([]),
     [cursor, setCursor] = useState<Cursor | null>(null),
     [more, setMore] = useState(false),
+    [page, setPage] = useState(0),
+    [cursors, setCursors] = useState<(Cursor | undefined)[]>([undefined]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const load = useCallback(
-    async (after?: Cursor, signal?: AbortSignal) => {
+    async (after?: Cursor, target = 0, signal?: AbortSignal) => {
       setBusy(true);
       try {
         const p = new URLSearchParams({ kind, all: all ? "1" : "0" });
@@ -48,7 +51,12 @@ function ModerationWorkspaceForUser() {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
-        setItems((old) => (after ? [...old, ...d.items] : d.items));
+        if (signal?.aborted) return;
+        setItems(d.items);
+        setPage(target);
+        setCursors((old) =>
+          target ? [...old.slice(0, target), after] : [undefined],
+        );
         setMore(d.hasMore);
         setCursor(d.cursor);
       } catch (e) {
@@ -64,7 +72,7 @@ function ModerationWorkspaceForUser() {
     const c = new AbortController();
     setItems([]);
     setMessage("");
-    if (session.staffRole) void load(undefined, c.signal);
+    if (session.staffRole) void load(undefined, 0, c.signal);
     return () => c.abort();
   }, [session.staffRole, load]);
   async function decide(e: React.FormEvent<HTMLFormElement>, item: Item) {
@@ -80,8 +88,15 @@ function ModerationWorkspaceForUser() {
         version: item.updated_at ?? item.moderation_updated_at ?? null,
         identityChecked: f.get("identity") === "on",
         ownershipChecked: f.get("ownership") === "on",
+        ...(kind === "verification"
+          ? {
+              approvedKind: f.get("approvedKind"),
+              sharedAbnChecked: f.get("sharedAbn") === "on",
+            }
+          : {}),
       });
       setMessage(d.message);
+      window.dispatchEvent(new Event("westmere-admin-activity"));
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Decision was not saved.");
@@ -104,6 +119,7 @@ function ModerationWorkspaceForUser() {
         version: null,
       });
       setMessage(d.message);
+      window.dispatchEvent(new Event("westmere-admin-activity"));
       await load();
     } catch (e) {
       setMessage(
@@ -132,15 +148,6 @@ function ModerationWorkspaceForUser() {
     );
   return (
     <>
-      <p className="notice">
-        Check independent business identity and hiring authority before
-        approval. Review listing accuracy, pay context, application requirements
-        and concerns. For reports, check dates, provenance, conflicts and
-        duplicate experiences. Receipts and opens do not count as meaningful
-        responses. Record a factual reason; verification and case feedback is
-        shared with its requester, and listing feedback with the employer.
-        Self-review is blocked.
-      </p>
       <div
         className="actions-row queue-tabs"
         role="group"
@@ -157,6 +164,15 @@ function ModerationWorkspaceForUser() {
           </button>
         ))}
       </div>
+      <p className="notice">
+        Check independent business identity and hiring authority before
+        approval. Review listing accuracy, pay context, application requirements
+        and concerns. For reports, check dates, provenance, conflicts and
+        duplicate experiences. Receipts and opens do not count as meaningful
+        responses. Record a factual reason; verification and case feedback is
+        shared with its requester, and listing feedback with the employer.
+        Self-review is blocked.
+      </p>
       <label className="checkbox-label">
         <input
           type="checkbox"
@@ -178,8 +194,11 @@ function ModerationWorkspaceForUser() {
           <p className="panel">This queue is clear.</p>
         )}
         {items.map((item) => (
-          <article className="panel review-item" key={item.id}>
-            <h2>
+          <details
+            className="panel review-item"
+            key={`${kind}-${page}-${item.id}`}
+          >
+            <summary>
               {String(
                 item.business_name ??
                   item.title ??
@@ -188,7 +207,7 @@ function ModerationWorkspaceForUser() {
                   item.action ??
                   "Review item",
               )}
-            </h2>
+            </summary>
             {kind === "verification" && (
               <p className="notice">
                 Review target:{" "}
@@ -268,6 +287,29 @@ function ModerationWorkspaceForUser() {
                 </label>
                 {kind === "verification" && (
                   <>
+                    <label className="field-label">
+                      Approve business as
+                      <select
+                        name="approvedKind"
+                        defaultValue={String(item.requested_kind || "employer")}
+                      >
+                        <option value="employer">Employer</option>
+                        <option value="agency">Recruitment agency</option>
+                      </select>
+                      <span className="fineprint">
+                        The reviewed type determines Billing plans. Existing
+                        paid accounts require the account-type correction
+                        workflow.
+                      </span>
+                    </label>
+                    {Boolean(item.shared_abn) && (
+                      <label className="checkbox-label">
+                        <input name="sharedAbn" type="checkbox" />I checked that
+                        this is a separate authorised trading brand sharing an
+                        existing ABN. This approval grants no access to the
+                        other business.
+                      </label>
+                    )}
                     <label className="checkbox-label">
                       <input name="identity" type="checkbox" />I independently
                       checked the registered business identity and ABN
@@ -292,18 +334,17 @@ function ModerationWorkspaceForUser() {
                 </button>
               </form>
             )}
-          </article>
+          </details>
         ))}
       </section>
-      {more && cursor && (
-        <button
-          className="button secondary"
-          disabled={busy}
-          onClick={() => void load(cursor)}
-        >
-          Load more items
-        </button>
-      )}
+      <CursorControls
+        page={page}
+        more={more}
+        busy={busy}
+        label="Review queue pages"
+        onPrevious={() => void load(cursors[page - 1], page - 1)}
+        onNext={() => cursor && void load(cursor, page + 1)}
+      />
       {session.staffRole === "admin" && (
         <details className="panel">
           <summary>Suspend or reinstate a business after investigation</summary>

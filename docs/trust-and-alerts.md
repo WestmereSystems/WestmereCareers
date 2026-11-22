@@ -27,3 +27,11 @@ Delivery is distinguished from provider acceptance and does not claim reading or
 ## Release readiness
 
 The application workflows, an approved preview email, signed delivery confirmation, unsubscribe and disposable-test cleanup have been verified. A wider pilot still needs genuine reviewed vacancies, real digest evaluation, moderation staffing and complete accessibility, security and load reviews. See [verification](staging-verification.md) and [release status](release-status.md).
+
+## Agency authority and scope · 21 November 2026
+
+Agency identity review does not verify a client mandate. Each mandate records private client identity, representative contact/evidence, effective dates, offer authority and reviewer feedback. A linked verified employer owner can confirm/revoke it without a subscription. An unregistered client requires independently checked representative evidence. Staff review is independent of both agency and client membership; stale decisions are rejected.
+
+Agency owners/admins manage clients and vacancy assignments. Invited recruiters never become client owners. Candidate opens, files, evidence and stage changes require current membership, assignment, seat entitlement and client authority. Explicit offer authority is required to communicate an offer. Agency activity is attributed to the recruiting advertiser. Only the first intentional open creates the candidate view event; repeated document access does not create another first open.
+
+Recruitment notices go only to accounts authorised for that vacancy and are rechecked at dispatch. Revoking authority cancels unsent notices and closes new intake under that mandate. The accepted/delivered provider states cannot be recalled. Temporary reviewer assignments have an optional `expires_at` checked by `private.my_staff_role`; remove or disable pilot access after acceptance checks.

@@ -73,13 +73,17 @@ describe("scheduled billing reconciliation", () => {
     expect(mocks.admin).not.toHaveBeenCalled();
     expect(mocks.reconcile).not.toHaveBeenCalled();
   });
-  it("stops before customer processing when billing credentials are missing", async () => {
+  it("keeps business reconciliation independent of a missing personal-price setting", async () => {
     mocks.priceId.mockImplementation(() => {
       throw new Error("missing key");
     });
-    expect((await GET(request())).status).toBe(503);
-    expect(mocks.list).not.toHaveBeenCalled();
-    expect(mocks.reconcile).not.toHaveBeenCalled();
+    expect((await GET(request())).status).toBe(200);
+    expect(mocks.list).toHaveBeenCalled();
+    expect(mocks.reconcile).toHaveBeenCalledWith(
+      "cus_business",
+      expect.any(Number),
+      "test",
+    );
   });
   it("reconciles current state and returns only aggregate counts", async () => {
     mocks.list.mockResolvedValue({
@@ -99,7 +103,11 @@ describe("scheduled billing reconciliation", () => {
       ignored: 0,
       deferred: 0,
     });
-    expect(mocks.reconcile).toHaveBeenCalledWith("cus_one", expect.any(Number));
+    expect(mocks.reconcile).toHaveBeenCalledWith(
+      "cus_one",
+      expect.any(Number),
+      "test",
+    );
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
   it("signals operational failure without exposing customer identifiers", async () => {

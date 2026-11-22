@@ -1,4 +1,7 @@
+import { renderLaunchEmail } from "../_shared/launch-email.ts";
+import { renderMarketingEmail } from "../_shared/marketing-email.ts";
 import { renderAccountEmail } from "../_shared/account-email.ts";
+import { isDeliverableRecipient } from "../_shared/recipient.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.119.0";
 import {
   alertEvents,
@@ -68,7 +71,7 @@ Deno.serve(async (req: Request) => {
           status: 303,
           headers: {
             ...headers,
-            Location: `https://westmere-careers.vercel.app/email-preferences?token=${token}`,
+            Location: `https://westmere.com.au/email-preferences?token=${token}`,
           },
         });
       if (req.method !== "POST")
@@ -156,6 +159,18 @@ Deno.serve(async (req: Request) => {
         webhookConfigured: Boolean(Deno.env.get("RESEND_WEBHOOK_SECRET")),
         dryRun: true,
       });
+    // Private unsubmitted application documents expire independently of mail.
+    const expired = await db.rpc("expire_application_uploads");
+    if (!expired.error && expired.data?.length) {
+      const paths = expired.data.map(
+        (item: { storage_path: string }) => item.storage_path,
+      );
+      const removed = await db.storage
+        .from("application-documents")
+        .remove(paths);
+      if (!removed.error)
+        await db.from("document_cleanup").delete().in("storage_path", paths);
+    }
     if (!key) return json({ error: "Sending is not configured." }, 503);
     const prepared = await db.rpc("prepare_job_alerts", { p_limit: 50 });
     if (prepared.error)
@@ -163,20 +178,40 @@ Deno.serve(async (req: Request) => {
     const reminders = await db.rpc("queue_employer_reminders");
     if (reminders.error)
       return json({ error: "Hiring reminder preparation unavailable." }, 503);
-    const claimed = await db.rpc("claim_job_alerts", { p_limit: 6 });
+    const claimed = await db.rpc("claim_job_alerts", { p_limit: 10 });
     if (claimed.error)
       return json({ error: "Delivery queue unavailable." }, 503);
     const items = claimed.data || [];
     let accepted = 0,
-      settled = 0;
+      settled = 0,
+      providerPause = 0,
+      paceMs = 200;
     async function process(item: (typeof items)[number]) {
+      if (!isDeliverableRecipient(item.recipient)) {
+        await db.rpc("settle_job_alert", {
+          p_id: item.id,
+          p_lease: item.lease_token,
+          p_status: "blocked",
+          p_error: "RESERVED_TEST_RECIPIENT",
+        });
+        return;
+      }
       let body;
       try {
         body =
           item.provider_request ??
-          (item.kind === "account"
-            ? renderAccountEmail(item.id, item.recipient, item.snapshot)
-            : renderAlert(item.id, item.recipient, item.kind, item.snapshot));
+          (item.kind === "marketing"
+            ? renderMarketingEmail(item.id, item.recipient, item.snapshot)
+            : item.kind === "launch"
+              ? renderLaunchEmail(item.id, item.recipient, item.snapshot)
+              : item.kind === "account" || item.kind === "invitation"
+                ? renderAccountEmail(item.id, item.recipient, item.snapshot)
+                : renderAlert(
+                    item.id,
+                    item.recipient,
+                    item.kind,
+                    item.snapshot,
+                  ));
       } catch {
         await db.rpc("settle_job_alert", {
           p_id: item.id,
@@ -192,6 +227,16 @@ Deno.serve(async (req: Request) => {
         p_request: body,
       });
       if (frozen.error || !frozen.data) return;
+      if (providerPause) {
+        await db.rpc("settle_job_alert", {
+          p_id: item.id,
+          p_lease: item.lease_token,
+          p_status: "queued",
+          p_error: "PROVIDER_COOLDOWN",
+          p_retry_seconds: providerPause,
+        });
+        return;
+      }
       let status = "queued",
         provider: string | null = null,
         error = "PROVIDER_RETRY",
@@ -209,6 +254,15 @@ Deno.serve(async (req: Request) => {
           signal: AbortSignal.timeout(5000),
         });
         retry = retrySeconds(r.headers.get("Retry-After"), item.attempts);
+        const advertisedLimit = Number(r.headers.get("ratelimit-limit"));
+        if (advertisedLimit > 0)
+          paceMs = Math.max(200, Math.ceil(1000 / advertisedLimit));
+        if (r.status === 429) providerPause = retry;
+        else if (r.headers.get("ratelimit-remaining") === "0")
+          providerPause = Math.max(
+            1,
+            Math.min(86400, Number(r.headers.get("ratelimit-reset")) || 1),
+          );
         if (r.ok) {
           let result;
           try {
@@ -252,10 +306,11 @@ Deno.serve(async (req: Request) => {
         if (status === "accepted") accepted++;
       }
     }
-    for (let i = 0; i < items.length; i += 2) {
-      if (i) await new Promise((r) => setTimeout(r, 600));
-      await Promise.allSettled(items.slice(i, i + 2).map(process));
+    for (let i = 0; i < items.length; i++) {
+      if (i && !providerPause) await new Promise((r) => setTimeout(r, paceMs));
+      await process(items[i]);
     }
+    await db.rpc("finish_alert_dispatch", { p_retry_seconds: providerPause });
     return json({
       prepared: prepared.data,
       claimed: items.length,

@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         403,
         "Discovery is private to your verified hiring team.",
       );
+    if (org.kind === "agency" && org.role === "recruiter") throw new ApiError(403, "Agency recruiters can view statistics for their assigned vacancies in Roles.");
     if (!hasDiscovery(org.tier))
       throw new ApiError(
         403,

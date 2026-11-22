@@ -1,3 +1,5 @@
+// These regressions exercise the public-launch behaviour; founding access has dedicated API/database coverage.
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   session: vi.fn(),
@@ -14,7 +16,7 @@ vi.mock("@/lib/premium/providers", () => ({
   premiumAdmin: () => ({ rpc: mocks.rpc }),
   openAIClient: () => ({ responses: { create: mocks.generate } }),
 }));
-import { POST } from "../src/app/api/assistant/route";
+import { GET, POST } from "../src/app/api/assistant/route";
 const payload = {
   mode: "improve",
   consent: true,
@@ -49,7 +51,12 @@ beforeEach(() => {
   });
   mocks.getCookie.mockReturnValue(undefined);
   mocks.rpc.mockImplementation(async (name: string) => ({
-    data: name === "reserve_trial_ai_usage" ? "reservation" : true,
+    data:
+      name === "reserve_trial_ai_usage"
+        ? "reservation"
+        : name === "trial_ai_remaining"
+          ? 3
+          : true,
     error: null,
   }));
   mocks.generate.mockResolvedValue({
@@ -146,15 +153,53 @@ describe("AI preview consent and server cost controls", () => {
   });
 });
 
-it("rejects a business account before billing or candidate processing", async () => {
+it.each(["employer", "agency"])(
+  "gives a verified unpaid %s the same three-use account allowance",
+  async (kind) => {
+    mocks.session.mockResolvedValue({
+      supabase: {},
+      user: { id: "business", email_confirmed_at: "2026-11-16T00:00:00Z" },
+      isPremium: false,
+      business: { kind },
+    });
+    const allowance = await GET(
+      new Request("https://westmere.test/api/assistant"),
+    );
+    expect(allowance.status).toBe(200);
+    expect(await allowance.json()).toMatchObject({
+      tier: "Free account",
+      cap: 3,
+      remaining: 3,
+    });
+    expect((await POST(make())).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "reserve_trial_ai_usage",
+      expect.objectContaining({ p_tier: "account", p_user: "business" }),
+    );
+    expect(mocks.rpc).toHaveBeenCalledWith("settle_trial_ai_usage", {
+      p_reservation: "reservation",
+      p_success: true,
+    });
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  },
+);
+it("does not reset an unpaid business allowance or call the provider when it is exhausted", async () => {
   mocks.session.mockResolvedValue({
     supabase: {},
     user: { id: "business", email_confirmed_at: "2026-11-16T00:00:00Z" },
-    isPremium: true,
+    isPremium: false,
     business: { kind: "employer" },
   });
-  const response = await POST(make());
-  expect(response.status).toBe(403);
-  expect((await response.json()).code).toBe("INDIVIDUAL_ACCOUNT_REQUIRED");
+  mocks.rpc.mockImplementation(async (name: string) =>
+    name === "trial_ai_remaining"
+      ? { data: 0, error: null }
+      : { data: null, error: { message: "quota" } },
+  );
+  expect(
+    await (
+      await GET(new Request("https://westmere.test/api/assistant"))
+    ).json(),
+  ).toMatchObject({ cap: 3, remaining: 0 });
+  expect((await POST(make())).status).toBe(429);
   expect(mocks.generate).not.toHaveBeenCalled();
 });

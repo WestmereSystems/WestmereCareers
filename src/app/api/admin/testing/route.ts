@@ -7,10 +7,22 @@ import {
   json,
   parseBody,
 } from "@/lib/server/http";
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { supabase } = await requireSession();
     const { data, error } = await supabase.rpc("can_manage_testing");
+    const email = new URL(request.url).searchParams.get("email");
+    if (email) {
+      if (error || data !== true)
+        throw new ApiError(403, "Testing operator access required.");
+      if (!z.email().max(254).safeParse(email).success)
+        throw new ApiError(400, "Enter a valid account email.");
+      const target = await supabase.rpc("test_account_details", {
+        p_email: email,
+      });
+      if (target.error) throw new ApiError(400, target.error.message);
+      return json({ enabled: true, account: target.data });
+    }
     return json({ enabled: !error && data === true });
   } catch (e) {
     return apiError(e);

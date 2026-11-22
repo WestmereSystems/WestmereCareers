@@ -1,3 +1,4 @@
+import { assertLaunchAccount } from "@/lib/server/launch";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -34,6 +35,12 @@ export async function POST(request: Request) {
         400,
         "That code could not be verified. Use the newest code or request another.",
       );
+    try {
+      await assertLaunchAccount(supabase);
+    } catch (e) {
+      await supabase.auth.signOut();
+      throw e;
+    }
     if (body.fullName) {
       const existing = await supabase
         .from("profiles")

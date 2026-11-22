@@ -1,0 +1,44 @@
+Westmere founding launch and self-service registration · 21 November 2026
+
+Production URL: https://westmere-careers.vercel.app/launch
+Final deployment: dpl_9LmDiK3iGz4rct1RDgAUTSWBVicg
+Runtime source snapshot: 29b3f1b1f506394156e05e31cfa749de71684dc5
+Snapshot directory: /private/tmp/westmere-launch-directory-release-20261121
+Status: READY; canonical aliases assigned. Final build duration: approximately 28 seconds.
+Target: existing westmere-careers project in order-ward, hnd1, Node 24, Next.js 16.4.6.
+The isolated source snapshot does not commit or push the user's dirty working repository.
+
+Applied Westmere Supabase migrations:
+- 20261121093503 founding_launch_access (initial founding privacy and release controls)
+- 20261121100535 founding_self_registration (normal verified-email self-registration, private preparation coverage, global publication hold)
+
+Result:
+- Temporary public pages and CSS are under src/app/launch. Main marketplace pages remain at their original routes and use temporary launch redirects.
+- /launch/register accepts normal employer/agency registration. No separate employer access request, consultation, personal founder contact promise or 60-day access prerequisite.
+- Existing business Terms, recent sign-in, email identity, independent business verification, capacity, agency authority, client/pilot and team checks remain in place.
+- Founding preparation coverage creates no Stripe objects, paid subscription or Careers+ entitlement. Paid/testing coverage retains priority. Founding preparation coverage ends on public marketplace opening.
+- Available employer and agency test plans are optional after verification. Existing subscription checkout remains sandbox; no live price, key or tax activation was performed. Careers+ public checkout remains held.
+- All business profiles and vacancies stay private while marketplace_open=false. Even a reviewer cannot release an item before opening. Verification, moderation approval, subscriptions and owner permission alone cannot publish it.
+- Main account and API logic is shared. Account and sign-in query parameters survive launch redirects. After opening, /launch links redirect to the main routes without copying data.
+- Candidate launch-update opt-ins are email-only and separately consented. Earlier employer request calls receive a registration URL without storing another consultation/access request.
+
+Validation:
+- TypeScript and Node 24 production build pass; all four deployment-traced PDF upload workers pass.
+- 265 application/API cases across 53 files pass, including 12 founding API cases.
+- All 19 real-migration founding database cases pass, including both normal verification submission types without invitation/subscription, unverified/revoked identities, private content, blocked premature release, explicit release after opening, return to founding mode, withdrawal and quotas.
+- 14 relevant existing database regressions pass: independent evidence, shared-ABN agency approval, normal business capacity, direct-write ceilings and related review boundaries. The other 111 cases were deliberately skipped in this targeted run; their earlier full result is not counted as a fresh run.
+- Hosted acceptance ran inside BEGIN/ROLLBACK on the actual Westmere database: two synthetic email-confirmed accounts entered standard employer/agency verification without invitations; Starter preparation coverage was available; no billing mapping appeared; owner consent did not expose a synthetic profile/vacancy; administrator premature release was rejected; anonymous discovery remained empty. All synthetic acceptance accounts, verification requests and notices rolled back.
+- The previous exact reserved-domain browser-test access request was removed from the private queue. No real participant requests or account records were deleted.
+- Hosted state verified: marketplace_open=false, self-registration allowed, zero released vacancies and zero retained synthetic acceptance accounts.
+- Live browser: root redirects to /launch; business registration opens directly; agency selector shows agency registration; normal sign-in query parameters preserve agency intent; /account?tab=verification redirects with its query intact; /launch/preview shows explicitly fictional data; /launch/plans shows all six correctly labelled test plan options.
+- Live public /api/jobs and /api/jobs?samples=1 return zero jobs with live source and no-store headers.
+- The Vercel fetch connector misclassified the application's expected signed-out admin 401 as deployment protection; direct browser inspection confirmed the application returns SIGN_IN_REQUIRED. No authenticated browser flow is claimed.
+- No new Supabase security warnings: 49 intentional private/service-only RLS-no-policy informational findings and the pre-existing password-protection warning remain. The two pre-existing foreign-key index information findings are unchanged.
+- Runtime error/fatal scan for the deployed revision was clean during live checks. No external log drains are configured.
+
+Browser screenshots:
+- deliverables/founding-launch/launch-directory-home.jpg
+- deliverables/founding-launch/launch-registration.jpg
+
+Operating guide: docs/founding-launch.md
+All profiles/vacancies remain held for public launch. No employer outreach campaign or advertising was sent or purchased.

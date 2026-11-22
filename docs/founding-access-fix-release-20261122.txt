@@ -1,0 +1,23 @@
+Westmere founding applicant-registration fix — 22 November 2026
+
+Production deployment: dpl_2XBJjvD5Cxvxk3P1tzwkpUvdhxgd (READY)
+Source snapshot: 8ef2609b631fc2937d9af7372ffdc9a3534ab3c7
+Canonical site: https://westmere.com.au
+Hosted migration: 20261122055502_founding_business_signup_gate
+
+Cleared the Mac DNS cache with dscacheutil -flushcache. The operating-system lookup subsequently returned the correct Vercel address, a normal HTTPS request returned HTTP 200, and Chrome opened westmere.com.au successfully without a forced address or TLS exception. No DNS records, browser security controls or network DNS-provider settings were changed.
+
+The anonymous profile action now says applicant accounts open at launch. Its shared sign-in dialog displays the launch notice, email-update link and business/approved-account sign-in link, with no applicant email fields or provider signup actions. General pre-launch email sign-in cannot create a new user. Google/Microsoft applicant signup is refused before contacting the provider. Business provider signup requires the same business email supplied on the form.
+
+A server-issued, email-bound business admission lasts 15 minutes and uses keyed-network pacing. Public and authenticated callers cannot issue admissions. The enabled Supabase Before User Created Postgres hook calls public.before_user_created and rejects direct email/password/OAuth registration unless the admission or another approved founding identity permits it. User-editable intent or role metadata is ignored. Existing business, team, pre-founding, tester and enabled staff access is retained, subject to restrictions. Personal registration automatically opens with the public marketplace switch.
+
+Verification: all 454 tests passed in 60 files; TypeScript and production build passed, including all four deployment-traced PDF workers. Production profile browser verification showed zero registration fields. Deployed email, Google and Microsoft applicant signup endpoints returned 403 FOUNDING_ACCESS_REQUIRED. A direct Supabase Auth signup with spoofed administrator/business metadata returned HTTP 403 with the intended launch message and no user/session. A rollback-only hosted transaction confirmed prepared business admission succeeds while unapproved applicant admission fails. The authenticated role cannot call the hook and anon cannot issue an admission; Auth has the narrow validation permission it needs.
+
+Production remains in founding mode, with businessPaymentsReady=true, the protected admin allowed, no retained verification accounts/admissions, and no launch campaign. No sign-in or launch emails were sent during these checks, and no subscription or payment was created.
+
+Preview files:
+- deliverables/launch-20261122/public-launch-email-preview.html
+- deliverables/launch-20261122/public-launch-email-preview.png
+- deliverables/launch-20261122/public-launch-email-preview.txt
+
+The preview is generated from the actual launch renderer, with a fictitious recipient and random placeholder removal token. The standalone HTML adds UTF-8/viewport metadata for local browser display. Email content and links otherwise match the launch template. No campaign has been queued or sent.

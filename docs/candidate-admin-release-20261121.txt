@@ -1,0 +1,29 @@
+Westmere candidate/admin release — 21 November 2026
+
+Scope: preserve Enterprise billing-owner Careers+ access; guide non-entitled business accounts consistently; require actual message text or uploaded documents before Assistant submission; mirror Billing plan features on For employers; reviewed employer/agency classification; independently verified trading brands sharing an ABN without membership transfer; collapsed admin records and cursor pagination; ten-record admin activity and email pages; 15-minute account-wide preview intervals; consented recognised popular searches with minimum sample thresholds; private saved listing details inside role cards; Australian/Victorian advertiser responsibility and moderation controls.
+
+Verification: TypeScript and Node 24 production build pass. All 237 application/API cases pass. All 116 database cases pass in isolated batches, including seven parameterised Enterprise/agency cases. Four deployment-traced PDF workers pass. Browser verifies category-only and whitespace-only messages keep Send disabled, while text enables it. Database regression tests cover shared ABN approval without other-company membership, preview cooldown after three earlier requests, private stable email pages, five-item queue cursors, admin activity lookahead, suppressed/deduplicated popularity and independent compliance review.
+
+WM Recruitment: its pending request uses the ABN already attached to the existing ACME example and requests employer classification although its account is registered as agency. The new reviewer chooses the appropriate classification and separately confirms shared-ABN trading-brand evidence. No real approval or verification claim was recorded by this release. Established paid accounts continue through the existing independently reviewed account-type/billing correction workflow.
+
+Legal limits: all 12 currently published listings are labelled fictional tests. No explicit high-risk statements matched the reviewed automated checks. This is not certification of wage, award, discrimination, licensing or employment-law compliance. Advertisers must check current applicable obligations and confirm authority and compliance before publication. An independent moderator can assess a flagged ad and documented lawful exceptions. Terms allocate advertiser duties but expressly preserve publisher/accessorial and other non-excludable obligations of Westmere and its sole-trader operator.
+
+Primary guidance reviewed:
+https://www.fairwork.gov.au/starting-employment/job-ads
+https://www.fairwork.gov.au/find-help-for/contracting-labour-supply-chains
+https://www.humanrights.vic.gov.au/resources/recruitment-guideline/
+https://www.humanrights.vic.gov.au/for-individuals/employment/
+https://humanrights.gov.au/resource-hub/by-resource-type/publications/guidelines/guidelines-writing-and-publishing-recruitment-advertisements
+https://www.labourhireauthority.vic.gov.au/provider/
+
+The Victorian Labour Hire Authority describes changes effective 1 October 2026, including labour supply through intermediaries. Account classification never replaces a required licence. The Victorian equal opportunity and federal publisher rules cannot be removed by website terms.
+
+Deployment: final production build 08fae9440ad0f18e1a5b0ce6cde307785da97302 / dpl_9buiQgRADME2DBNHpcqs5V2WQmkr is READY and assigned to https://westmere-careers.vercel.app. Source snapshot includes the synthetic PDF required by the cloud build verification script; an initial omitted-fixture cloud build failed before alias assignment. Existing working-tree changes were preserved. Runtime snapshots are separate from the older GitHub main branch.
+
+Live checks: the personal account’s existing selected CV resolved automatically and Strong Matches compared all 12 current test roles. The saved closed agency role retained a private copy, with its disclosure confirmed inside article.job-card. Company feedback listed current and closed titles and correctly disabled on-site reviews without a recorded application. Preview control is available again after the account’s three earlier same-day previews. Admin completed business requests paginate 5/2; activity advances independently by ten. Employer and agency public comparisons use the Billing features, including Enterprise billing-owner tools. No real application, experience review, business approval, subscription or alert email was submitted during these checks.
+
+Browser upload limitation: Chrome’s extension requires Allow access to file URLs for automated file selection. The live assistant/document endpoint was independently tested with tests/fixtures/synthetic-cv.pdf: 444 extracted characters and the SYNTHETIC CV marker were confirmed. No original document was retained by that endpoint and no AI generation was requested.
+
+Final public search smoke check confirms the fallback says Suggested searches while popularity samples are insufficient. Browser console and final production runtime error scans are clean for the checked paths. The initial failed build did not replace production. No new database security warning was introduced; the new private popularity table is intentionally service-only with RLS enabled.
+
+Final READY read-back: dpl_9buiQgRADME2DBNHpcqs5V2WQmkr / 08fae9440ad0f18e1a5b0ce6cde307785da97302; canonical alias assigned without error. Terms now also correctly describe saved paid chats and average recorded/reported response measures. The live admin card exposes both Employer and Recruitment agency choices plus a separate shared-ABN evidence check. WM Recruitment remains pending, ready for the administrator’s evidence-based decision.

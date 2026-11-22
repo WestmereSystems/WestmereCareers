@@ -15,6 +15,7 @@ export function checkRpc(
       409,
       "This item has changed. Refresh it before making a decision.",
     );
+  if (error.code === "23514") throw new ApiError(409, "This change exceeds the current plan allowance or conflicts with existing applications. Review plan coverage, quota usage and the vacancy before retrying.");
   if (error.code === "23505")
     throw new ApiError(
       409,

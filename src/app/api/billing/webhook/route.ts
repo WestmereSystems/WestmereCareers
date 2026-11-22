@@ -3,6 +3,8 @@ import type Stripe from "stripe";
 import { reconcileCustomer, stripeCustomerId } from "@/lib/premium/billing";
 import { premiumError, PremiumError } from "@/lib/premium/http";
 import { premiumAdmin, stripeClient } from "@/lib/premium/providers";
+import { billingEventNotice } from "@/lib/premium/billing-notices";
+import type { BillingMode } from "@/lib/premium/billing-mode";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,12 +52,25 @@ const handled = new Set([
   "customer.subscription.resumed",
   "invoice.paid",
   "invoice.payment_failed",
+  "subscription_schedule.created",
+  "subscription_schedule.updated",
+  "subscription_schedule.released",
+  "subscription_schedule.canceled",
+  "subscription_schedule.aborted",
+  "subscription_schedule.completed",
 ]);
 
 export async function POST(request: Request) {
   let capturedId: string | undefined;
   try {
-    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    const mode: BillingMode =
+      new URL(request.url).searchParams.get("mode") === "live"
+        ? "live"
+        : "test";
+    const secret =
+      mode === "live"
+        ? process.env.STRIPE_LIVE_WEBHOOK_SECRET
+        : process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret)
       throw new PremiumError(
         "NOT_CONFIGURED",
@@ -68,7 +83,7 @@ export async function POST(request: Request) {
         "INVALID_SIGNATURE",
         "Webhook signature is missing.",
       );
-    const stripe = stripeClient();
+    const stripe = stripeClient(mode);
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(
@@ -83,10 +98,10 @@ export async function POST(request: Request) {
         "Webhook signature is invalid.",
       );
     }
-    if (event.livemode)
+    if (event.livemode !== (mode === "live"))
       throw new PremiumError(
         "WRONG_MODE",
-        "Only sandbox events are accepted.",
+        "Webhook billing mode does not match its signing secret.",
         400,
       );
     const admin = premiumAdmin();
@@ -120,7 +135,7 @@ export async function POST(request: Request) {
     if (handled.has(event.type)) {
       const customer =
         "customer" in object ? stripeCustomerId(object.customer) : null;
-      if (customer) await reconcileCustomer(customer, event.created);
+      if (customer) await reconcileCustomer(customer, event.created, mode);
     }
     if (
       [
@@ -155,9 +170,36 @@ export async function POST(request: Request) {
               "Billing review could not be recorded.",
               503,
             );
-          await reconcileCustomer(customer, event.created);
+          await reconcileCustomer(customer, event.created, mode);
         }
       }
+    }
+    const notice = billingEventNotice(event);
+    const noticeCustomer =
+      event.type === "customer.updated"
+        ? objectId
+        : ("customer" in object ? stripeCustomerId(object.customer) : null) ||
+          (event.type === "payment_method.detached"
+            ? stripeCustomerId(
+                event.data.previous_attributes &&
+                  "customer" in event.data.previous_attributes
+                  ? event.data.previous_attributes.customer
+                  : null,
+              )
+            : null);
+    if (notice && noticeCustomer) {
+      const logged = await admin.rpc("record_billing_notice", {
+        p_event: event.id,
+        p_customer: noticeCustomer,
+        p_title: notice.title,
+        p_message: notice.message,
+      });
+      if (logged.error)
+        throw new PremiumError(
+          "NOTICE_CAPTURE_FAILED",
+          "Your billing notice could not be recorded.",
+          503,
+        );
     }
     const { error: completeError } = await admin
       .from("stripe_events")

@@ -1,3 +1,4 @@
+import { assertPurchasesOpen } from "@/lib/server/launch";
 import { assertIndividual } from "@/lib/server/business";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/server/auth";
@@ -9,6 +10,7 @@ import {
 } from "@/lib/premium/billing";
 import { premiumError, PremiumError, requireOrigin } from "@/lib/premium/http";
 import { stripeClient } from "@/lib/premium/providers";
+import { billingModeFor } from "@/lib/premium/billing-mode";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
         "Please sign in before subscribing to Careers+.",
         401,
       );
+    await assertPurchasesOpen();
     assertIndividual(business);
     if (isPremium)
       throw new PremiumError(
@@ -36,10 +39,11 @@ export async function POST(request: Request) {
         "You already have Careers+. Manage it in your billing settings.",
         409,
       );
-    const stripe = stripeClient();
-    const price = await validatedCareersPrice(stripe);
+    const mode = billingModeFor(user, "individual");
+    const stripe = stripeClient(mode);
+    const price = await validatedCareersPrice(stripe, mode);
     return await withBillingLease(user.id, async (lease) => {
-      const customer = await customerFor(user, true, lease);
+      const customer = await customerFor(user, true, lease, mode);
       if (!customer)
         throw new PremiumError(
           "BILLING_UNAVAILABLE",

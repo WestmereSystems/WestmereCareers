@@ -1,15 +1,22 @@
 "use client";
 import Link from "next/link";
+import { useSession } from "./providers";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, BarChart3, Compass } from "lucide-react";
 import { EmployerInsights } from "./employer-insights";
-import { AustraliaDiscovery } from "./australia-discovery";
+import {
+  AustraliaDiscovery,
+  DiscoveryTables,
+  demoDiscovery,
+} from "./australia-discovery";
 export function EmployerPreview() {
+  const session = useSession();
   const initial = useSearchParams().get("tab");
   const [tab, setTab] = useState(
     initial === "discovery" ? "discovery" : "dashboard",
   );
+  const [region, setRegion] = useState("");
   return (
     <>
       <div className="demo-workspace-banner">
@@ -18,8 +25,15 @@ export function EmployerPreview() {
           Fictional company, roles and activity. No private applicant records or
           live hiring actions.
         </span>
-        <Link className="text-link" href="/employers/sign-in">
-          Create your workspace <ArrowRight size={16} />
+        <Link
+          className="text-link"
+          href={
+            session.marketplaceOpen
+              ? "/employers/sign-in?register=1"
+              : "/launch/register"
+          }
+        >
+          Register your business
         </Link>
       </div>
       <section className="page-intro">
@@ -58,40 +72,49 @@ export function EmployerPreview() {
             <span className="badge">Fictional · last 30 days</span>
           </div>
           <div className="discovery-cards">
-            <div>
-              <span>Search appearances</span>
-              <strong>2,846</strong>
-            </div>
-            <div>
-              <span>Listing views</span>
-              <strong>1,284</strong>
-            </div>
-            <div>
-              <span>Company profile views</span>
-              <strong>429</strong>
-            </div>
+            {(
+              [
+                ["searches", "Search appearances"],
+                ["listing", "Listing views"],
+                ["profile", "Company profile views"],
+              ] as const
+            ).map(([key, label]) => (
+              <div key={key}>
+                <span>{label}</span>
+                <strong>
+                  {demoDiscovery.regions
+                    .filter((r) => !region || r.region === region)
+                    .reduce((sum, r) => sum + (r[key] || 0), 0)
+                    .toLocaleString()}
+                </strong>
+              </div>
+            ))}
           </div>
-          <div className="discovery-grid">
-            <AustraliaDiscovery demo />
-            <div>
-              <h3>Recognised search keywords</h3>
+          <label className="field-label visitor-region-field">
+            Visitor region
+            <select value={region} onChange={(e) => setRegion(e.target.value)}>
+              <option value="">All regions</option>
               {[
-                ["product design", 624],
-                ["customer success", 318],
-                ["software engineer", 246],
-                ["operations", 129],
-              ].map(([k, n]) => (
-                <div key={k} className="keyword-row">
-                  <span>{k}</span>
-                  <strong>{n}</strong>
-                </div>
+                "ACT",
+                "NSW",
+                "NT",
+                "QLD",
+                "SA",
+                "TAS",
+                "VIC",
+                "WA",
+                "OTHER",
+                "UNKNOWN",
+              ].map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
-              <p className="fineprint">
-                Illustrative counts. Live Discovery reports events from visitors
-                who allow optional analytics; it does not identify individual
-                people or measure all traffic.
-              </p>
-            </div>
+            </select>
+          </label>
+          <div className="discovery-grid">
+            <AustraliaDiscovery demo selected={region} onSelect={setRegion} />
+            <DiscoveryTables data={demoDiscovery} selected={region} />
           </div>
         </section>
       )}

@@ -3,7 +3,7 @@ import { discoveryKeyword } from "@/lib/discovery";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-export function PrivacyChoice() {
+export function PrivacyChoice({ inline = false }: { inline?: boolean }) {
   const path = usePathname();
   const [choice, setChoice] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -12,18 +12,25 @@ export function PrivacyChoice() {
   const [message, setMessage] = useState("");
   useEffect(() => {
     const c = new AbortController();
-    fetch("/api/privacy/analytics", { signal: c.signal, cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!c.signal.aborted) {
-          setChoice(d.choice);
-          setReady(true);
-        }
-      })
-      .catch(() => {});
-    return () => c.abort();
+    const load = () =>
+      fetch("/api/privacy/analytics", { signal: c.signal, cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!c.signal.aborted) {
+            setChoice(d.choice);
+            setReady(true);
+          }
+        })
+        .catch(() => {});
+    void load();
+    window.addEventListener("westmere-analytics-change", load);
+    return () => {
+      c.abort();
+      window.removeEventListener("westmere-analytics-change", load);
+    };
   }, []);
   const show =
+    inline ||
     open ||
     (ready &&
       !choice &&
@@ -42,7 +49,7 @@ export function PrivacyChoice() {
       window.dispatchEvent(new Event("westmere-analytics-change"));
     } catch {
       setMessage(
-        "Your choice was not saved. Optional analytics stays off until confirmed.",
+        "Your choice was not saved. Your previous setting remains in place. Please try again.",
       );
     } finally {
       setBusy(false);
@@ -50,19 +57,38 @@ export function PrivacyChoice() {
   }
   return (
     <>
-      <div className="privacy-choice">
-        <button onClick={() => setOpen(!open)}>
-          Privacy & analytics choices
-        </button>
-        {choice &&
-          ` · ${choice === "allow" ? "Optional analytics allowed" : "Optional analytics off"}`}
-      </div>
+      {!inline && (
+        <div className="privacy-choice">
+          <button onClick={() => setOpen(!open)}>
+            Privacy & analytics choices
+          </button>
+          {choice &&
+            ` · ${choice === "allow" ? "Optional analytics allowed" : "Optional analytics off"}`}
+        </div>
+      )}
       {show && (
         <aside
-          className="privacy-choice-panel"
+          className={
+            inline ? "panel analytics-settings" : "privacy-choice-panel"
+          }
           aria-label="Optional analytics choice"
         >
-          <h3>A clearer picture, with your choice.</h3>
+          <h3>
+            {inline
+              ? "Analytics settings"
+              : "A clearer picture, with your choice."}
+          </h3>
+          {inline && (
+            <p role="status">
+              {!ready
+                ? "Loading your choice…"
+                : choice === "allow"
+                  ? "Optional analytics allowed"
+                  : "Optional analytics off"}
+              . Change this at any time. This preference applies to this browser
+              on this device.
+            </p>
+          )}
           <p>
             Allow optional first-party analytics to help employers understand
             search appearances, listing views and broad visitor regions. We
@@ -76,19 +102,23 @@ export function PrivacyChoice() {
             <button
               className="button secondary"
               disabled={busy}
+              aria-pressed={choice === "decline"}
               onClick={() => void save("decline")}
             >
-              Keep analytics off
+              {choice === "decline"
+                ? "Keep analytics off"
+                : "Disable analytics"}
             </button>
             <button
               className="button secondary"
               disabled={busy}
+              aria-pressed={choice === "allow"}
               onClick={() => void save("allow")}
             >
               Allow analytics
             </button>
           </div>
-          {choice && (
+          {choice && !inline && (
             <button className="text-button" onClick={() => setOpen(false)}>
               Close
             </button>
@@ -103,10 +133,12 @@ export function DiscoveryEvent({
   organisations,
   kind,
   keyword = "",
+  jobId,
 }: {
   organisations: string[];
   kind: "search" | "listing" | "profile";
   keyword?: string;
+  jobId?: string;
 }) {
   const key = JSON.stringify([...new Set(organisations)].sort());
   const views = useRef<{ key: string; id: string; recorded: boolean } | null>(
@@ -115,7 +147,7 @@ export function DiscoveryEvent({
   useEffect(() => {
     const ids = JSON.parse(key) as string[];
     if (!ids.length) return;
-    const viewKey = JSON.stringify([key, kind, keyword]);
+    const viewKey = JSON.stringify([key, kind, keyword, jobId]);
     if (views.current?.key !== viewKey)
       views.current = {
         key: viewKey,
@@ -137,6 +169,7 @@ export function DiscoveryEvent({
             view: view.id,
             organisations: ids,
             kind,
+            ...(jobId ? { jobId } : {}),
             keyword: discoveryKeyword(keyword),
           }),
         });
@@ -149,6 +182,6 @@ export function DiscoveryEvent({
     return () => {
       window.removeEventListener("westmere-analytics-change", changed);
     };
-  }, [key, kind, keyword]);
+  }, [key, kind, keyword, jobId]);
   return null;
 }

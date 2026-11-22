@@ -44,6 +44,12 @@ describe("Discovery privacy and access", () => {
     h.set("x-vercel-ip-country-region", "not-a-region");
     expect(discoveryRegion(h, true)).toBe("UNKNOWN");
   });
+  it("groups Christmas Island and Cocos (Keeling) Islands with WA instead of overseas", () => {
+    for (const country of ["CX", "CC"])
+      expect(
+        discoveryRegion(new Headers({ "x-vercel-ip-country": country }), true),
+      ).toBe("WA");
+  });
   it("blocks Starter and unrelated or suspended business access before reading aggregates", async () => {
     for (const organisations of [
       [{ id: org, verified: true, role: "owner", tier: "starter" }],

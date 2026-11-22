@@ -1,11 +1,14 @@
 "use client";
 import { DiscoveryEvent } from "./privacy-choice";
+import { findPlace } from "@/lib/locations";
 import { discoveryKeyword } from "@/lib/discovery";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  LayoutGrid,
+  Rows2,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -16,17 +19,15 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { demoJobs, type Job } from "@/lib/jobs";
+import type { Job } from "@/lib/jobs";
 import {
-  cvMatch,
-  filterJobs,
   parseJobQuery,
   serialiseJobQuery,
   type JobSort,
 } from "@/lib/search";
 import { SearchBar } from "./search-bar";
 import { JobCard } from "./job-card";
-import { SavedCVButton } from "./profile-tools";
+import { useNotice, careerAccessNotice } from "./notices";
 import { useSession } from "./providers";
 
 type Result = {
@@ -55,6 +56,10 @@ type Props = {
   initialEmploymentType?: string[];
   initialMinSalary?: number | null;
   initialDirectOnly?: boolean;
+  initialDistance?: number | null;
+  initialListedWithin?: number | null;
+  initialListedFrom?: string;
+  initialListedTo?: string;
 };
 const modes = ["Hybrid", "Remote", "On-site"];
 const types = ["Full time", "Part time", "Contract", "Casual"];
@@ -73,9 +78,13 @@ export function JobBrowser({
   initialEmploymentType = [],
   initialMinSalary = null,
   initialDirectOnly = false,
+  initialDistance = null,
+  initialListedWithin = null,
+  initialListedFrom = "",
+  initialListedTo = "",
 }: Props) {
   const session = useSession();
-  const sampleMode = useSearchParams().get("samples") === "1";
+  const notice = useNotice();
   const [hasSearched, setHasSearched] = useState(
     Boolean(
       initialKeyword.trim() ||
@@ -89,13 +98,16 @@ export function JobBrowser({
   const navigationQuery = useSearchParams().toString();
   const loadedKey = useRef(
     serialiseJobQuery({
-      samples: sampleMode,
       keyword: initialKeyword,
       location: initialLocation,
       workMode: initialWorkMode,
       employmentType: initialEmploymentType,
       minSalary: initialMinSalary,
       directOnly: initialDirectOnly,
+      distance: initialDistance,
+      listedWithin: initialListedWithin,
+      listedFrom: initialListedFrom,
+      listedTo: initialListedTo,
       sort: initialSort,
       page: initialPage,
     }),
@@ -103,6 +115,11 @@ export function JobBrowser({
   const seenNavigation = useRef(navigationQuery);
   const lastWrittenQuery = useRef<string | null>(null);
   const pendingNavigationQuery = useRef<string | null>(null);
+  const [layout, setLayout] = useState<"grid" | "list">("grid");
+  useEffect(() => {
+    const saved = localStorage.getItem("westmere-job-layout");
+    if (saved === "grid" || saved === "list") setLayout(saved);
+  }, []);
   const [keyword, setKeyword] = useState(initialKeyword);
   const [location, setLocation] = useState(initialLocation);
   const [workMode, setWorkMode] = useState<string[]>(initialWorkMode);
@@ -111,12 +128,21 @@ export function JobBrowser({
   );
   const [minSalary, setMinSalary] = useState<number | null>(initialMinSalary);
   const [directOnly, setDirectOnly] = useState(initialDirectOnly);
+  const [distance, setDistance] = useState(initialDistance);
+  const [listedWithin, setListedWithin] = useState(initialListedWithin);
+  const [listedFrom, setListedFrom] = useState(initialListedFrom);
+  const [listedTo, setListedTo] = useState(initialListedTo);
   const [sort, setSort] = useState<JobSort>(initialSort);
   const [page, setPage] = useState(initialPage);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cvOpen, setCvOpen] = useState(false);
   const [cv, setCv] = useState("");
   const [appliedCv, setAppliedCv] = useState("");
+  const [baseCV, setBaseCV] = useState<{ id: string; filename: string } | null>(
+    null,
+  );
+  const [baseLoading, setBaseLoading] = useState(false);
+  const [appliedExtra, setAppliedExtra] = useState("");
   const [consent, setConsent] = useState(false);
   const [strongOnly, setStrongOnly] = useState(true);
   const [message, setMessage] = useState("");
@@ -133,60 +159,67 @@ export function JobBrowser({
   const query = useMemo(
     () =>
       serialiseJobQuery({
-        samples: sampleMode,
         keyword,
         location,
         workMode,
         employmentType,
         minSalary,
         directOnly,
+        distance,
+        listedWithin,
+        listedFrom,
+        listedTo,
         sort,
         page,
       }),
     [
-      sampleMode,
       keyword,
       location,
       workMode,
       employmentType,
       minSalary,
       directOnly,
+      distance,
+      listedWithin,
+      listedFrom,
+      listedTo,
       sort,
       page,
     ],
   );
-  const local = useMemo(() => {
-    const jobs = filterJobs(demoJobs, {
-      keyword,
-      location,
-      workMode,
-      employmentType,
-      minSalary,
-      directOnly,
-      sort,
-      strongMatchesOnly: matching && strongOnly,
-      cvText: matching ? appliedCv : "",
-    });
-    return {
-      jobs: jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-      total: jobs.length,
-      page,
-      pageSize: PAGE_SIZE,
-    };
-  }, [
-    keyword,
-    location,
-    workMode,
-    employmentType,
-    minSalary,
-    directOnly,
-    sort,
-    matching,
-    strongOnly,
-    appliedCv,
-    page,
-  ]);
-  const result: Result = source === "demo" ? local : remote;
+  const result: Result = remote;
+
+  useEffect(() => {
+    if (!cvOpen || !session.user || !session.isPremium) return;
+    const controller = new AbortController();
+    setBaseLoading(true);
+    fetch("/api/profile/cvs", { cache: "no-store", signal: controller.signal })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        return d;
+      })
+      .then((d) => {
+        const selected = d.cvs?.find(
+          (c: { id: string }) => c.id === d.activeId,
+        );
+        setBaseCV(selected || null);
+        if (appliedCv && appliedCv !== selected?.id) {
+          setAppliedCv("");
+          setMessage(
+            "Your base CV changed. Compare again to refresh your results.",
+          );
+        }
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setMessage(e.message || "Your base CV could not be checked.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setBaseLoading(false);
+      });
+    return () => controller.abort();
+  }, [cvOpen, session.user?.id, session.isPremium]);
 
   // Next can reuse a cached page after native filter updates. Observe the current
   // URL as well as initial props, and distinguish our own writes from navigation.
@@ -206,6 +239,10 @@ export function JobBrowser({
     setEmploymentType(next.employmentType ?? []);
     setMinSalary(next.minSalary ?? null);
     setDirectOnly(Boolean(next.directOnly));
+    setDistance(next.distance ?? null);
+    setListedWithin(next.listedWithin ?? null);
+    setListedFrom(next.listedFrom ?? "");
+    setListedTo(next.listedTo ?? "");
     setSort(next.sort ?? "relevance");
     setPage(next.page ?? 1);
     setCv("");
@@ -233,11 +270,12 @@ export function JobBrowser({
     }
   }, [session.isPremium, cv, appliedCv]);
   useEffect(() => {
-    if (source !== "live") return;
+    if (source !== "live" && !matching) return;
     const requestKey = JSON.stringify([
       query,
       matching,
       appliedCv,
+      appliedExtra,
       consent,
       strongOnly,
       sort,
@@ -255,7 +293,7 @@ export function JobBrowser({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 query,
-                cv: appliedCv,
+                additionalExperience: appliedExtra,
                 consent,
                 page,
                 strongOnly,
@@ -301,6 +339,7 @@ export function JobBrowser({
     query,
     matching,
     appliedCv,
+    appliedExtra,
     consent,
     page,
     strongOnly,
@@ -327,35 +366,45 @@ export function JobBrowser({
     );
   }
   function requestMatching() {
+    if (session.business && !session.isPremium) {
+      notice(careerAccessNotice);
+      return;
+    }
     setCvOpen(true);
     setMessage(
       session.isPremium
         ? ""
-        : "CV matching is included with Careers+. Browsing and applying stay free.",
+        : session.business
+          ? "Use a personal Careers+ account or subscribe to Enterprise on this billing account for Strong Matches. Invited team accounts do not inherit Careers+."
+          : "CV matching is included with Careers+. Browsing and applying stay free.",
     );
   }
   function applyCv() {
     if (!session.isPremium) {
-      setMessage("Careers+ is required to compare your CV.");
+      setMessage(
+        session.business
+          ? "Use a personal Careers+ account or subscribe to Enterprise on this billing account for Strong Matches."
+          : "Careers+ is required to compare your CV.",
+      );
       return;
     }
-    if (cv.trim().length < 40) {
-      setMessage(
-        "Add at least a few sentences from your CV so there is useful evidence to compare.",
-      );
+    if (!baseCV) {
+      setMessage("Upload and select a base CV on your profile first.");
       return;
     }
     if (!consent) {
       setMessage("Please confirm the CV comparison consent before continuing.");
       return;
     }
-    setAppliedCv(cv.trim());
+    setAppliedCv(baseCV.id);
+    setAppliedExtra(cv.trim());
     setSort("match");
     setPage(1);
     setMessage("");
   }
   function removeCv(clearText = false) {
     setAppliedCv("");
+    setAppliedExtra("");
     setConsent(false);
     setSort("relevance");
     setPage(1);
@@ -363,7 +412,6 @@ export function JobBrowser({
   }
   function editCv(value: string) {
     setCv(value);
-    removeCv();
   }
   function changeConsent(checked: boolean) {
     setConsent(checked);
@@ -376,6 +424,10 @@ export function JobBrowser({
     setEmploymentType([]);
     setMinSalary(null);
     setDirectOnly(false);
+    setDistance(null);
+    setListedWithin(null);
+    setListedFrom("");
+    setListedTo("");
     removeCv(true);
     setMessage("");
   }
@@ -383,7 +435,9 @@ export function JobBrowser({
     workMode.length +
     employmentType.length +
     Number(Boolean(minSalary)) +
-    Number(directOnly);
+    Number(directOnly) +
+    Number(Boolean(distance)) +
+    Number(Boolean(listedWithin || listedFrom || listedTo));
   const savedQuery = new URLSearchParams(query);
   savedQuery.delete("samples");
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
@@ -410,11 +464,6 @@ export function JobBrowser({
           <Link className="text-link" href={`/saved-searches?${savedQuery}`}>
             Save this search & choose email alerts →
           </Link>
-          {sampleMode && (
-            <span className="fineprint">
-              Saved alerts use live vacancies, not sample roles.
-            </span>
-          )}
         </div>
       )}
       <SearchBar
@@ -536,6 +585,88 @@ export function JobBrowser({
             ))}
           </fieldset>
           <fieldset>
+            <legend>Distance</legend>
+            <select
+              aria-label="Distance from selected location"
+              value={distance ?? ""}
+              onChange={(e) =>
+                updateFilter(() =>
+                  setDistance(e.target.value ? Number(e.target.value) : null),
+                )
+              }
+            >
+              <option value="">Selected location only</option>
+              {[5, 10, 25, 50, 100, 250].map((km) => (
+                <option key={km} value={km}>
+                  Within {km} km
+                </option>
+              ))}
+            </select>
+            <p className="fineprint">
+              Straight-line distance from the selected town or city centre.
+              Nationwide remote roles are included.
+            </p>
+            {distance && !findPlace(location) && (
+              <p className="message" role="status">
+                Choose a city or town and state from the location suggestions.
+              </p>
+            )}
+          </fieldset>
+          <fieldset>
+            <legend>When listed</legend>
+            <select
+              aria-label="Listing time window"
+              value={listedWithin ?? ""}
+              onChange={(e) =>
+                updateFilter(() => {
+                  setListedWithin(
+                    e.target.value ? Number(e.target.value) : null,
+                  );
+                  setListedFrom("");
+                  setListedTo("");
+                })
+              }
+            >
+              <option value="">Any time</option>
+              {[1, 3, 7, 14, 30, 40].map((days) => (
+                <option key={days} value={days}>
+                  Last {days === 1 ? "24 hours" : `${days} days`}
+                </option>
+              ))}
+            </select>
+            <label className="field-label">
+              From date
+              <input
+                type="date"
+                value={listedFrom}
+                max={listedTo || undefined}
+                onChange={(e) =>
+                  updateFilter(() => {
+                    setListedFrom(e.target.value);
+                    setListedWithin(null);
+                  })
+                }
+              />
+            </label>
+            <label className="field-label">
+              Through date
+              <input
+                type="date"
+                value={listedTo}
+                min={listedFrom || undefined}
+                onChange={(e) =>
+                  updateFilter(() => {
+                    setListedTo(e.target.value);
+                    setListedWithin(null);
+                  })
+                }
+              />
+            </label>
+            <p className="fineprint">
+              Custom dates include the full day in UTC.
+            </p>
+          </fieldset>
+          <fieldset>
             <legend>Annual salary</legend>
             <select
               aria-label="Annual salary filter"
@@ -589,21 +720,58 @@ export function JobBrowser({
           {session.isPremium ? (
             <>
               <p className="fineprint">
-                Compare the skills named in your CV with those listed by
-                employers. A strong match means at least 60% of the listed
-                skills appear in your CV; this is an evidence aid, not a
-                prediction of hiring success.
+                Your selected base CV is used automatically. Additional details
+                receive a smaller bonus and cannot reduce a strong CV match.
+                This is a skills comparison, not a prediction of hiring success.
+              </p>
+              <p className={baseCV ? "notice" : "notice warning"} role="status">
+                {baseLoading ? (
+                  "Checking your base CV…"
+                ) : baseCV ? (
+                  <>
+                    Base CV selected: <strong>{baseCV.filename}</strong>.{" "}
+                    <Link href="/account?tab=profile">
+                      Change your base CV in Profile
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  <>
+                    No base CV selected.{" "}
+                    <Link href="/account?tab=profile">
+                      Upload or select your base CV in Profile
+                    </Link>{" "}
+                    to compare roles.
+                  </>
+                )}
+              </p>
+              <p className="fineprint">
+                Results use all filters currently applied on this page:{" "}
+                {[
+                  keyword && `Role: ${keyword}`,
+                  location && `Location: ${location}`,
+                  ...workMode,
+                  ...employmentType,
+                  minSalary && `A$${minSalary.toLocaleString()}+`,
+                  directOnly && "Apply on Westmere",
+                  distance && `Within ${distance} km`,
+                  listedWithin && `Listed in ${listedWithin} days`,
+                  listedFrom && `From ${listedFrom}`,
+                  listedTo && `Through ${listedTo}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "All roles across Australia"}
+                .
               </p>
               <label className="field-label" htmlFor="cv-match-text">
-                Your CV text
+                Additional experience and skills (optional)
               </label>
-              <SavedCVButton onLoad={setCv} maxLength={20000} />
               <textarea
                 id="cv-match-text"
-                maxLength={20000}
+                maxLength={4000}
                 value={cv}
                 onChange={(e) => editCv(e.target.value)}
-                placeholder="Paste relevant experience and skills. You can leave out contact details."
+                placeholder="Add relevant experience or skills that are not yet in your base CV."
               />
               <label className="checkbox-label">
                 <input
@@ -611,27 +779,27 @@ export function JobBrowser({
                   checked={consent}
                   onChange={(e) => changeConsent(e.target.checked)}
                 />
-                I agree to Westmere processing this text for this comparison.
-                This filter does not save the text or send it to OpenAI.
+                I agree to Westmere comparing my base CV and any additional
+                details with these roles. Additional details are not saved or
+                sent to OpenAI.
               </label>
               <div className="inline-actions">
                 <button
                   type="button"
                   className="button purple small"
                   onClick={applyCv}
+                  disabled={!baseCV || baseLoading}
                 >
                   <Sparkles size={15} />
                   Compare my experience
                 </button>
-                {matching && (
-                  <button
-                    type="button"
-                    className="button secondary small"
-                    onClick={() => removeCv(true)}
-                  >
-                    Remove CV filter
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="button secondary small"
+                  onClick={clearAll}
+                >
+                  Clear all filters
+                </button>
               </div>
               {matching && (
                 <label className="checkbox-label" style={{ marginTop: 12 }}>
@@ -649,13 +817,18 @@ export function JobBrowser({
           ) : (
             <>
               <p className="muted" style={{ fontSize: 15 }}>
-                Careers+ helps you focus on roles that share the skills in your
-                CV, then prepare a thoughtful application with OpenAI-powered
-                guidance.
+                {session.business
+                  ? "Use a personal Careers+ account or subscribe to Enterprise on this billing account to explore Strong Matches and CV preparation from a candidate’s perspective. Invited accounts do not inherit Careers+."
+                  : "Careers+ helps you focus on roles that share the skills in your CV, then prepare a thoughtful application with personalised guidance."}
               </p>
               <div className="inline-actions">
-                <Link className="button purple small" href="/careers-plus">
-                  Explore Careers+
+                <Link
+                  className="button purple small"
+                  href={
+                    session.business ? "/account?tab=billing" : "/careers-plus"
+                  }
+                >
+                  {session.business ? "Review Enterprise" : "Explore Careers+"}
                   <ArrowRight size={15} />
                 </Link>
                 {!session.user && (
@@ -683,12 +856,6 @@ export function JobBrowser({
           not converted into annual salaries.
         </p>
       )}
-      {source === "demo" && (
-        <p className="notice">
-          Development preview · All employers, roles, pay and response figures
-          shown here are fictional. Filters work on the sample inventory.
-        </p>
-      )}
       {matching && source === "live" && result.searchedCount !== undefined && (
         <p className="notice">
           Compared {result.searchedCount} of {result.searchTotal} matching
@@ -714,13 +881,31 @@ export function JobBrowser({
             `${result.total} ${result.total === 1 ? "role" : "roles"}${matching ? " matching your experience" : ""}${location ? ` · ${location}` : ""}`
           )}
         </strong>
-        <span>
-          {activeCount > 0 &&
-            `${activeCount} active ${activeCount === 1 ? "filter" : "filters"} · `}
-          {!busy && result.total > 0
-            ? `Page ${Math.min(page, totalPages)} of ${totalPages}`
-            : "A little closer to your next chapter"}
-        </span>
+        <div className="job-view-controls">
+          <span>{activeCount > 0 ? `${activeCount} active filters` : ""}</span>
+          <div role="group" aria-label="Job result layout">
+            {(
+              [
+                ["grid", "Two-column grid", LayoutGrid],
+                ["list", "Single-column list", Rows2],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                className="icon-button"
+                aria-label={label}
+                aria-pressed={layout === value}
+                onClick={() => {
+                  setLayout(value);
+                  localStorage.setItem("westmere-job-layout", value);
+                }}
+              >
+                <Icon size={19} />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div aria-busy={busy}>
         {result.error ? (
@@ -752,52 +937,88 @@ export function JobBrowser({
             </button>
           </div>
         ) : (
-          <div className="job-grid">
+          <div
+            className={`job-grid ${layout === "list" ? "job-list-layout" : ""}`}
+          >
             {result.jobs.map((job) => (
               <JobCard
                 job={job}
                 key={job.id}
-                match={
-                  matching
-                    ? source === "demo"
-                      ? cvMatch(job, appliedCv).score
-                      : result.matches?.[job.id]?.score
-                    : undefined
-                }
+                match={matching ? result.matches?.[job.id]?.score : undefined}
               />
             ))}
           </div>
         )}
       </div>
-      {!busy && !result.error && totalPages > 1 && (
-        <nav
-          aria-label="Job result pages"
-          className="actions-row"
-          style={{ marginTop: 28 }}
-        >
-          <button
-            type="button"
-            className="button secondary small"
-            disabled={page <= 1}
-            onClick={() => setPage((value) => value - 1)}
-          >
-            <ArrowLeft size={15} />
-            Previous
-          </button>
-          <span className="fineprint">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            className="button secondary small"
-            disabled={page >= totalPages}
-            onClick={() => setPage((value) => value + 1)}
-          >
-            Next
-            <ArrowRight size={15} />
-          </button>
-        </nav>
+      {!busy && !result.error && (
+        <JobPagination
+          page={page}
+          total={totalPages}
+          onChange={setPage}
+          position="bottom"
+        />
       )}
     </>
+  );
+}
+
+function JobPagination({
+  page,
+  total,
+  onChange,
+  position,
+}: {
+  page: number;
+  total: number;
+  onChange: (page: number) => void;
+  position: string;
+}) {
+  const pages = Array.from(
+    new Set([
+      1,
+      ...[page - 1, page, page + 1].filter((n) => n > 0 && n <= total),
+      total,
+    ]),
+  ).sort((a, b) => a - b);
+  return (
+    <nav
+      aria-label={`Job result pages · ${position}`}
+      className="numbered-pagination"
+    >
+      <button
+        className="button secondary small"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+      >
+        <ArrowLeft size={15} />
+        Previous
+      </button>
+      {pages.map((n, i) => (
+        <span key={n}>
+          {i > 0 && n - pages[i - 1] > 1 ? (
+            <span aria-hidden="true">…</span>
+          ) : null}
+          <button
+            className="page-number"
+            aria-label={`Page ${n}`}
+            aria-current={n === page ? "page" : undefined}
+            onClick={() => onChange(n)}
+          >
+            {n}
+          </button>
+        </span>
+      ))}
+      <span className="fineprint">
+        Page {page} of {total}
+      </span>
+      <button
+        className="button secondary small"
+        disabled={page >= total}
+        onClick={() => onChange(page + 1)}
+      >
+        Next
+        <ArrowRight size={15} />
+      </button>
+    </nav>
   );
 }

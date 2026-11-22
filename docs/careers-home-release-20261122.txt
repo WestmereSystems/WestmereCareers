@@ -1,0 +1,33 @@
+Careers+ access and public launch homepage · 22 November 2026 (Australia/Melbourne)
+
+Deployment: dpl_9kpAhAXVbtvMVN4LmA4Vq7cPQb26
+URL: https://westmere-careers.vercel.app/launch
+Source snapshot: 74e9205910062ab69a838590a484e1697240e204
+Isolated source: /private/tmp/westmere-careers-home-release-20261122
+Existing Vercel team/project: order-ward / westmere-careers
+Framework: Next.js 16.4.6, Node 24, hnd1, production hosting target
+Previous production: dpl_9LmDiK3iGz4rct1RDgAUTSWBVicg
+
+Changes
+- Careers+ marketing and Assistant/Studio page entry no longer trigger the business-eligibility modal on mount. Explicit subscription actions retain the existing account-type check.
+- General Assistant balance, requests and temporary document extraction now permit unpaid employer/agency accounts to use their own existing three-request signed-in allowance. Client composer, consent, upload and balance controls follow this rule. Existing used credits remain used; no quotas or account records were reset.
+- Paid Studio generation, saved-chat writes, Role Strength, Strong Matches, individual subscription eligibility and Enterprise billing-owner restrictions remain protected. Invited accounts do not inherit another account's paid entitlement; they retain their own free requests.
+- Signed-in founding participants can reach the Assistant from the launch Careers+ holding page.
+- HomeHero is shared by the main and launch homepages, with identical grid, text, typography, photograph treatment and dotted background rules. The launch version retains the cafe image. Founding registration actions appear below this shared grid instead of the closed public job-search controls.
+- All six employer/agency plans and their prices/features are rendered directly on the launch homepage before account creation. The same comparison serves /launch/plans. No checkout, Stripe catalog, billing mode, tax or pricing configuration changed; options remain clearly labelled sandbox test subscriptions.
+- Profiles/vacancies remain private under the existing founding controls. No public marketplace or indexing switch was changed.
+
+Checks
+- TypeScript and Node 24 production build passed. All four deployment-traced PDF upload worker checks passed.
+- All 271 application/API cases across 54 files passed. This includes business/agency free balance and generation, exhausted allowance, temporary extraction, mount-effect regressions for the removed modal and the signed-out homepage comparison.
+- Five targeted real-migration database tests passed: exactly three completed uses for each individual/employer/agency non-subscriber, guest/account server-only quota limits, and stopped-attempt refund/identity isolation. Other 123 database cases were skipped in this targeted run and are not counted as freshly tested.
+- Local browser verified the cafe hero, computed dotted radial background, all six signed-out plan cards, registration links and no horizontal overflow at the default 1280px viewport. No viewport override was applied. No browser console errors were observed. The owned local development server was stopped.
+- No database schema or production account mutations were needed. Synthetic provider mocks and isolated PostgreSQL fixtures were used; no real AI requests or customer credits were consumed.
+
+Live verification
+- Production deployment is READY, both canonical aliases assigned with no alias error; remote build took approximately 35 seconds.
+- Root redirects to /launch. Shared production hero is live with the cafe image and dotted surface. The signed-out homepage contains all six employer/agency plans and its View employer and agency plans link targets /launch#plans without opening registration.
+- Live runtime error/fatal scan was clean during verification. No external log drains are configured. Browser checks showed no console errors.
+- Main Careers+ and unpaid business/agency Assistant mount behaviour was verified with explicit effect-executing regression fixtures; no authenticated production browser session or real provider generation is claimed.
+- Screenshots: deliverables/founding-launch/launch-home-20261122.jpg and launch-plans-20261122.jpg.
+- Existing working-tree changes remain uncommitted and preserved. The isolated release snapshot does not push or commit the user's main repository.

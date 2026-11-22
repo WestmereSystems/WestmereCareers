@@ -1,3 +1,5 @@
+// These regressions exercise the public-launch behaviour; founding access has dedicated API/database coverage.
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 const m = vi.hoisted(() => ({
   client: vi.fn(),
@@ -48,7 +50,7 @@ describe("email-code sign-in", () => {
     expect(r.status).toBe(200);
     expect(m.send).toHaveBeenCalledWith({
       email: "candidate@example.test",
-      options: { data: { full_name: "Alex" } },
+      options: { shouldCreateUser: true, data: { full_name: "Alex" } },
     });
     expect((await r.json()).message).toContain("code");
   });

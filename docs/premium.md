@@ -33,7 +33,7 @@ There is no automatic use of a personal ChatGPT subscription as an API key. Mode
 }
 ```
 
-Modes are `improve`, `tailor` and `match`. Role text is mandatory for tailoring and matching. Consent must be explicitly true. The server validates the authenticated session and a fresh paid entitlement, reserves one of the 30 shared monthly studio requests in a database transaction, and only then calls OpenAI. The current monthly allowance includes matching requests as well as application packs; the product must disclose this before billing.
+Modes are `review`, `improve`, `tailor`, `match` and `chat`. The conversational Assistant uses `chat`, with an optional first-turn category in the message rather than a standing mode. CV text is optional for `chat`; a non-empty question and per-request sharing consent are required. Role text is mandatory for tailoring and matching. Consent must be explicitly true. The server validates the authenticated session and a fresh paid entitlement, reserves one of the 100 shared requests per billing period in a database transaction, and only then calls OpenAI. The current monthly allowance includes matching requests as well as application packs; the product must disclose this before billing.
 
 The Responses call uses a strict JSON schema, bounded input/output, a 50-second timeout, no tool access, and `store:false`. No raw CV appears in general logs or webhook tables. CV/job text is explicitly untrusted input. The instructions forbid invented experience, qualifications, numerical achievements, work rights or hiring probabilities. The candidate must verify factual accuracy. `store:false` controls response storage; it does not by itself establish zero retention or Australian data residency. Review the API project's data controls and subprocessors before launch.
 
@@ -75,3 +75,72 @@ Vercel does not automatically retry failed cron invocations. Monitor the endpoin
 - [Stripe Customer Portal](https://docs.stripe.com/api/customer_portal/sessions/create)
 - [Vercel Cron security and operation](https://vercel.com/docs/schedules/cron-jobs/manage-cron-jobs)
 - [Vercel function duration](https://vercel.com/docs/functions/configuring-functions/duration)
+
+
+## Saved Assistant chats and streaming
+
+Careers+ conversations save to `assistant_chats` through owner-scoped `/api/assistant/chats` endpoints. A row stores the transcript, generated results, extracted CV text, filename, role title and description. Originals are not stored by this flow. A private invoker trigger checks current personal Careers+ access and serialises creates with a per-owner advisory lock, enforcing at most ten chats. Owners may read or delete their chats after subscription expiry, but cannot add or update them. Deleting an account cascades to its chats. New chat resets the local view without deleting a saved chat; switching is disabled while unsaved changes need a retry. No chat content is stored in browser storage.
+
+The Assistant streams display fields from OpenAI's structured output as they arrive, then validates the entire result before settling a credit. Partial JSON syntax is never rendered. Stop and provider failures still return the allowance for incomplete answers. The browser anchors the newest user message once per turn, does not scroll on token updates, and fades newly arriving text unless reduced motion is enabled.
+
+Apply migration `20261117210014_assistant_saved_chats_and_allowance.sql` with the website release: it creates the owner-only chat table and raises the shared database-enforced allowance to 100 per billing period. Deploying only the frontend does not change the database allowance.
+
+The Studio is a single full-width conversation workspace. Its desktop chat sidebar opens by default, and draft editing, copying and downloads remain inside each response. Signed-in personal Careers+ members are redirected from `/careers-plus` to `/studio`, and the main navigation points directly to their Studio. The saved-chat/allowance migration is applied on the connected Westmere database; see the release record for the deployed runtime and verification.
+
+### Multiple documents and Role Strength
+
+Studio supports up to ten removable attachments within the existing 24,000-character model-context bound. Optional attachment arrays in chat snapshots preserve compatibility with earlier saved chats. Uploading extracts text into the composer; Send submits text and/or attachments with request consent. New chat and saved-chat selection retain the sidebar state until deliberately closed. Pending CV statistics are indicated during generation and completed reports fade in.
+
+Role Strength below the Studio uses the employer’s deterministic requirements-evidence measure, independently of the AI CV document-readiness rubric. Members can choose an uploaded CV, optional cover letter, or their saved base CV and use the same occupation autocomplete as job search. All matching public inventory pages are compared before showing ten results. Neither recommendations nor comparisons consume AI credit or send text to OpenAI. Explicit role links still prefill the Assistant after removal of the separate Studio role dropdown.
+
+The connected release is now on the canonical production domain. Business live billing and the protected administrator sandbox use separate configurations; see the 22 November live-billing section below. See the production release record for origin/environment configuration and verification.
+
+### One business plan per account — 19 November 2026
+
+Business billing resolves the account’s single primary Stripe customer, regardless of which owned business starts the request. Historical customer mappings remain for webhook reconciliation and billing records. The partial unique index prevents another primary billing customer for the same user. The original ACME sandbox Growth subscription was retained and the duplicate Harbour Collective sandbox subscription cancelled without invoicing or proration.
+
+The private business coverage list includes one business on Starter, three on Growth and ten on Enterprise (and the corresponding agency tiers). Profile exposes the current billing owner and coverage for each business, offers owner-only coverage selection, and links additional business creation directly to an open Verification form. Independent verification remains required. Invited managers inherit the business’s owner-funded hiring features without invoice or payment access and without using places on their own account plan.
+
+The shared database tier helper now drives session entitlements, Applicants requirements evidence, Team, Discovery and publication limits. Coverage changes are serialised per billing owner. Plan changes below the selected business count are blocked before the Stripe confirmation flow; direct Stripe downgrades also cap effective coverage without deleting profiles or records. Uncovered businesses remain visible to their owners, with a clear explanation of missing paid coverage.
+
+Supporting listing documents are now inside the role editor below Skills; refreshing document metadata preserves unsaved listing edits. Save and Close editor are separate controls.
+
+Migration: `20261119034228_account_business_plan_coverage.sql`. Validation: 297 tests across 44 files, TypeScript, production build and all four deployment-traced PDF worker checks passed. Browser verification used isolated synthetic businesses and applications for changes to coverage and evidence lookups.
+
+The live check located the reported disabled Project Coordinator evidence button under Fern Studio, outside the initial three-business selection. The button is correctly enabled for a covered business and the UI explains uncovered access. A proposed Banksia-to-Fern coverage swap was rejected by automatic approval review pending explicit approval of that exact business selection. Current coverage remains ACME, Banksia and Harbour; no access swap was executed.
+
+### Enterprise candidate tools and owner invoice history
+
+Enterprise and Agency Enterprise include Careers+ for the current subscription’s billing account only. `my_enterprise_careers_access()` resolves the caller’s primary billing mapping and active period, independently of shared business tiers. Session access, document extraction, Studio, chat writes, Role Strength and Strong Matches use this entitlement. Database reservation and chat triggers enforce the same owner boundary, the shared hundred-request period and ten-chat cap. Owner-only reads/deletes preserve access to the account’s own saved conversations without granting new AI access. Invited team members never receive another account’s allowance or chats.
+
+Invoice pagination reads only Stripe customer mappings with `billing_user_id` equal to the authenticated caller. A cursor advances each owned customer’s stream independently, merging ten newest invoices per page while preserving Stripe order within same-second invoices. Historical cancelled business streams remain readable to their billing owner. Cursors referencing another customer are rejected. Current/historical invoices are presented together without including businesses managed by invitation.
+
+The user approved and the connected data now applies the Banksia-to-Fern coverage swap described above. The previous pending-approval note is resolved.
+
+## Agency capacity and reviewed billing transitions · 21 November 2026
+
+| Sandbox monthly plan | Active vacancies | Active clients | Recruiter seats | Owned businesses |
+| --- | ---: | ---: | ---: | ---: |
+| Agency Starter · A$199 | 5 | 5 | 2 | 1 |
+| Agency Growth · A$399 | 20 | 20 | 5 | 3 |
+| Agency Enterprise · A$799 | 50 | 50 | 15 | 10 |
+
+Capacity is pooled across the billing owner’s covered agency organisations. Owners count as seats; pending invitations reserve seats. Clients are separate private authorisations and do not consume owned-business coverage. Publication and invitation reservations serialize at the billing-owner boundary. Downgrade/cancellation retains records and necessary owner response access while blocking excess publication, surplus recruiter access and unattended intake. Current mandate authority remains a separate requirement.
+
+The approved organisation type and primary billing audience must agree. A reviewed correction cannot reclassify another covered business. Subscribed corrections retain the user, organisation, customer, subscription and invoices: independent identity review → saved price/proration preview → explicit owner acceptance of its exact hash → Stripe pending update → trusted reconciliation → compatible classification and entitlements. Changed or expired quotes require a new preview. Payment failure does not activate agency permissions. Ordinary portal changes cannot cross the reviewed billing audience.
+
+Enterprise candidate tools belong to the billed account only, for employer and agency Enterprise. Invited accounts do not inherit Careers+, Strong Matches, the 100-request period allowance or ten saved chats. Existing private chat history remains account-owned. All billing remains sandbox; these changes do not enable live payments or change tax configuration. Production charging requires the environment-specific product/price/portal and applicable tax setup already recorded in the launch plan.
+
+
+### Free Assistant access for every account · 22 November 2026
+
+Employer and agency accounts without a paid candidate-tool entitlement now retain the same three free Assistant requests as other signed-in accounts. Both the general Assistant API and its temporary upload endpoint use the existing server-owned allowance and upload controls. The interface reads the real balance and permits composing, uploads and consent without an Enterprise prerequisite. No ledger reset, database schema change, subscription grant or billing activation is involved. Automatic eligibility notices were removed from Careers+ and Assistant page entry; explicit subscription actions and premium-only tools retain their eligibility checks.
+
+
+## Separate business live billing · 22 November 2026
+
+The protected administrator’s immutable account ID selects the existing sandbox integration. Other employer/agency billing identities use live mode in Production. The browser cannot choose the mode. The existing `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and individual `STRIPE_PRICE_ID` remain sandbox values; do not overwrite them when enabling business payments.
+
+Live business runtime configuration uses `STRIPE_LIVE_SECRET_KEY` (sensitive), `STRIPE_LIVE_WEBHOOK_SECRET` (sensitive), `STRIPE_LIVE_PLANS` (JSON map from the six business plan codes to live `priceId`/`productId`), and `STRIPE_LIVE_PORTAL_EMPLOYER`, `STRIPE_LIVE_PORTAL_AGENCY`, `STRIPE_LIVE_PORTAL_RESTRICTED`. The live webhook is `https://westmere.com.au/api/billing/webhook?mode=live`. Signature verification and event mode must agree. Plan validation checks the audience, product, price, amount, AUD currency, monthly interval and inclusive price treatment before opening checkout. A missing live setting never substitutes a test key.
+
+A business moving from an old test stream keeps its customer mapping, invoices and subscription snapshot. Only the new live stream is primary. A stale sandbox reconciliation cannot overwrite the current subscription. Converting a personal account stops personal renewal and expires its personal entitlement before the business flow; Stripe cancellation, account conversion and later Enterprise purchase remain separate operations.

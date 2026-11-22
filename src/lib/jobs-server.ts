@@ -1,7 +1,9 @@
+import { readListingLabels } from "./listing-copy";
 import "server-only";
+import { findPlace } from "./locations";
 import { publicClient } from "@/lib/supabase/public";
-import { demoJobs, type Job } from "./jobs";
-import { filterJobs, type PublicJobQuery } from "./search";
+import type { Job } from "./jobs";
+import type { PublicJobQuery } from "./search";
 export { parseJobQuery, type PublicJobQuery } from "./search";
 
 export type PublicJobsResult = {
@@ -13,7 +15,7 @@ export type PublicJobsResult = {
   error?: string;
 };
 const columns =
-  "id,organisation_id,response_snapshot_at,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description,contact_email,organisations(avatar_path,banner_path),listing_documents(id,filename,bytes)";
+  "advertiser_kind,client_label,recruitment_lead,is_test,content_labels,latitude,longitude,id,organisation_id,response_snapshot_at,title,company,category,location,city,state,work_mode,employment_type,salary_min,salary_max,salary_period,super_included,published_at,created_at,source,external_url,description,responsibilities,requirements,skills,tags,response_days,response_reports,no_response_reports,eligible_reports,company_size,company_description,contact_email,organisations(avatar_path,banner_path,is_verified,suspended_at,removed_at,is_test),listing_documents(id,filename,bytes)";
 const strings = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -26,18 +28,35 @@ const number = (value: unknown, fallback = 0) =>
 /** Only public projections are mapped here. No private applicant or billing fields. */
 export function jobFromRecord(row: Record<string, unknown>): Job {
   const company = text(row.company, "Employer");
+  const business = (
+    row.organisations && typeof row.organisations === "object"
+      ? row.organisations
+      : {}
+  ) as Record<string, unknown>;
   const fresh =
     Date.parse(text(row.response_snapshot_at)) > Date.now() - 86400000;
   return {
     id: text(row.id),
     title: text(row.title),
     company,
+    advertiserKind: row.advertiser_kind === "agency" ? "agency" : "employer",
+    clientLabel: text(row.client_label) || undefined,
+    recruitmentLead: text(row.recruitment_lead) || undefined,
     organisationId: text(row.organisation_id) || undefined,
-    isVerified: Boolean(row.organisation_id),
+    isVerified:
+      business.is_verified === true &&
+      !business.suspended_at &&
+      !business.removed_at &&
+      !business.is_test &&
+      !row.is_test,
+    isTest: row.is_test === true || business.is_test === true,
     companyInitial: company.slice(0, 1),
     category: text(row.category, "Other"),
     location: text(row.location),
     city: text(row.city),
+    ...(typeof row.latitude === "number" && typeof row.longitude === "number"
+      ? { latitude: row.latitude, longitude: row.longitude }
+      : {}),
     state: text(row.state),
     workMode: ["Hybrid", "Remote", "On-site"].includes(text(row.work_mode))
       ? (row.work_mode as Job["workMode"])
@@ -47,8 +66,9 @@ export function jobFromRecord(row: Record<string, unknown>): Job {
     )
       ? (row.employment_type as Job["employmentType"])
       : "Full time",
-    salaryMin: number(row.salary_min),
-    salaryMax: number(row.salary_max),
+    salaryMin: row.salary_min == null ? null : number(row.salary_min),
+    salaryMax: row.salary_max == null ? null : number(row.salary_max),
+    contentLabels: readListingLabels(row.content_labels),
     salaryPeriod: row.salary_period === "hour" ? "hour" : "year",
     superIncluded: row.super_included === true,
     postedAt: text(row.published_at, text(row.created_at)),
@@ -97,20 +117,41 @@ export async function getPublicJobs(
   const base = { page, pageSize };
   try {
     const supabase = publicClient();
-    if (!supabase || filters.samples) {
-      const all = filterJobs(demoJobs, filters);
+    if (!supabase)
       return {
-        jobs: all.slice((page - 1) * pageSize, page * pageSize),
-        source: "demo",
-        total: all.length,
         ...base,
+        jobs: [],
+        total: 0,
+        source: "live",
+        error: "Roles are temporarily unavailable. Please try again shortly.",
       };
-    }
     const now = new Date().toISOString();
-    let query = supabase
-      .from("jobs")
+    const origin = filters.distance ? findPlace(filters.location || "") : null;
+    if (filters.distance && !origin)
+      return {
+        jobs: [],
+        source: "live",
+        total: 0,
+        ...base,
+        error:
+          "Choose a city or town with its state from the suggestions to use a distance filter.",
+      };
+    let query = (
+      origin && filters.distance
+        ? supabase.rpc(
+            "jobs_within_distance",
+            {
+              p_lat: origin.latitude,
+              p_lon: origin.longitude,
+              p_km: filters.distance,
+            },
+            { count: "exact" },
+          )
+        : supabase.from("jobs")
+    )
       .select(columns, { count: "exact" })
       .eq("status", "published")
+      .eq("is_test", false)
       .lte("published_at", now)
       .or(`expires_at.is.null,expires_at.gt.${now}`);
     if (filters.keyword?.trim())
@@ -118,7 +159,21 @@ export async function getPublicJobs(
         type: "websearch",
         config: "english",
       });
-    if (filters.location?.trim()) {
+    if (filters.listedWithin)
+      query = query.gte(
+        "published_at",
+        new Date(Date.now() - filters.listedWithin * 86400000).toISOString(),
+      );
+    if (filters.listedFrom)
+      query = query.gte("published_at", `${filters.listedFrom}T00:00:00Z`);
+    if (filters.listedTo)
+      query = query.lt(
+        "published_at",
+        new Date(
+          Date.parse(`${filters.listedTo}T00:00:00Z`) + 86400000,
+        ).toISOString(),
+      );
+    if (filters.location?.trim() && !filters.distance) {
       const location = filters.location
         .toLowerCase()
         .replace(/[^a-z0-9 ]/g, " ")
@@ -150,7 +205,7 @@ export async function getPublicJobs(
     if (filters.sort === "salary-high")
       query = query
         .order("salary_period", { ascending: false })
-        .order("salary_max", { ascending: false });
+        .order("salary_max", { ascending: false, nullsFirst: false });
     else if (filters.sort === "response-fast")
       query = query.order("response_days", {
         ascending: true,
@@ -172,7 +227,7 @@ export async function getPublicJobs(
         error: "We couldn’t load roles just now. Please try again shortly.",
       };
     return {
-      jobs: (data ?? []).map(jobFromRecord),
+      jobs: (Array.isArray(data) ? data : []).map(jobFromRecord),
       source: "live",
       total: count ?? 0,
       ...base,
@@ -199,13 +254,12 @@ export async function getPublicJobsByIds(requestedIds: string[]): Promise<{
   try {
     const supabase = publicClient();
     if (!supabase) {
-      const byId = new Map(demoJobs.map((job) => [job.id, job]));
       return {
-        jobs: ids
-          .map((id) => byId.get(id))
-          .filter((job): job is Job => Boolean(job)),
-        source: "demo",
-        unavailableIds: ids.filter((id) => !byId.has(id)),
+        jobs: [],
+        source: "live",
+        unavailableIds: ids,
+        error:
+          "Saved roles are temporarily unavailable. Please try again shortly.",
       };
     }
     const valid = ids.filter((id) =>
@@ -220,6 +274,7 @@ export async function getPublicJobsByIds(requestedIds: string[]): Promise<{
       .select(columns)
       .in("id", valid)
       .eq("status", "published")
+      .eq("is_test", false)
       .lte("published_at", now)
       .or(`expires_at.is.null,expires_at.gt.${now}`);
     if (error)
@@ -257,11 +312,8 @@ export async function getPublicJob(
 ): Promise<{ job: Job | null; source: "demo" | "live"; error?: string }> {
   try {
     const supabase = publicClient();
-    if (!supabase || demoJobs.some((j) => j.id === id))
-      return {
-        job: demoJobs.find((job) => job.id === id) ?? null,
-        source: "demo",
-      };
+    if (!supabase || id.startsWith("demo-"))
+      return { job: null, source: "live" };
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         id,
@@ -273,6 +325,7 @@ export async function getPublicJob(
       .from("jobs")
       .select(columns)
       .eq("id", id)
+      .eq("is_test", false)
       .eq("status", "published")
       .lte("published_at", now)
       .or(`expires_at.is.null,expires_at.gt.${now}`)

@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "image/webp",
         "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "public, max-age=300",
+        "Cache-Control": "private, no-store",
       },
     });
   } catch {

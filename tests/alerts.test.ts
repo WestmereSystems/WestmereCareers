@@ -9,13 +9,19 @@ const id = "10000000-0000-4000-8000-000000000001";
 describe("Resend alert boundary", () => {
   const body = '{"event_type":"ping","data":{"success":true}}';
   const headers = new Headers({
-    "svix-id": "msg_loFOjxBNrRLzqYUf",
+    "svix-id": "msg_westmere_synthetic_fixture",
     "svix-timestamp": "1731705121",
-    "svix-signature": "v1,rAvfW3dJ/X/qxhsaXPOyyCGmRKsaKWcsNccKXlIktD0=",
+    "svix-signature": "v1,RhFK/Q2QtFA2OE/9owp2RMhKkU+cjTl7gRBNfm+mwXs=",
   });
-  const secret = "whsec_plJ3nmyCDGBKInavdOK15jsl",
+  // Deliberately synthetic input. Expected HMAC was independently computed with
+  // Python's standard-library hmac/sha256, rather than this verifier.
+  const secret =
+      "whsec_" +
+      Buffer.from(
+        "Westmere unit test only - never a provider credential",
+      ).toString("base64"),
     now = 1731705121000;
-  it("verifies the official Svix vector against untouched bytes and rejects stale or tampered payloads", async () => {
+  it("verifies an independent synthetic HMAC vector and rejects stale or tampered payloads", async () => {
     expect(
       await verifySvix(new TextEncoder().encode(body), headers, secret, now),
     ).toBe(true);
