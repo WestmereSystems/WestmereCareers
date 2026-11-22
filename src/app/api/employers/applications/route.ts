@@ -1,3 +1,4 @@
+import { premiumAdmin } from "@/lib/premium/providers";
 import { assertBusinessTerms } from "@/lib/server/business";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
@@ -54,6 +55,12 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.rpc("list_job_applications", {
       p_job_id: jobId.data,
     });
+    if (error?.code === "42501")
+      throw new ApiError(
+        403,
+        "This vacancy is outside your assignment or current client authority.",
+        "HIRING_ACCESS_REQUIRED",
+      );
     if (error)
       throw new ApiError(
         503,
@@ -111,7 +118,13 @@ export async function POST(request: Request) {
         "This application is temporarily unavailable.",
         "APPLICATION_UNAVAILABLE",
       );
-    return json({ application: data });
+    const documents = await premiumAdmin()
+      .from("application_documents")
+      .select("id,filename,media_type,kind")
+      .eq("application_id", applicationId);
+    if (documents.error)
+      throw new ApiError(503, "Application documents could not be loaded.");
+    return json({ application: { ...data, documents: documents.data || [] } });
   } catch (error) {
     return apiError(error);
   }
@@ -122,26 +135,49 @@ export async function PATCH(request: Request) {
     assertSameOrigin(request);
     const body = await parseBody(
       request,
-      z
-        .object({
-          applicationId: z.uuid(),
-          status: z.enum([
-            "shortlisted",
-            "interview",
-            "offer",
-            "not_proceeding",
-          ]),
-          message: z
-            .string()
-            .trim()
-            .min(10, "Write a useful update for this candidate.")
-            .max(4_000),
-        })
-        .strict(),
-      8_000,
+      z.union([
+        z
+          .object({
+            action: z.literal("finalise_pool"),
+            jobId: z.uuid(),
+            selected: z.array(z.uuid()).max(1000),
+            reviewed: z.array(z.uuid()).max(1000),
+          })
+          .strict(),
+        z
+          .object({
+            applicationId: z.uuid(),
+            status: z.enum([
+              "shortlisted",
+              "interview",
+              "offer",
+              "not_proceeding",
+            ]),
+            message: z
+              .string()
+              .trim()
+              .min(10, "Write a useful update for this candidate.")
+              .max(4000),
+          })
+          .strict(),
+      ]),
+      100000,
     );
     const { supabase, business } = await requireSession();
     assertBusinessTerms(business);
+    if ("action" in body) {
+      const { data, error } = await supabase.rpc("finalise_candidate_pool", {
+        p_job: body.jobId,
+        p_selected: body.selected,
+        p_reviewed: body.reviewed,
+      });
+      if (error)
+        throw new ApiError(error.code === "42501" ? 403 : 400, error.message);
+      return json({
+        result: data,
+        message: `Applications closed. ${data.selected} candidate(s) updated for interview; ${data.notSelected} candidate(s) notified they will not proceed.`,
+      });
+    }
     const { data, error } = await supabase.rpc("update_application_stage", {
       p_application_id: body.applicationId,
       p_status: body.status,

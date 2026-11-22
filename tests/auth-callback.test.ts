@@ -1,3 +1,4 @@
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -49,6 +50,15 @@ describe("email authentication callback", () => {
     );
     expect(mocks.exchange).toHaveBeenCalledWith("test-code");
     expect(response.headers.get("location")).toBe(`${origin}/account`);
+  });
+  it("preserves the SDK flow identifier when multiple PKCE sign-ins are in flight", async () => {
+    const flowId = "10000000-0000-4000-8000-000000000001";
+    await GET(
+      new Request(
+        `${origin}/auth/callback?code=test-code&sb_flow_id=${flowId}`,
+      ),
+    );
+    expect(mocks.exchange).toHaveBeenCalledWith("test-code", { flowId });
   });
   it.each(["", "&next=/jobs", "&next=//untrusted.test"])(
     "lands email sign-ins on the profile regardless of return parameters: %s",

@@ -1,4 +1,5 @@
 import "server-only";
+import { ApiError, apiError } from "@/lib/server/http";
 import { NextResponse } from "next/server";
 
 export class PremiumError extends Error {
@@ -12,6 +13,7 @@ export class PremiumError extends Error {
 }
 
 export function premiumError(error: unknown): NextResponse {
+  if (error instanceof ApiError) return apiError(error);
   if (error instanceof PremiumError)
     return NextResponse.json(
       { error: error.message, code: error.code },

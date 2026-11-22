@@ -3,14 +3,17 @@ import { BusinessLinks } from "@/components/business-profile";
 import Link from "next/link";
 import { ContactEmail } from "@/components/contact-email";
 import { RichText } from "@/components/rich-text";
-import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
+import { companyPath } from "@/lib/company-urls";
+import { notFound, permanentRedirect } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  MessageCircle,
+  CircleCheck,
+} from "lucide-react";
 import { getCompany } from "@/lib/companies-server";
 import { JobCard } from "@/components/job-card";
-import {
-  ResponseReportForm,
-  TrustCaseForm,
-} from "@/components/trust-workflows";
+import { ResponseReportForm } from "@/components/trust-workflows";
 export default async function Company({
   params,
 }: {
@@ -27,6 +30,8 @@ export default async function Company({
       </main>
     );
   if (!company) notFound();
+  const canonicalPath = companyPath(company.name, company.id);
+  if (`/companies/${id}` !== canonicalPath) permanentRedirect(canonicalPath);
   const enough =
     insight?.eligible_reports !== null &&
     insight?.eligible_reports !== undefined;
@@ -73,19 +78,47 @@ export default async function Company({
               company.name[0]
             )}
           </span>
-          <p className="eyebrow">Meet the employer</p>
+          <p className="eyebrow">
+            {company.kind === "agency"
+              ? "Meet the recruitment agency"
+              : "Meet the employer"}
+          </p>
           <h1 style={{ fontSize: 38 }}>{company.name}</h1>
-          <p style={{ marginTop: 14 }}>
-            {company.is_verified && !company.suspended_at
-              ? "Business identity and hiring authority checked"
-              : company.suspended_at
-                ? "Hiring access suspended pending review"
-                : "Business verification not complete"}
+          <p className="business-verification-status" style={{ marginTop: 14 }}>
+            {!company.is_test &&
+              company.is_verified &&
+              !company.suspended_at && (
+                <CircleCheck
+                  size={19}
+                  className="business-verified-icon"
+                  aria-hidden="true"
+                />
+              )}
+            {company.is_test
+              ? "Fictional company for application testing · not a real employer"
+              : company.is_verified && !company.suspended_at
+                ? "Business identity and hiring authority checked"
+                : company.suspended_at
+                  ? "Hiring access suspended pending review"
+                  : "Business verification not complete"}
           </p>
           <BusinessLinks
             website={company.website}
             links={company.social_links}
           />
+          {company.kind === "agency" && (
+            <p className="notice">
+              {company.is_test
+                ? "Fictional test recruitment agency"
+                : "Reviewed recruitment agency"}
+              <br />
+              Specialisms:{" "}
+              {company.agency_specialisms?.join(", ") || "Not listed"}
+              <br />
+              Service regions:{" "}
+              {company.agency_regions?.join(", ") || "Not listed"}
+            </p>
+          )}
           <h2>A little about us</h2>
           <RichText
             text={
@@ -103,39 +136,39 @@ export default async function Company({
               label="Careers enquiries"
             />
           )}
-          <h2>What candidates have reported</h2>
+          <h2>Application response insights</h2>
           {insight?.is_unresponsive && enough && (
             <p className="notice">
-              Unresponsive · More than half of eligible candidates reported no
+              Unresponsive · More than half of eligible candidates had no
               meaningful response after two calendar months.
             </p>
           )}
           <p>
-            These reports describe individual experiences. They may not
-            represent every applicant or predict the outcome of your
-            application.
+            On-site applications use recorded employer updates and decisions.
+            Off-site applications use candidate-reported experiences. These
+            figures do not predict the outcome of your application.
           </p>
           <div className="company-stats">
             <div>
-              <span>Median first response among responders</span>
+              <span>Average first response among responders</span>
               <strong>
-                {enough && insight?.median_response_days !== null
-                  ? `${insight?.median_response_days} days`
+                {enough && insight?.average_response_days !== null
+                  ? `${insight?.average_response_days} days`
                   : "Not enough data"}
               </strong>
               <span>
                 {enough ? insight?.response_reports : "Insufficient recent"}{" "}
-                reports with a response
+                responses recorded or reported
               </span>
             </div>
             <div>
-              <span>No response reported after 2 months</span>
+              <span>No meaningful response after 2 months</span>
               <strong>
                 {enough
                   ? `${insight?.no_response_reports} / ${insight?.eligible_reports}`
                   : "Not enough data"}
               </strong>
-              <span>Eligible candidate reports</span>
+              <span>Eligible candidates</span>
             </div>
           </div>
           <p className="fineprint">
@@ -162,13 +195,13 @@ export default async function Company({
           )}
           <p className="fineprint">
             At least 10 unique eligible candidates are required, with five
-            responders for a median. Silence must be reconfirmed within 30 days.
-            Snapshots older than 24 hours are hidden until refreshed.
+            responders for an average. Off-site silence reports must be
+            reconfirmed within 30 days. Snapshots older than 24 hours are hidden
+            until refreshed.
           </p>
           {source === "live" && (
             <>
               <ResponseReportForm organisationId={company.id} />
-              <TrustCaseForm organisationId={company.id} />
             </>
           )}
           <h2>A more considered application</h2>
@@ -180,14 +213,16 @@ export default async function Company({
         </article>
         <aside>
           <p className="eyebrow" style={{ marginBottom: 15 }}>
-            An opportunity with this employer
+            Current opportunities with this employer
           </p>
           {!jobs.length && (
             <p className="panel">No current roles with this employer.</p>
           )}
-          {jobs.map((job) => (
-            <JobCard job={job} key={job.id} />
-          ))}
+          <div className="company-role-list">
+            {jobs.map((job) => (
+              <JobCard job={job} key={job.id} />
+            ))}
+          </div>
           <div className="notice" style={{ marginTop: 20 }}>
             <MessageCircle size={18} />
             <p>

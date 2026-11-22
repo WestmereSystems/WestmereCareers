@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileUp, Download, Trash2, Check } from "lucide-react";
 import { useSession } from "./providers";
 type CV = {
@@ -69,103 +69,172 @@ export function SavedCVButton({
 }
 export function CVHistory({ onSelect }: { onSelect: (text: string) => void }) {
   const [cvs, setCVs] = useState<CV[]>([]),
-    [message, setMessage] = useState(""),
+    [active, setActive] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
-    [active, setActive] = useState<string | null>(null);
+    [message, setMessage] = useState(""),
+    [page, setPage] = useState(1),
+    [dragging, setDragging] = useState(false),
+    [loaded, setLoaded] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
   const session = useSession();
   async function load() {
-    const r = await fetch("/api/profile/cvs", { cache: "no-store" }),
-      d = await r.json();
-    if (!r.ok) throw new Error(d.error);
+    const r = await fetch("/api/profile/cvs", { cache: "no-store" });
+    const d = await r.json();
+    if (!r.ok) throw Error(d.error);
     setCVs(d.cvs || []);
     setActive(d.activeId || null);
+    setLoaded(true);
   }
   useEffect(() => {
     if (session.user)
       void load().catch(() =>
         setMessage(
-          "Your CV history could not be loaded. Try refreshing this page.",
+          "Your CV history could not be loaded. Refresh to try again.",
         ),
       );
   }, [session.user?.id]);
+  useEffect(
+    () => setPage((p) => Math.min(p, Math.max(1, Math.ceil(cvs.length / 5)))),
+    [cvs.length],
+  );
+  async function upload(files: File[]) {
+    if (busy) return;
+    if (!loaded) {
+      setMessage("Please wait for your library to load.");
+      return;
+    }
+    if (cvs.length + files.length > 20) {
+      setMessage(
+        "Your library holds up to 20 CVs. Delete at least one resume before uploading another, or choose fewer files.",
+      );
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      for (const file of files) {
+        const f = new FormData();
+        f.set("file", file);
+        const r = await fetch("/api/profile/cvs", { method: "POST", body: f });
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        if (d.selectedAsBase) onSelect(d.text);
+      }
+      const firstUpload = cvs.length === 0;
+      await load();
+      setPage(1);
+      setMessage(
+        firstUpload
+          ? "Your first CV was selected as your base CV. Further uploads stay in your library until you select them."
+          : `${files.length} CV${files.length === 1 ? "" : "s"} uploaded privately. Select a version to make it your account CV.`,
+      );
+    } catch (e) {
+      await load().catch(() => {});
+      setMessage(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  }
   async function choose(id: string) {
     setBusy(true);
     try {
       const r = await fetch("/api/profile/cvs", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        }),
-        d = await r.json();
-      if (!r.ok) throw new Error(d.error);
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error);
       onSelect(d.text);
       setActive(id);
       setMessage(d.message);
     } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : "Your CV could not be selected.",
-      );
+      setMessage(e instanceof Error ? e.message : "CV could not be selected.");
     } finally {
       setBusy(false);
     }
   }
+  if (!loaded)
+    return (
+      <section className="panel cv-library">
+        <h2>My CV</h2>
+        <p role="status">{message || "Loading your private CV library…"}</p>
+      </section>
+    );
+  const selected = cvs.find((c) => c.id === active);
+  const total = Math.max(1, Math.ceil(cvs.length / 5));
   return (
     <section className="panel cv-library">
-      <span className="badge">
-        <FileUp size={16} />
-        Your private CV library
-      </span>
-      <h2>A CV for each next step.</h2>
-      <p>
-        Upload a PDF or Word (.docx) file, review its extracted text and choose
-        your base CV. Careers+ can use that text for improvements, tailoring and
-        skill matching when you request it.
-      </p>
-      <label className="field-label" htmlFor="cv-upload">
-        Upload a CV · up to 4 MB
-      </label>
-      <input
-        id="cv-upload"
-        type="file"
-        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        disabled={busy}
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          setBusy(true);
-          setMessage("");
-          try {
-            const form = new FormData();
-            form.set("file", file);
-            const r = await fetch("/api/profile/cvs", {
-                method: "POST",
-                body: form,
-              }),
-              d = await r.json();
-            if (!r.ok) throw new Error(d.error);
-            onSelect(d.text);
-            setMessage(d.message);
-            await load();
-          } catch (e) {
-            setMessage(
-              e instanceof Error ? e.message : "Your CV could not be uploaded.",
-            );
-          } finally {
-            e.target.value = "";
-            setBusy(false);
-          }
+      <div className="section-heading">
+        <h2>My CV</h2>
+        <span className="badge">{cvs.length} of 20 versions</span>
+      </div>
+      <div className="selected-cv">
+        <Check size={21} />
+        <div>
+          <strong>
+            {selected ? selected.filename : "No account CV selected"}
+          </strong>
+          <p className="fineprint">
+            {selected
+              ? `Selected account CV · ${new Date(selected.created_at).toLocaleString("en-AU")}`
+              : "Choose an uploaded version below. Existing applications keep their original documents."}
+          </p>
+        </div>
+      </div>
+      <div
+        className={`cv-dropzone ${dragging ? "dragging" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
         }}
-      />
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          void upload(Array.from(e.dataTransfer.files));
+        }}
+      >
+        <FileUp size={32} />
+        <strong>Drop your CV files here</strong>
+        <p>PDF or Word (.docx) · up to 4 MB per file</p>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={busy || !loaded}
+          onClick={() => {
+            if (cvs.length >= 20) {
+              setMessage(
+                "Your library holds 20 CVs. Delete at least one resume before uploading another.",
+              );
+              return;
+            }
+            input.current?.click();
+          }}
+        >
+          {busy ? "Uploading…" : "Choose CV files"}
+        </button>
+        <input
+          ref={input}
+          type="file"
+          multiple
+          className="visually-hidden"
+          aria-label="Upload CV files"
+          accept=".pdf,.docx"
+          disabled={busy || !loaded}
+          onChange={(e) => void upload(Array.from(e.target.files || []))}
+        />
+      </div>
       <p className="fineprint">
-        Up to 20 versions. Text-based PDFs only; save older .doc files as .docx.
-        Uploading never sends your CV to OpenAI. Select a version to make it
-        your base CV; this does not alter submitted applications.
+        Up to 20 versions in your library. Uploading does not send files to
+        OpenAI or submit an application.
       </p>
-      <h3>Upload history</h3>
+      <h3>CV history</h3>
       {cvs.length ? (
         <ul className="cv-history">
-          {cvs.map((cv) => (
-            <li key={cv.id}>
+          {cvs.slice((page - 1) * 5, page * 5).map((cv) => (
+            <li key={cv.id} className={cv.id === active ? "active-cv" : ""}>
               <div>
                 <strong>{cv.filename}</strong>
                 <p className="fineprint">
@@ -176,10 +245,17 @@ export function CVHistory({ onSelect }: { onSelect: (text: string) => void }) {
               <div className="inline-actions">
                 <button
                   className="button secondary small"
-                  disabled={busy}
+                  disabled={busy || active === cv.id}
                   onClick={() => void choose(cv.id)}
                 >
-                  {active === cv.id ? <Check size={15} /> : null}Use this CV
+                  {active === cv.id ? (
+                    <>
+                      <Check size={15} />
+                      Selected
+                    </>
+                  ) : (
+                    "Use this CV"
+                  )}
                 </button>
                 <a
                   className="icon-button"
@@ -195,26 +271,24 @@ export function CVHistory({ onSelect }: { onSelect: (text: string) => void }) {
                   onClick={async () => {
                     if (
                       !window.confirm(
-                        `Delete ${cv.filename} from your private upload history? Submitted application copies are separate.`,
+                        `Delete ${cv.filename} from your private CV library? Submitted application copies remain.`,
                       )
                     )
                       return;
                     setBusy(true);
                     try {
                       const r = await fetch("/api/profile/cvs", {
-                          method: "DELETE",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ id: cv.id }),
-                        }),
-                        d = await r.json();
-                      if (!r.ok) throw new Error(d.error);
-                      setMessage(d.message);
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: cv.id }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok) throw Error(d.error);
                       await load();
+                      setMessage(d.message);
                     } catch (e) {
                       setMessage(
-                        e instanceof Error
-                          ? e.message
-                          : "This CV could not be deleted.",
+                        e instanceof Error ? e.message : "Delete failed.",
                       );
                     } finally {
                       setBusy(false);
@@ -228,16 +302,27 @@ export function CVHistory({ onSelect }: { onSelect: (text: string) => void }) {
           ))}
         </ul>
       ) : (
-        <p>
-          No files uploaded yet. Your pasted base CV remains available below.
-        </p>
+        <p>No CVs uploaded yet.</p>
       )}
+      <nav className="numbered-pagination" aria-label="CV history pages">
+        {Array.from({ length: total }, (_, i) => (
+          <button
+            key={i}
+            className="page-number"
+            aria-label={`CV page ${i + 1}`}
+            aria-current={page === i + 1 ? "page" : undefined}
+            onClick={() => setPage(i + 1)}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </nav>
       {message && (
-        <p role="status" className="message">
+        <p className="message" role="status">
           {message}
         </p>
       )}
-      <Link href="/studio" className="text-link">
+      <Link className="text-link" href="/studio">
         Open Careers+ Studio →
       </Link>
     </section>

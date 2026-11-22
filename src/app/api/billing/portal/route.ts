@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
+import { assertIndividual } from "@/lib/server/business";
 import { getSessionContext } from "@/lib/server/auth";
 import { customerFor } from "@/lib/premium/billing";
 import { premiumError, PremiumError, requireOrigin } from "@/lib/premium/http";
 import { stripeClient } from "@/lib/premium/providers";
+import { billingModeFor, livePortal } from "@/lib/premium/billing-mode";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     const origin = requireOrigin(request);
-    const { supabase, user } = await getSessionContext();
+    const { supabase, user, business } = await getSessionContext();
     if (!supabase)
       throw new PremiumError(
         "NOT_CONFIGURED",
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
         "Please sign in to manage your billing.",
         401,
       );
+    assertIndividual(business);
     const customer = await customerFor(user);
     if (!customer)
       throw new PremiumError(
@@ -29,8 +32,10 @@ export async function POST(request: Request) {
         "There is no subscription to manage yet.",
         404,
       );
-    const session = await stripeClient().billingPortal.sessions.create({
+    const mode = billingModeFor(user, "individual");
+    const session = await stripeClient(mode).billingPortal.sessions.create({
       customer,
+      ...(mode === "live" ? { configuration: livePortal("individual") } : {}),
       return_url: `${origin}/careers-plus`,
       locale: "en-AU",
     });

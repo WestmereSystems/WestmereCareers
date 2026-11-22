@@ -2,20 +2,25 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  Check,
   CreditCard,
   ExternalLink,
   LoaderCircle,
-  Receipt,
+  X,
   ShieldCheck,
 } from "lucide-react";
 import { useSession } from "./providers";
 import { useNotice } from "./notices";
 import { sandboxPlans } from "@/lib/billing-plans";
+import { businessPlanFeatures } from "@/lib/plan-features";
+import { InvoiceHistory } from "./invoice-history";
+import terms from "@/content/terms-and-conditions.json";
 const money = (c: number) =>
   new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(
     c / 100,
   );
 type BillingData = {
+  paymentsReady?: boolean;
   sandbox: boolean;
   audience: string;
   testing: { tier: string; expiresAt: string } | null;
@@ -48,14 +53,41 @@ export function Billing() {
     notice = useNotice();
   const orgs =
     session.business?.organisations.filter((o) => o.role === "owner") || [];
-  const [org, setOrg] = useState(orgs[0]?.id || "");
+  const org = orgs.find((o) => o.verified)?.id || orgs[0]?.id || "";
+  const userId = session.user?.id;
+  const isBusiness = Boolean(session.business);
   const [data, setData] = useState<BillingData | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  useEffect(() => setTermsAccepted(false), [userId]);
+  async function acceptTerms(event: React.FormEvent) {
+    event.preventDefault();
+    if (!termsAccepted || busy) return;
+    setBusy("terms");
+    setError("");
+    try {
+      const response = await fetch("/api/employers/terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          termsAccepted: true,
+          termsVersion: terms.version,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Please try again.");
+      await session.refresh();
+      setTermsAccepted(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Please try again.");
+    } finally {
+      setBusy("");
+    }
+  }
   useEffect(() => {
     if (!session.user || (session.business && !org)) return;
     const c = new AbortController();
-    setData(null);
     setError("");
     fetch(`/api/billing/account${org ? `?organisation=${org}` : ""}`, {
       cache: "no-store",
@@ -64,13 +96,13 @@ export function Billing() {
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw Error(d.error);
-        setData(d);
+        if (!c.signal.aborted) setData(d);
       })
       .catch((e) => {
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [org, session.user, session.business]);
+  }, [org, userId, isBusiness]);
   async function act(action: "checkout" | "portal" | "change", plan?: string) {
     if (!session.user) {
       session.openAuth();
@@ -102,6 +134,7 @@ export function Billing() {
     }
   }
   const audience = session.business?.kind || "individual";
+  const sandbox = data?.sandbox ?? session.billingSandbox;
   return (
     <section className="billing-workspace">
       <div className="section-heading">
@@ -110,39 +143,99 @@ export function Billing() {
           <h2>Billing.</h2>
         </div>
         <span className="badge">
-          <ShieldCheck size={15} /> Sandbox · test payments only
+          <ShieldCheck size={15} />{" "}
+          {sandbox
+            ? "Sandbox · test payments only"
+            : data?.paymentsReady === false
+              ? "Payments being prepared"
+              : "Live subscription payments"}
         </span>
       </div>
       <p className="muted">
-        No real money is charged. These test prices are for development and are
-        not an approved live offer. GST collection is disabled in this sandbox.
+        {sandbox
+          ? "This account uses sandbox subscriptions. No real money is charged; GST collection is disabled in this test environment."
+          : "Paid subscriptions renew monthly until cancelled. Prices are in Australian dollars. GST is not currently charged. Review charges before confirming in Stripe."}
       </p>
-      {session.business && (
-        <label className="field-label">
-          Business
-          <select
-            value={org}
-            onChange={(e) => {
-              setOrg(e.target.value);
-              setData(null);
-            }}
-          >
-            <option value="">Choose a business you own</option>
-            {orgs.map((o) => (
-              <option value={o.id} key={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {session.business && !orgs.length && (
+      {data?.paymentsReady === false && (
         <p className="notice">
-          Verify your business before starting a test subscription. Payment
-          management is restricted to the billing owner; existing payment and
-          cancellation controls remain available when verification is suspended.
+          Payments are being prepared. Registration and private launch
+          preparation remain available. No payment has been taken.
         </p>
       )}
+      {session.business && !session.marketplaceOpen && (
+        <p className="notice">
+          Subscriptions are optional. Your business details and vacancies remain
+          private during founding onboarding. A subscription does not bypass
+          verification or make content public.
+        </p>
+      )}
+      {session.business && orgs.length > 0 && (
+        <p className="notice">
+          One billing plan for your account ({session.user?.email}).{" "}
+          <Link className="text-link" href="/account?tab=profile">
+            Choose the businesses covered by this plan in Profile →
+          </Link>
+        </p>
+      )}
+      {session.business && (
+        <p className="notice">
+          {audience === "agency"
+            ? "Agency hiring uses the vacancy, authorised-client and recruiter allowances of your active agency plan."
+            : "Free business accounts include one active job posting per company."}{" "}
+          Listings expire after 40 days and can be renewed while retaining their
+          statistics.
+        </p>
+      )}
+      {session.business?.needsOnboarding && (
+        <form
+          className="panel billing-terms-renewal form-stack"
+          onSubmit={acceptTerms}
+        >
+          <h3>Accept the current Terms to enable plan changes.</h3>
+          <p>
+            Your business account needs the current Terms acceptance before a
+            new subscription or plan change. Existing payment and cancellation
+            controls remain available.
+          </p>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
+              disabled={!!busy}
+            />
+            <span>
+              I have read and accept the current{" "}
+              <Link href="/terms" target="_blank" rel="noopener noreferrer">
+                Terms and Conditions
+              </Link>{" "}
+              for my business account.
+            </span>
+          </label>
+          <div className="actions-row">
+            <button
+              className="button primary"
+              disabled={!termsAccepted || !!busy}
+            >
+              {busy === "terms"
+                ? "Saving acceptance…"
+                : "Accept Terms and enable plan changes"}
+            </button>
+            <Link href="/employers/sign-in?complete=1" className="text-link">
+              Complete account setup
+            </Link>
+          </div>
+        </form>
+      )}
+      {session.business &&
+        (!org || !orgs.find((o) => o.id === org)?.verified) && (
+          <p className="notice">
+            Verify your business before starting a test subscription. Payment
+            management is restricted to the billing owner; existing payment and
+            cancellation controls remain available when verification is
+            suspended.
+          </p>
+        )}
       {!session.user && (
         <button className="button primary" onClick={session.openAuth}>
           Sign in to manage billing
@@ -164,8 +257,12 @@ export function Billing() {
               </h3>
               <p>
                 {data.subscription
-                  ? `${data.subscription.status} · ${data.subscription.cancelAtPeriodEnd ? "Ends" : "Renews"} ${new Date(data.subscription.renewsAt).toLocaleDateString("en-AU")}`
-                  : "Choose a sandbox plan below."}
+                  ? `${data.subscription.status} · ${data.subscription.cancelAtPeriodEnd ? "Ends" : "Auto-renews"} ${new Date(data.subscription.renewsAt).toLocaleDateString("en-AU")}`
+                  : session.business
+                    ? "One active job posting per company is included free."
+                    : sandbox
+                      ? "Choose a sandbox plan below."
+                      : "Choose a subscription plan below."}
               </p>
               {data.subscription?.scheduledChange && (
                 <p>A plan change is scheduled. Manage it in Stripe.</p>
@@ -203,7 +300,9 @@ export function Billing() {
               className={`panel ${data?.subscription?.plan === p.code ? "current-plan" : ""}`}
               key={p.code}
             >
-              <p className="eyebrow">Sandbox plan</p>
+              <p className="eyebrow">
+                {sandbox ? "Sandbox plan" : "Monthly plan"}
+              </p>
               <h3>{p.name}</h3>
               <p className="plan-price">
                 {money(p.amount)}
@@ -211,15 +310,41 @@ export function Billing() {
               </p>
               <p>
                 {p.code === "careers_plus"
-                  ? "30 AI requests per billing period, CV reviews and role-specific preparation."
+                  ? "100 Assistant requests per billing period, CV reviews and role-specific preparation."
                   : p.code.endsWith("starter")
                     ? "Company profile, job management and hiring statistics."
                     : "Hiring tools, Discovery and search insights by visitor state."}
               </p>
-              <p className="fineprint">
-                Job advertisements and any separately priced extras are not
-                included unless expressly agreed.
-              </p>
+              <ul className="plan-features">
+                {(p.code === "careers_plus"
+                  ? [
+                      "100 Assistant requests per billing period",
+                      "CV reviews and role-specific preparation",
+                      "Up to 10 saved chats",
+                      "Role Strength and Strong Matches",
+                    ].map((label) => ({ label, included: true }))
+                  : businessPlanFeatures(p.code)
+                ).map(({ label, included }) => (
+                  <li
+                    key={label}
+                    className={
+                      included ? "feature-included" : "feature-unavailable"
+                    }
+                  >
+                    {included ? (
+                      <Check size={16} aria-hidden="true" />
+                    ) : (
+                      <X size={16} aria-hidden="true" />
+                    )}
+                    <span>
+                      <span className="sr-only">
+                        {included ? "Included: " : "Not included: "}
+                      </span>
+                      {label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
               <button
                 className="button primary"
                 disabled={
@@ -254,6 +379,16 @@ export function Billing() {
             </article>
           ))}
       </div>
+      {isBusiness && (
+        <p className="fineprint">
+          {audience === "agency"
+            ? "Agency client hiring requires an active agency plan and independently approved authority for each client."
+            : "Your free allowance includes one active job advertisement per company. A paid business plan provides the features listed above."}{" "}
+          Additional paid advertising placements and separately priced extras
+          require a separate order showing the price and included quantity
+          before confirmation.
+        </p>
+      )}
       <div className="panel">
         <h3>Everything you can manage</h3>
         <ul className="billing-options">
@@ -272,9 +407,9 @@ export function Billing() {
             pay outstanding invoices, and review scheduled changes.
           </li>
           <li>
-            Cancel renewal online. Your paid access continues until the period
-            ends. Free personal accounts remain free; cancel Careers+ to return
-            to the free plan.
+            New paid subscriptions auto-renew by default. Cancel renewal online.
+            Your paid access continues until the period ends. Free personal
+            accounts remain free; cancel Careers+ to return to the free plan.
           </li>
           <li>
             Test assignments expire separately and do not create an invoice, a
@@ -282,39 +417,7 @@ export function Billing() {
           </li>
         </ul>
       </div>
-      {data && (
-        <div className="panel">
-          <h3>
-            <Receipt size={20} /> Invoice history
-          </h3>
-          {data.invoices.length ? (
-            <div className="billing-invoices">
-              {data.invoices.map((i) => (
-                <div key={i.id}>
-                  <span>
-                    {i.number || "Invoice"} ·{" "}
-                    {new Date(i.date * 1000).toLocaleDateString("en-AU")} ·{" "}
-                    {i.status}
-                  </span>
-                  <strong>{money(i.total)}</strong>
-                  {i.url && (
-                    <a href={i.url} target="_blank" rel="noopener noreferrer">
-                      View invoice ↗
-                    </a>
-                  )}
-                  {i.pdf && (
-                    <a href={i.pdf} target="_blank" rel="noopener noreferrer">
-                      PDF ↗
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">No invoices yet.</p>
-          )}
-        </div>
-      )}
+      {data && <InvoiceHistory key={`${userId}:${org}`} organisation={org} />}
       <p className="fineprint">
         Billing status updates after Stripe confirms the change.{" "}
         <Link href="/terms">Subscription terms</Link> ·{" "}
@@ -328,7 +431,11 @@ export function TestingControls() {
     notice = useNotice();
   const [enabled, setEnabled] = useState(false),
     [email, setEmail] = useState(""),
-    [tier, setTier] = useState("careers_plus"),
+    [tier, setTier] = useState(""),
+    [target, setTarget] = useState<{
+      audience: string;
+      verified: boolean;
+    } | null>(null),
     [days, setDays] = useState("7"),
     [reason, setReason] = useState(""),
     [designate, setDesignate] = useState(false),
@@ -343,6 +450,25 @@ export function TestingControls() {
       .catch(() => {});
     return () => c.abort();
   }, []);
+  async function inspectTarget() {
+    setTarget(null);
+    setTier("");
+    try {
+      const r = await fetch(
+        `/api/admin/testing?email=${encodeURIComponent(email)}`,
+        { cache: "no-store" },
+      );
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      setTarget(d.account);
+    } catch (e) {
+      notice({
+        title: "Test account",
+        message: e instanceof Error ? e.message : "Account unavailable.",
+        tone: "error",
+      });
+    }
+  }
   if (!enabled) return null;
   return (
     <form
@@ -356,7 +482,7 @@ export function TestingControls() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              tier: tier || null,
+              tier: tier === "revoke" ? null : tier,
               days: Number(days),
               reason,
               designate,
@@ -366,6 +492,7 @@ export function TestingControls() {
           if (!r.ok) throw Error(d.error);
           notice({ title: "Test access updated", message: d.message });
           await session.refresh();
+          window.dispatchEvent(new Event("westmere-admin-activity"));
         } catch (e) {
           notice({
             title: "Test access",
@@ -389,18 +516,49 @@ export function TestingControls() {
           type="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setTarget(null);
+            setTier("");
+          }}
+          onBlur={() => {
+            if (email.includes("@")) void inspectTarget();
+          }}
         />
       </label>
+      <button
+        type="button"
+        className="button secondary small"
+        onClick={() => void inspectTarget()}
+      >
+        Check account type
+      </button>
+      {target && (
+        <p className="notice">
+          {target.audience === "individual"
+            ? "Personal account · Careers+ test access available."
+            : `${target.audience === "agency" ? "Agency" : "Employer"} account · ${target.verified ? "Verified business" : "Verify the owned business before assigning a tier"}.`}
+        </p>
+      )}
       <label className="field-label">
         Tier
-        <select value={tier} onChange={(e) => setTier(e.target.value)}>
-          {sandboxPlans.map((p) => (
-            <option key={p.code} value={p.code}>
-              {p.name}
-            </option>
-          ))}
-          <option value="">Revoke test access</option>
+        <select
+          required
+          disabled={!target}
+          value={tier}
+          onChange={(e) => setTier(e.target.value)}
+        >
+          <option value="" disabled>
+            Choose the matching test tier
+          </option>
+          {sandboxPlans
+            .filter((p) => p.audience === target?.audience)
+            .map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.name}
+              </option>
+            ))}
+          <option value="revoke">Revoke test access</option>
         </select>
       </label>
       <label className="field-label">
@@ -433,7 +591,17 @@ export function TestingControls() {
         I confirm this is a dedicated test account. Designate it for testing if
         necessary.
       </label>
-      <button disabled={busy} className="button secondary">
+      <button
+        disabled={
+          busy ||
+          !target ||
+          !tier ||
+          (tier !== "revoke" &&
+            target.audience !== "individual" &&
+            !target.verified)
+        }
+        className="button secondary"
+      >
         {busy ? "Saving…" : "Apply test access"}
       </button>
     </form>

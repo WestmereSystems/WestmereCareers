@@ -30,13 +30,13 @@ export default function About() {
         </div>
         <figure className="people-photo">
           <img
-            src="/images/creative-colleagues.webp"
-            alt="Two creative colleagues preparing equipment together"
-            width="1260"
-            height="709"
+            src="/images/healthcare-team.webp"
+            alt="Two healthcare workers in blue scrubs and masks working together"
+            width="1920"
+            height="1280"
           />
           <figcaption>
-            Every next step begins with a person. Illustrative photograph.
+            Every next step begins with a person.
           </figcaption>
         </figure>
       </section>

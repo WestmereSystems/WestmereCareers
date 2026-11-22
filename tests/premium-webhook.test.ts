@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
   read: vi.fn(),
   update: vi.fn(),
+  rpc: vi.fn(),
 }));
 vi.mock("@/lib/premium/providers", () => ({
   premiumAdmin: mocks.admin,
@@ -25,6 +26,7 @@ const stripe = new Stripe("sk_test_local_signature_test_only");
 const event = {
   id: "evt_local",
   object: "event",
+  livemode: false,
   created: 1000,
   type: "customer.subscription.updated",
   data: { object: { id: "sub_local", customer: "cus_local" } },
@@ -49,8 +51,10 @@ beforeEach(() => {
   mocks.insert.mockResolvedValue({ error: null });
   mocks.read.mockResolvedValue({ data: { processed_at: null }, error: null });
   mocks.update.mockResolvedValue({ error: null });
+  mocks.rpc.mockResolvedValue({ error: null });
   mocks.reconcile.mockResolvedValue(undefined);
   mocks.admin.mockReturnValue({
+    rpc: mocks.rpc,
     from: () => ({
       insert: mocks.insert,
       select: () => ({ eq: () => ({ single: mocks.read }) }),
@@ -61,6 +65,34 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Stripe webhook boundary", () => {
+  it("records a verified payment notice before acknowledging the event", async () => {
+    const body = JSON.stringify({
+      ...event,
+      type: "invoice.paid",
+      data: {
+        object: {
+          id: "in_local",
+          customer: "cus_local",
+          currency: "aud",
+          amount_paid: 2500,
+        },
+      },
+    });
+    expect((await POST(request(body))).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "record_billing_notice",
+      expect.objectContaining({
+        p_event: "evt_local",
+        p_customer: "cus_local",
+        p_title: "Payment received",
+      }),
+    );
+    mocks.rpc.mockResolvedValue({ error: { code: "UNAVAILABLE" } });
+    expect((await POST(request(body))).status).toBe(503);
+    expect(mocks.update).toHaveBeenLastCalledWith({
+      error: "NOTICE_CAPTURE_FAILED",
+    });
+  });
   it("verifies the raw signed body before recording or applying state", async () => {
     const response = await POST(request());
     expect(response.status).toBe(200);
@@ -69,7 +101,7 @@ describe("Stripe webhook boundary", () => {
       type: "customer.subscription.updated",
       payload: { objectId: "sub_local", eventCreated: 1000 },
     });
-    expect(mocks.reconcile).toHaveBeenCalledWith("cus_local", 1000);
+    expect(mocks.reconcile).toHaveBeenCalledWith("cus_local", 1000, "test");
   });
   it("rejects invalid signatures before accessing privileged state", async () => {
     expect((await POST(request(JSON.stringify(event), false))).status).toBe(
@@ -120,4 +152,32 @@ describe("Stripe webhook boundary", () => {
       "Private address",
     );
   });
+});
+
+it("accepts live events only with the separate live endpoint and matching signature", async () => {
+  const body = JSON.stringify({ ...event, livemode: true });
+  const liveSecret = "whsec_local_live_signature_test_only";
+  vi.stubEnv("STRIPE_LIVE_WEBHOOK_SECRET", liveSecret);
+  const signed = new Request(
+    "http://localhost:3000/api/billing/webhook?mode=live",
+    {
+      method: "POST",
+      headers: {
+        "stripe-signature": stripe.webhooks.generateTestHeaderString({
+          payload: body,
+          secret: liveSecret,
+        }),
+      },
+      body,
+    },
+  );
+  expect((await POST(signed)).status).toBe(200);
+  expect(mocks.stripe).toHaveBeenCalledWith("live");
+  expect(mocks.reconcile).toHaveBeenCalledWith("cus_local", 1000, "live");
+});
+it("rejects a validly signed live event delivered to the sandbox endpoint", async () => {
+  expect(
+    (await POST(request(JSON.stringify({ ...event, livemode: true })))).status,
+  ).toBe(400);
+  expect(mocks.admin).not.toHaveBeenCalled();
 });

@@ -1,3 +1,5 @@
+import { marketplaceOpen } from "@/lib/server/launch";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { JobBrowser } from "@/components/job-browser";
 import { getPublicJobs, parseJobQuery } from "@/lib/jobs-server";
@@ -15,6 +17,7 @@ export default async function JobsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  if (!(await marketplaceOpen())) redirect("/launch#candidate-updates");
   const supplied = await searchParams;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(supplied))
@@ -34,16 +37,6 @@ export default async function JobsPage({
               hiring. Let’s find work that feels right for you.
             </p>
           </section>
-          <div className="sample-jobs-switch">
-            <span>
-              {query.samples
-                ? "Sample inventory · fictional roles for testing"
-                : "Explore current opportunities"}
-            </span>
-            <a href={query.samples ? "/jobs" : "/jobs?samples=1"}>
-              {query.samples ? "View live roles" : "Try sample jobs"}
-            </a>
-          </div>
           <section
             className="page-content"
             aria-label="Search and explore roles"
@@ -62,6 +55,10 @@ export default async function JobsPage({
               initialEmploymentType={query.employmentType}
               initialMinSalary={query.minSalary}
               initialDirectOnly={query.directOnly}
+              initialDistance={query.distance}
+              initialListedWithin={query.listedWithin}
+              initialListedFrom={query.listedFrom}
+              initialListedTo={query.listedTo}
             />
           </section>
         </div>

@@ -1,3 +1,5 @@
+import { jobFromRecord } from "@/lib/jobs-server";
+import { premiumAdmin } from "@/lib/premium/providers";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
 import {
@@ -12,12 +14,30 @@ export const dynamic = "force-dynamic";
 const input = z
   .object({
     jobId: z.uuid(),
+    cvId: z.uuid().nullable().optional(),
     cvText: z
       .string()
       .trim()
       .min(50, "Add your CV before submitting.")
       .max(40_000),
     coverLetter: z.string().trim().max(15_000).default(""),
+    testApplication: z.boolean().default(false),
+    uploadIds: z.array(z.uuid()).max(8).default([]),
+    rightToWork: z
+      .enum([
+        "not_provided",
+        "au_citizen",
+        "nz_citizen",
+        "permanent_resident",
+        "visa_full_rights",
+        "visa_limited_rights",
+        "require_sponsorship",
+      ])
+      .default("not_provided"),
+    driversLicence: z
+      .enum(["not_provided", "yes", "no"])
+      .default("not_provided"),
+    certifications: z.string().trim().max(2000).default(""),
     answers: z.record(z.string().max(100), z.string().max(4_000)).default({}),
     consent: z.literal(true, {
       error:
@@ -33,7 +53,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("applications")
       .select(
-        "id,job_id,status,created_at,withdrawn_at,job_title_snapshot,company_snapshot,location_snapshot,jobs(title,company,location,source),application_events(id,event_type,source,message,occurred_at)",
+        "listing_snapshot,id,job_id,status,created_at,withdrawn_at,job_title_snapshot,company_snapshot,location_snapshot,advertiser_kind_snapshot,client_label_snapshot,recipient_snapshot,jobs(title,company,location,source),application_events(id,event_type,source,message,occurred_at)",
       )
       .eq("candidate_id", user.id)
       .order("created_at", { ascending: false })
@@ -48,7 +68,30 @@ export async function GET() {
         "Your applications are temporarily unavailable.",
         "APPLICATIONS_UNAVAILABLE",
       );
-    return json({ applications: data || [] });
+    const retained = await supabase.rpc("my_retained_roles");
+    if (retained.error)
+      throw new ApiError(
+        503,
+        "Your application listing history is temporarily unavailable.",
+      );
+    const closed = new Map<string, boolean>(
+      (retained.data || []).map((r: { id: string; closed: boolean }) => [
+        r.id,
+        r.closed,
+      ]),
+    );
+    return json({
+      applications: (data || []).map((a) => {
+        const { listing_snapshot, ...rest } = a;
+        return {
+          ...rest,
+          roleClosed: closed.get(a.job_id) ?? true,
+          retainedListing: listing_snapshot
+            ? jobFromRecord(listing_snapshot)
+            : undefined,
+        };
+      }),
+    });
   } catch (error) {
     return apiError(error);
   }
@@ -58,10 +101,16 @@ export async function POST(request: Request) {
   try {
     assertSameOrigin(request);
     const body = await parseBody(request, input);
-    const { supabase, user } = await requireSession();
+    const { supabase, user, business } = await requireSession();
+    if (business)
+      throw new ApiError(
+        403,
+        "Use a separate personal account to apply for jobs. Business accounts are for managing hiring.",
+        "INDIVIDUAL_ACCOUNT_REQUIRED",
+      );
     const { data: job, error: jobError } = await supabase
       .from("jobs")
-      .select("id,source,status,published_at,expires_at")
+      .select("id,source,status,published_at,expires_at,is_test")
       .eq("id", body.jobId)
       .maybeSingle();
     if (jobError)
@@ -89,17 +138,77 @@ export async function POST(request: Request) {
         "Apply for this role on the employer website. Westmere cannot track an external submission.",
         "EXTERNAL_APPLICATION",
       );
-    const { data, error } = await supabase
-      .from("applications")
-      .insert({
-        job_id: job.id,
-        candidate_id: user.id,
-        cv_text_snapshot: body.cvText,
-        cover_letter: body.coverLetter,
-        answers: body.answers,
-      })
-      .select("id,created_at,status")
-      .single();
+    if (job.is_test && !body.testApplication)
+      throw new ApiError(
+        400,
+        "Confirm this fictional test application uses synthetic details and documents.",
+      );
+    const applicationId = crypto.randomUUID();
+    const admin = premiumAdmin();
+    let document: {
+      filename: string;
+      path: string;
+      mediaType: string;
+      bytes: number;
+    } | null = null;
+    let submittedCv = body.cvText;
+    if (body.cvId) {
+      const { data: cv, error: cvError } = await supabase
+        .from("candidate_cvs")
+        .select("filename,storage_path,media_type,bytes,extracted_text")
+        .eq("id", body.cvId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cvError || !cv)
+        throw new ApiError(
+          400,
+          "Choose a CV from your own account or upload a new one.",
+        );
+      submittedCv = cv.extracted_text;
+      const original = await admin.storage
+        .from("candidate-documents")
+        .download(cv.storage_path);
+      if (original.error || !original.data)
+        throw new ApiError(
+          503,
+          "Your CV file could not be attached. Please retry.",
+        );
+      const path = `${user.id}/${applicationId}.${cv.media_type === "application/pdf" ? "pdf" : "docx"}`;
+      const copied = await admin.storage
+        .from("application-documents")
+        .upload(path, original.data, {
+          contentType: cv.media_type,
+          upsert: false,
+        });
+      if (copied.error)
+        throw new ApiError(
+          503,
+          "Your CV file could not be attached. Please retry.",
+        );
+      document = {
+        filename: cv.filename,
+        path,
+        mediaType: cv.media_type,
+        bytes: cv.bytes,
+      };
+    }
+    const { data, error } = await admin.rpc("submit_application_bundle", {
+      p_id: applicationId,
+      p_candidate: user.id,
+      p_job: job.id,
+      p_cv: submittedCv,
+      p_letter: body.coverLetter,
+      p_answers: {
+        ...body.answers,
+        right_to_work: body.rightToWork,
+        drivers_licence: body.driversLicence,
+        certifications: body.certifications,
+      },
+      p_uploads: body.uploadIds,
+      p_document: document,
+    });
+    if (error && document)
+      await admin.storage.from("application-documents").remove([document.path]);
     if (error?.code === "23505")
       throw new ApiError(
         409,

@@ -1,0 +1,12 @@
+begin;
+create index agency_authorisations_client_approver on private.agency_authorisations(client_approved_by);
+create index agency_authorisations_creator on private.agency_authorisations(created_by);
+create index agency_authorisations_reviewer on private.agency_authorisations(reviewer_id);
+create index agency_clients_creator on private.agency_clients(created_by);
+create index agency_assignments_assigner on private.agency_job_assignments(assigned_by);
+create index agency_assignments_account on private.agency_job_assignments(user_id);
+create index agency_engagements_agency on private.agency_job_engagements(agency_id);
+create index agency_engagements_lead on private.agency_job_engagements(lead_user_id);
+create index business_type_corrections_reviewer on private.business_type_corrections(reviewer_id);
+create index business_accounts_default_business on public.business_accounts(default_organisation_id);
+commit;

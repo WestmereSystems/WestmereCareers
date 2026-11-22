@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ session: vi.fn(), inventory: vi.fn() }));
+const mock = vi.hoisted(() => ({
+  session: vi.fn(),
+  inventory: vi.fn(),
+  from: vi.fn(),
+}));
 vi.mock("../src/lib/server/auth", () => ({ getSessionContext: mock.session }));
 vi.mock("../src/lib/jobs-server", () => ({
   getPublicJobs: mock.inventory,
@@ -17,6 +21,22 @@ const request = (body: unknown, origin = "https://westmere.test") =>
 beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://westmere.test");
+  mock.from.mockImplementation((table: string) => {
+    const b = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+    b.select.mockReturnValue(b);
+    b.eq.mockReturnValue(b);
+    b.maybeSingle.mockResolvedValue({
+      data:
+        table === "profiles"
+          ? { active_cv_id: "50000000-0000-4000-8000-000000000001" }
+          : {
+              extracted_text:
+                "PRIVATE NAME. Experienced in React TypeScript CSS Testing and Accessibility.",
+            },
+      error: null,
+    });
+    return b;
+  });
 });
 describe("private Premium CV matching", () => {
   it("rejects cross-origin requests before reading account data", async () => {
@@ -26,7 +46,7 @@ describe("private Premium CV matching", () => {
   });
   it("does not trust a browser Premium flag", async () => {
     mock.session.mockResolvedValue({
-      supabase: {},
+      supabase: { from: mock.from },
       user: { id: "user" },
       isPremium: false,
     });
@@ -36,14 +56,14 @@ describe("private Premium CV matching", () => {
   });
   it("requires explicit consent before processing a CV", async () => {
     mock.session.mockResolvedValue({
-      supabase: {},
+      supabase: { from: mock.from },
       user: { id: "user" },
       isPremium: true,
     });
     const response = await POST(
       request({
         query: "",
-        cv: "React TypeScript CSS Testing Accessibility experienced engineer",
+        additionalExperience: "",
         consent: false,
       }),
     );
@@ -52,7 +72,7 @@ describe("private Premium CV matching", () => {
   });
   it("returns bounded skill evidence without reflecting the private CV", async () => {
     mock.session.mockResolvedValue({
-      supabase: {},
+      supabase: { from: mock.from },
       user: { id: "user" },
       isPremium: true,
     });
@@ -64,7 +84,7 @@ describe("private Premium CV matching", () => {
     const response = await POST(
       request({
         query: "q=engineer",
-        cv: "PRIVATE NAME. Experienced in React TypeScript CSS Testing and Accessibility.",
+        additionalExperience: "",
         consent: true,
         page: 1,
         strongOnly: true,
@@ -81,7 +101,7 @@ describe("private Premium CV matching", () => {
   });
   it("keeps the selected salary sort when CV matching remains enabled", async () => {
     mock.session.mockResolvedValue({
-      supabase: {},
+      supabase: { from: mock.from },
       user: { id: "user" },
       isPremium: true,
     });
@@ -93,7 +113,7 @@ describe("private Premium CV matching", () => {
     const response = await POST(
       request({
         query: "q=engineer",
-        cv: "Experienced in React TypeScript CSS Testing and Accessibility.",
+        additionalExperience: "",
         consent: true,
         page: 1,
         strongOnly: true,
@@ -110,13 +130,66 @@ describe("private Premium CV matching", () => {
 
 it("rejects a business account before billing or candidate processing", async () => {
   mock.session.mockResolvedValue({
-    supabase: {},
+    supabase: { from: mock.from },
     user: { id: "business", email_confirmed_at: "2026-11-16T00:00:00Z" },
-    isPremium: true,
+    isPremium: false,
     business: { kind: "employer" },
   });
   const response = await POST(request({}));
   expect(response.status).toBe(403);
-  expect((await response.json()).code).toBe("INDIVIDUAL_ACCOUNT_REQUIRED");
+  expect((await response.json()).code).toBe("ENTERPRISE_OR_PERSONAL_REQUIRED");
   expect(mock.inventory).not.toHaveBeenCalled();
+});
+
+it("allows Strong Matches on the Enterprise billing account", async () => {
+  mock.session.mockResolvedValue({
+    supabase: { from: mock.from },
+    user: { id: "enterprise-owner" },
+    isPremium: true,
+    business: { kind: "employer" },
+  });
+  mock.inventory.mockResolvedValue({ jobs: [], source: "live", total: 0 });
+  const response = await POST(
+    request({
+      query: "",
+      additionalExperience: "",
+      consent: true,
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mock.inventory).toHaveBeenCalled();
+});
+
+it("requires an owned, saved base CV and never falls back to browser text", async () => {
+  mock.session.mockResolvedValue({
+    supabase: { from: mock.from },
+    user: { id: "user" },
+    isPremium: true,
+  });
+  mock.from.mockImplementation(() => ({
+    select: () => ({
+      eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+    }),
+  }));
+  const r = await POST(
+    request({
+      query: "",
+      additionalExperience: "React TypeScript",
+      consent: true,
+    }),
+  );
+  expect(r.status).toBe(409);
+  expect((await r.json()).code).toBe("BASE_CV_REQUIRED");
+  expect(mock.inventory).not.toHaveBeenCalled();
+});
+it("rejects a browser-supplied replacement CV", async () => {
+  mock.session.mockResolvedValue({
+    supabase: { from: mock.from },
+    user: { id: "user" },
+    isPremium: true,
+  });
+  expect(
+    (await POST(request({ query: "", cv: "Pretend CV", consent: true })))
+      .status,
+  ).toBe(400);
 });

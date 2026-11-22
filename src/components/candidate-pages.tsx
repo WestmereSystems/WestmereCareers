@@ -13,8 +13,14 @@ import {
   Download,
 } from "lucide-react";
 import { useSession } from "./providers";
+import { useNotice, individualNotice } from "./notices";
+import { ApplicationWizard } from "./application-wizard";
+import { CandidateProfileCard } from "./candidate-profile";
+import { ApplicationCV } from "./application-cv";
 import { CVHistory, ChangeEmail, SavedCVButton } from "./profile-tools";
 import { JobCard } from "./job-card";
+import { ResponseChoices } from "./trust-workflows";
+import { ListingCopy } from "./listing-copy";
 import { EmptyState } from "./shell";
 import type { Job } from "@/lib/jobs";
 
@@ -29,56 +35,37 @@ export function ApplyPanel(props: { job: Job; isDemo: boolean }) {
 }
 function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
   const session = useSession();
+  const notice = useNotice();
   const [open, setOpen] = useState(false);
-  const [cv, setCv] = useState("");
-  const [letter, setLetter] = useState("");
-  const [consent, setConsent] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  async function apply(event: React.FormEvent) {
-    event.preventDefault();
-    if (isDemo) {
-      setMessage(
-        "This is a sample role. Your application has not been sent or saved. Explore real roles when Westmere opens.",
-      );
-      return;
-    }
-    if (!session.user) {
-      session.openAuth();
-      return;
-    }
-    setBusy(true);
-    setMessage("");
-    try {
-      const r = await fetch("/api/applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: job.id,
-          cvText: cv,
-          coverLetter: letter,
-          consent,
-        }),
-      });
-      const data = await r.json();
-      setMessage(
-        r.ok
-          ? "Your application has been received. You can follow it in My applications."
-          : data.error || "We couldn’t submit your application.",
-      );
-      if (r.ok) {
-        setCv("");
-        setLetter("");
-        setOpen(false);
-      }
-    } catch {
-      setMessage(
-        "We couldn’t connect. Your application has not been submitted.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (session.business)
+    return (
+      <div className="application-personal-required">
+        <button
+          className="button primary"
+          onClick={() =>
+            notice({
+              ...individualNotice,
+              title: "Use a personal account to apply",
+              message:
+                "Applying for roles is for personal accounts. Sign in with a separate personal account to share your CV and application with an employer.",
+            })
+          }
+        >
+          Use a personal account to apply
+        </button>
+        <p className="fineprint">
+          Business accounts manage hiring. Apply using your own personal
+          account.
+        </p>
+      </div>
+    );
+  if (session.loading)
+    return (
+      <button className="button primary" disabled>
+        Checking application access…
+      </button>
+    );
   if (job.source === "external")
     return (
       <div>
@@ -120,6 +107,7 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
     <div>
       <button
         className="button primary"
+        disabled={!isDemo && session.loading}
         onClick={() => {
           if (!isDemo && !session.user) session.openAuth();
           else setOpen(!open);
@@ -129,63 +117,11 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
         <ArrowRight size={16} />
       </button>
       {open && (
-        <form className="application-form" onSubmit={apply}>
-          <h3>{isDemo ? "Application preview" : "Make your next move"}</h3>
-          <p className="fineprint">
-            {isDemo
-              ? "Sample role: nothing entered here is submitted or persisted."
-              : "Share your CV and optional cover letter with this employer. You’ll be able to track application activity."}
-          </p>
-          {!isDemo && <SavedCVButton onLoad={setCv} />}
-          <label className="field-label" htmlFor="application-cv">
-            Your CV text
-          </label>
-          <textarea
-            id="application-cv"
-            required
-            minLength={50}
-            maxLength={40000}
-            value={cv}
-            onChange={(e) => setCv(e.target.value)}
-            placeholder="Paste the CV you’d like to share…"
-          />
-          <label className="field-label" htmlFor="application-letter">
-            Cover letter <span className="muted">(optional)</span>
-          </label>
-          <textarea
-            id="application-letter"
-            maxLength={15000}
-            value={letter}
-            onChange={(e) => setLetter(e.target.value)}
-            style={{ minHeight: 120 }}
-          />
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              required
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-            />
-            <span>
-              {isDemo
-                ? "I understand this is a preview and no application will be sent."
-                : "I want to share these documents with the hiring employer for this application."}
-            </span>
-          </label>
-          <div className="inline-actions">
-            <button type="submit" className="button primary" disabled={busy}>
-              {busy ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <Check size={16} />
-              )}{" "}
-              {isDemo ? "Preview submission" : "Submit application"}
-            </button>
-            <Link href={`/studio?job=${job.id}`} className="button secondary">
-              Prepare with Careers+
-            </Link>
-          </div>
-        </form>
+        <ApplicationWizard
+          job={job}
+          isDemo={isDemo}
+          onClose={() => setOpen(false)}
+        />
       )}
       {message && (
         <p role="status" className="message">
@@ -249,13 +185,25 @@ export function SavedRoles({ source }: { source: string }) {
       {jobs.length ? (
         <div className="job-list">
           {jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard key={job.id} job={job}>
+              {job.isClosed && (
+                <details className="saved-listing-details">
+                  <summary>View saved listing details</summary>
+                  <p className="notice">
+                    This role has closed and is no longer accepting
+                    applications. This private copy was retained when you saved
+                    it.
+                  </p>
+                  <ListingCopy job={job} />
+                </details>
+              )}
+            </JobCard>
           ))}
         </div>
       ) : (
         <EmptyState
           title="A little room for possibility."
-          description="Save a role when it catches your eye. Closed or unavailable listings may no longer appear here."
+          description="Save a role when it catches your eye. Closed roles you saved retain a private copy of their listing."
           action="Find a role"
           href="/jobs"
         />
@@ -270,7 +218,12 @@ type Application = {
   created_at: string;
   withdrawn_at: string | null;
   job_title_snapshot: string;
+  roleClosed?: boolean;
+  retainedListing?: Job;
   company_snapshot: string;
+  advertiser_kind_snapshot?: string;
+  client_label_snapshot?: string | null;
+  recipient_snapshot?: string | null;
   location_snapshot: string;
   application_events: {
     id: string;
@@ -421,6 +374,7 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
               <article className="application-row" key={app.id}>
                 <div>
                   <h3>{app.job_title_snapshot}</h3>
+                  {app.roleClosed && <span className="badge">Role closed</span>}
                   <p>
                     {app.company_snapshot} · {app.location_snapshot}
                   </p>
@@ -469,9 +423,19 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
             <article className="application-row" key={app.id}>
               <div>
                 <h3>{app.job_title_snapshot}</h3>
+                {app.roleClosed && <span className="badge">Role closed</span>}
                 <p>
                   {app.company_snapshot} · {app.location_snapshot}
                 </p>
+                {app.advertiser_kind_snapshot === "agency" && (
+                  <p className="fineprint">
+                    Recruitment agency ·{" "}
+                    {app.client_label_snapshot || "Confidential client"}
+                    <br />
+                    Initial recipient:{" "}
+                    {app.recipient_snapshot || app.company_snapshot}
+                  </p>
+                )}
                 <p>
                   Applied {new Date(app.created_at).toLocaleDateString("en-AU")}{" "}
                   · {app.withdrawn_at ? "Withdrawn" : app.status}
@@ -494,24 +458,15 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
                     <p className="fineprint">
                       Describe your experience for this application. A receipt
                       or generic processing message doesn’t count as a
-                      meaningful response. Reports await moderation before
-                      public aggregation.
+                      meaningful response. On-site statistics use recorded
+                      employer updates. If your response date agrees with the
+                      recorded date, your feedback can be affirmed.
                     </p>
-                    <label
-                      className="field-label"
-                      htmlFor={`report-reply-${app.id}`}
-                      style={{ marginTop: 12 }}
-                    >
-                      Have you received a meaningful response?
-                    </label>
-                    <select
-                      id={`report-reply-${app.id}`}
-                      value={responded ? "yes" : "no"}
-                      onChange={(e) => setResponded(e.target.value === "yes")}
-                    >
-                      <option value="no">No response so far</option>
-                      <option value="yes">Yes, I heard back</option>
-                    </select>
+                    <ResponseChoices
+                      value={responded}
+                      onChange={setResponded}
+                      name={`response-${app.id}`}
+                    />
                     {responded && (
                       <label className="field-label" style={{ marginTop: 12 }}>
                         When did you first hear back?
@@ -541,6 +496,18 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
                     </div>
                   </form>
                 )}
+                {app.retainedListing && (
+                  <details className="trust-disclosure">
+                    <summary>View the listing submitted against</summary>
+                    {app.roleClosed && (
+                      <p className="notice">
+                        This role has closed. Your application and submitted
+                        listing copy remain private here.
+                      </p>
+                    )}
+                    <ListingCopy job={app.retainedListing} />
+                  </details>
+                )}
                 <div
                   className="timeline-preview"
                   style={{
@@ -554,7 +521,12 @@ function ApplicationsForUser({ compact }: { compact: boolean }) {
                     <div className="timeline-item complete" key={event.id}>
                       <span />
                       <div>
-                        <strong>{event.event_type.replaceAll("_", " ")}</strong>
+                        <strong>
+                          {event.event_type === "opened" &&
+                          app.advertiser_kind_snapshot === "agency"
+                            ? "Opened by recruiting agency"
+                            : event.event_type.replaceAll("_", " ")}
+                        </strong>
                         <p>
                           {new Date(event.occurred_at).toLocaleString("en-AU")}{" "}
                           · {event.source}
@@ -701,72 +673,13 @@ function AccountForUser({ section }: { section: "profile" | "settings" }) {
           Welcome. Add your name below to finish setting up your profile.
         </p>
       )}
-      {section === "profile" && <CVHistory onSelect={setCv} />}
+
       <div
         className={
-          section === "profile"
-            ? "account-grid profile-details-grid"
-            : "profile-settings"
+          section === "profile" ? "candidate-profile-stack" : "profile-settings"
         }
       >
-        {section === "profile" && (
-          <>
-            <form className="panel" onSubmit={save}>
-              <h2>Your private profile</h2>
-              <p>
-                Keep a base CV for your own reference. Each application keeps a
-                separate copy of what you submitted.
-              </p>
-              <label className="field-label" htmlFor="profile-name">
-                Your name
-              </label>
-              <input
-                id="profile-name"
-                required
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={120}
-                style={{ width: "100%", marginBottom: 20 }}
-              />
-              <label className="field-label" htmlFor="profile-cv">
-                Your base CV text
-              </label>
-              <textarea
-                id="profile-cv"
-                value={cv}
-                onChange={(e) => setCv(e.target.value)}
-                maxLength={40000}
-              />
-              <p className="fineprint">
-                Saving your CV does not make it publicly searchable or send it
-                to OpenAI.
-              </p>
-              <button
-                className="button primary"
-                style={{ marginTop: 18 }}
-                disabled={busy || !loaded}
-              >
-                Save profile
-                <Check size={16} />
-              </button>
-            </form>
-            <aside className="panel profile-privacy">
-              <ShieldCheck size={25} />
-              <h3>Private by default.</h3>
-              <p>
-                Your profile and base CV are yours. Employers only receive the
-                separate copy you choose to submit with an application.
-              </p>
-              <Link className="text-link" href="/account?tab=settings">
-                Account & communication settings <ArrowRight size={16} />
-              </Link>
-              <Link className="text-link" href="/privacy">
-                How we handle your data <ArrowRight size={16} />
-              </Link>
-            </aside>
-          </>
-        )}
+        {section === "profile" && <CandidateProfileCard />}
         {section === "settings" && (
           <div>
             <section className="panel">

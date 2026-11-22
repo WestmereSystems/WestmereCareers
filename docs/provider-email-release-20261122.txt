@@ -1,0 +1,27 @@
+Westmere provider-selected business email — 22 November 2026
+
+Canonical production URL: https://westmere.com.au
+Vercel project: westmere-careers (order-ward)
+Production deployment: dpl_AqQjMmpa5LZtaTbswLLqa2pLMTg9 (READY)
+Source snapshot: a5485537211f775e8c96bb5bbc2c8785bb745aec
+Isolated deployment source: /private/tmp/westmere-provider-marketing-release-20261122
+Supabase project: ldmwqupidlgrkkjjpcvn
+Hosted migration: 20261122063803_provider_selected_business_email.sql
+
+Employer and agency Google/Microsoft registration no longer requires a typed email, company name or Terms acceptance before choosing the provider. The account chooser opens explicitly. Following the verified PKCE callback, the selected account's verified email is used for founding business admission. Business details, permanent conversion confirmation where applicable, and Terms acceptance remain required before completing the business account.
+
+The founding OAuth flow uses a short-lived server-signed HttpOnly cookie. Unsigned business intent, an unverified email, a mismatched provider identity or an invalid callback cannot grant business admission. Supabase may stage a trusted Google/Microsoft Auth identity to learn its verified email; that identity has no Westmere application access until the signed business callback admits it. Direct applicant email/password signup remains blocked. The marketplace and business content remain private.
+
+The combined release preserves the other authorized Westmere chat's frozen 13 marketing application changes. Deployment uses its reviewed production manifest plus only four auth runtime overlays and the founding guide; unrelated dirty workspace changes were excluded. The root repository was not committed or pushed.
+
+Validation: full suite 484 tests / 64 files passed; after the final explicit account chooser query parameter, 77 focused tests / 6 files and TypeScript passed. Vercel production build and all four deployment-traced PDF upload worker checks passed.
+
+Live canonical API checks: Google employer and Microsoft agency OAuth requests without email each return 200, a signed business flow cookie, prompt=select_account and callback=https://westmere.com.au/auth/callback. Generic applicant provider requests each return 403 FOUNDING_ACCESS_REQUIRED. Both providers report configured; marketplaceOpen=false and businessPaymentsReady=true. The deployed form was visually checked with blank company/email and unchecked Terms, and both provider buttons enabled. The canonical browser session was already signed into the ACME business account (louis.sibul@westmere.com.au, without a staff Admin tab) and was preserved; no actual Google/Microsoft identity was selected to complete a live registration.
+
+Hosted invariants after release: marketplace_open=false; owner_signin_allowed=true; auth registrations=17; launch campaigns=0. No error/fatal runtime records returned for the new deployment in the post-release scan. No launch announcement, account conversion, real payment or subscription was executed.
+
+UI proof: deliverables/launch-20261122/provider-email-optional.png
+
+The coordinated marketing chat also completed canonical production verification: account/admin endpoints require authentication, cross-origin mutation is denied, unsubscribe GET does not mutate, POST is idempotent and the admin register reflects withdrawal. Its disposable contact and audit event were cleaned up; real prospect preferences stayed unchanged. Marketing outbox and launch campaigns remain empty. Combined production deployment is retained.
+
+Session identification correction: the existing Chrome business session is not the protected lsibul@icloud.com administrator. The separate hosted owner_signin_allowed=true assertion applies to lsibul@icloud.com. The marketing chat visually verified the existing business Settings controls without saving or changing its preferences, and recorded its release evidence in docs/marketing-release-20261122.txt.

@@ -1,7 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { VerificationProgress } from "./verification-progress";
 import { useSession } from "./providers";
+import { PageControls } from "./page-controls";
+import type { BusinessRegistrationCapacity } from "@/lib/business-registration";
 
 export async function sendJson(url: string, body: unknown, method = "POST") {
   const r = await fetch(url, {
@@ -23,6 +26,9 @@ function Message({ children }: { children: string }) {
 type Verification = {
   id: string;
   business_name: string;
+  requested_kind?: "employer" | "agency";
+  agency_specialisms?: string[];
+  agency_regions?: string[];
   abn: string;
   website: string;
   contact_role: string;
@@ -38,25 +44,58 @@ type Verification = {
 export function VerificationIntake() {
   const session = useSession();
   const [requests, setRequests] = useState<Verification[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [businessPage, setBusinessPage] = useState(1);
+  const [businessTotal, setBusinessTotal] = useState(0);
+  const [capacity, setCapacity] = useState<BusinessRegistrationCapacity | null>(
+    null,
+  );
+  const [verifiedBusinesses, setVerifiedBusinesses] = useState<
+    {
+      role: string;
+      organisations: { id: string; name: string; suspended_at: string | null };
+    }[]
+  >([]);
+  const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Verification | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const r = await fetch("/api/employers/verification", {
-        cache: "no-store",
-        signal,
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      setRequests(d.requests);
-    } catch (e) {
-      if (!signal?.aborted)
-        setMessage(
-          e instanceof Error ? e.message : "Requests could not be loaded.",
-        );
-    }
+  const [newBusiness, setNewBusiness] = useState(false);
+  useEffect(() => {
+    setNewBusiness(
+      new URLSearchParams(window.location.search).get("newBusiness") === "1",
+    );
   }, []);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      try {
+        const r = await fetch(
+          `/api/employers/verification?page=${page}&businessPage=${businessPage}`,
+          {
+            cache: "no-store",
+            signal,
+          },
+        );
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        setRequests(d.requests);
+        setTotal(d.total ?? d.requests.length);
+        setVerifiedBusinesses(d.verifiedBusinesses || []);
+        setBusinessTotal(d.businessTotal || 0);
+        setCapacity(d.capacity || null);
+      } catch (e) {
+        if (!signal?.aborted)
+          setMessage(
+            e instanceof Error ? e.message : "Requests could not be loaded.",
+          );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [page, businessPage],
+  );
   useEffect(() => {
     const c = new AbortController();
     if (session.user) void load(c.signal);
@@ -71,6 +110,15 @@ export function VerificationIntake() {
     try {
       const d = await sendJson("/api/employers/verification", {
         requestId: editing?.id ?? null,
+        kind: f.get("kind"),
+        specialisms: String(f.get("specialisms") || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+        regions: String(f.get("regions") || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
         businessName: f.get("name"),
         abn: String(f.get("abn")).replace(/\s/g, ""),
         website: f.get("website"),
@@ -108,13 +156,44 @@ export function VerificationIntake() {
         needed before approval.
       </p>
       <Message>{message}</Message>
+      <section
+        aria-label="Verified businesses"
+        className="verification-business-list"
+        aria-busy={loading}
+      >
+        <h3>Verified businesses</h3>
+        {verifiedBusinesses.map(({ role, organisations: o }) => (
+          <article className="activity-item" key={o.id}>
+            <h4>{o.name}</h4>
+            <VerificationProgress status="approved" />
+            <p>
+              {o.suspended_at
+                ? "Business verified · hiring access suspended"
+                : "Business verified"}
+              {role !== "owner" ? " · managed by invitation" : ""}
+            </p>
+          </article>
+        ))}
+        {!businessTotal && !loading && (
+          <p className="muted">
+            Your approved businesses will appear here after verification.
+          </p>
+        )}
+        <PageControls
+          page={businessPage}
+          total={businessTotal}
+          size={5}
+          label="Verified businesses pages"
+          onPage={setBusinessPage}
+          busy={loading}
+        />
+      </section>
+      <h3>Verification requests</h3>
       {requests.map((r) => (
         <article className="activity-item" key={r.id}>
           <h3>{r.business_name}</h3>
-          <p>
-            {r.status.replaceAll("_", " ")} · Submitted{" "}
-            {new Date(r.created_at).toLocaleDateString("en-AU")}
-          </p>
+          <VerificationProgress status={r.status} />
+          <p>Submitted {new Date(r.created_at).toLocaleDateString("en-AU")}</p>
           {r.applicant_message && (
             <p className="notice">Reviewer feedback: {r.applicant_message}</p>
           )}
@@ -125,143 +204,219 @@ export function VerificationIntake() {
           )}
         </article>
       ))}
-      <details open={Boolean(editing) || requests.length === 0}>
-        <summary>
-          {editing ? "Update your request" : "Submit a business for review"}
-        </summary>
-        <form
-          className="form-stack"
-          key={editing?.id ?? "new"}
-          onSubmit={submit}
+      <PageControls
+        page={page}
+        total={total}
+        size={5}
+        label="Verification request pages"
+        onPage={setPage}
+        busy={loading}
+      />
+      {capacity && (
+        <p className="notice" role="status">
+          Business allowance: {capacity.used} of {capacity.limit} slots used (
+          {capacity.owned} existing businesses and {capacity.pending} pending
+          reviews).
+          {!capacity.canSubmit && (
+            <>
+              {" "}
+              Your allowance is full.{" "}
+              <Link href="/account?tab=billing">
+                Review your subscription
+              </Link>{" "}
+              before submitting another business. You can still respond to
+              requests for information.
+            </>
+          )}
+        </p>
+      )}
+      {!editing && !capacity && (
+        <p role="status">
+          {loading
+            ? "Checking your business allowance…"
+            : "Your allowance could not be checked. Refresh before submitting a new business."}
+        </p>
+      )}
+      {(Boolean(editing) || Boolean(capacity?.canSubmit)) && (
+        <details
+          id="new-business"
+          open={newBusiness || Boolean(editing) || requests.length === 0}
         >
-          <label className="field-label">
-            Registered business name
-            <input
-              name="name"
-              required
-              minLength={2}
-              maxLength={180}
-              defaultValue={editing?.business_name}
-            />
-          </label>
-          <div className="form-grid">
+          <summary>
+            {editing ? "Update your request" : "Submit a business for review"}
+          </summary>
+          <form
+            className="form-stack"
+            key={editing?.id ?? "new"}
+            onSubmit={submit}
+          >
             <label className="field-label">
-              ABN (11 digits)
-              <input
-                name="abn"
-                required
-                inputMode="numeric"
-                pattern="[0-9 ]{11,14}"
-                maxLength={14}
-                defaultValue={editing?.abn}
-              />
+              Business type
+              <select
+                name="kind"
+                defaultValue={
+                  editing?.requested_kind ||
+                  session.business?.kind ||
+                  "employer"
+                }
+              >
+                <option value="employer">
+                  Employer · hiring for your own business
+                </option>
+                <option value="agency">
+                  Recruitment agency · hiring for clients
+                </option>
+              </select>
             </label>
+            <div className="form-grid">
+              <label className="field-label">
+                Agency specialisms (comma separated)
+                <input
+                  name="specialisms"
+                  maxLength={1000}
+                  defaultValue={editing?.agency_specialisms?.join(", ")}
+                  placeholder="Required for agencies, e.g. Technology, Finance"
+                />
+              </label>
+              <label className="field-label">
+                Agency service regions (comma separated)
+                <input
+                  name="regions"
+                  maxLength={1000}
+                  defaultValue={editing?.agency_regions?.join(", ")}
+                  placeholder="Required for agencies, e.g. NSW, ACT"
+                />
+              </label>
+            </div>
             <label className="field-label">
-              Your role at the business
+              Registered business name
               <input
-                name="role"
+                name="name"
                 required
                 minLength={2}
-                maxLength={120}
-                defaultValue={editing?.contact_role}
+                maxLength={180}
+                defaultValue={editing?.business_name}
               />
             </label>
-          </div>
-          <label className="field-label">
-            Business website (https://)
-            <input
-              name="website"
-              type="url"
-              pattern="https://.*"
-              required
-              maxLength={500}
-              placeholder="https://your-business.com.au"
-              defaultValue={editing?.website}
-            />
-          </label>
-          <label className="field-label">
-            How can we independently confirm your authority?
-            <textarea
-              name="evidence"
-              minLength={30}
-              maxLength={4000}
-              required
-              defaultValue={editing?.ownership_evidence}
-              placeholder="Describe your relationship to the business and a public business contact or company-domain verification route. A reviewer will follow up if more evidence is needed."
-            />
-          </label>
-          <label className="field-label">
-            Business or authorised representative’s LinkedIn profile
-            <input
-              name="linkedin"
-              type="url"
-              required
-              pattern="https://.*"
-              maxLength={500}
-              defaultValue={editing?.linkedin_url}
-              placeholder="https://www.linkedin.com/company/your-company/"
-            />
-          </label>
-          <div className="form-grid">
+            <div className="form-grid">
+              <label className="field-label">
+                ABN (11 digits)
+                <input
+                  name="abn"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9 ]{11,14}"
+                  maxLength={14}
+                  defaultValue={editing?.abn}
+                />
+              </label>
+              <label className="field-label">
+                Your role at the business
+                <input
+                  name="role"
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  defaultValue={editing?.contact_role}
+                />
+              </label>
+            </div>
             <label className="field-label">
-              Public HR or business verification email
+              Business website (https://)
               <input
-                name="hrEmail"
-                type="email"
+                name="website"
+                type="url"
+                pattern="https://.*"
                 required
-                maxLength={254}
-                defaultValue={editing?.hr_email}
+                maxLength={500}
+                placeholder="https://your-business.com.au"
+                defaultValue={editing?.website}
               />
             </label>
             <label className="field-label">
-              Public HR or business verification phone
-              <input
-                name="hrPhone"
-                type="tel"
+              How can we independently confirm your authority?
+              <textarea
+                name="evidence"
+                minLength={30}
+                maxLength={4000}
                 required
-                minLength={6}
-                maxLength={40}
-                defaultValue={editing?.hr_phone}
+                defaultValue={editing?.ownership_evidence}
+                placeholder="Describe your relationship to the business and a public business contact or company-domain verification route. A reviewer will follow up if more evidence is needed."
               />
             </label>
-          </div>
-          <label className="field-label">
-            Public page listing these contact details
-            <input
-              name="contactSource"
-              type="url"
-              required
-              pattern="https://.*"
-              maxLength={500}
-              defaultValue={editing?.contact_source}
-              placeholder="https://your-company.com.au/contact"
-            />
-          </label>
-          <label className="checkbox-label">
-            <input name="contactPermission" type="checkbox" required />I am
-            authorised to supply these publicly listed business contact details
-            and permit Westmere to contact this business to check my identity
-            and hiring authority.
-          </label>
-          <p className="fineprint">
-            These verification contacts are available to authorised reviewers.
-            They are not added to your public company profile or used for
-            marketing. See our <Link href="/privacy">Privacy Policy</Link>.
-          </p>
-          <button className="button primary" disabled={busy}>
-            {busy ? "Submitting…" : "Submit for independent review"}
-          </button>
-          {editing && (
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => setEditing(null)}
-            >
-              Cancel edit
+            <label className="field-label">
+              Business or authorised representative’s LinkedIn profile
+              <input
+                name="linkedin"
+                type="url"
+                required
+                pattern="https://.*"
+                maxLength={500}
+                defaultValue={editing?.linkedin_url}
+                placeholder="https://www.linkedin.com/company/your-company/"
+              />
+            </label>
+            <div className="form-grid">
+              <label className="field-label">
+                Public HR or business verification email
+                <input
+                  name="hrEmail"
+                  type="email"
+                  required
+                  maxLength={254}
+                  defaultValue={editing?.hr_email}
+                />
+              </label>
+              <label className="field-label">
+                Public HR or business verification phone
+                <input
+                  name="hrPhone"
+                  type="tel"
+                  required
+                  minLength={6}
+                  maxLength={40}
+                  defaultValue={editing?.hr_phone}
+                />
+              </label>
+            </div>
+            <label className="field-label">
+              Public page listing these contact details
+              <input
+                name="contactSource"
+                type="url"
+                required
+                pattern="https://.*"
+                maxLength={500}
+                defaultValue={editing?.contact_source}
+                placeholder="https://your-company.com.au/contact"
+              />
+            </label>
+            <label className="checkbox-label">
+              <input name="contactPermission" type="checkbox" required />I am
+              authorised to supply these publicly listed business contact
+              details and permit Westmere to contact this business to check my
+              identity and hiring authority.
+            </label>
+            <p className="fineprint">
+              These verification contacts are available to authorised reviewers.
+              They are not added to your public company profile or used for
+              marketing. See our <Link href="/privacy">Privacy Policy</Link>.
+            </p>
+            <button className="button primary" disabled={busy}>
+              {busy ? "Submitting…" : "Submit for independent review"}
             </button>
-          )}
-        </form>
-      </details>
+            {editing && (
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel edit
+              </button>
+            )}
+          </form>
+        </details>
+      )}
       <p className="fineprint">
         Verification confirms identity and hiring authority; it is not an
         endorsement of every role or workplace. Existing business ownership
@@ -351,25 +506,107 @@ export function TrustCaseForm({
   );
 }
 
+export function ResponseChoices({
+  value,
+  onChange,
+  name = "response",
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+  name?: string;
+}) {
+  return (
+    <fieldset className="response-choices">
+      <legend>Did you receive a meaningful employer response?</legend>
+      {[
+        { value: true, label: "I received a meaningful employer response" },
+        {
+          value: false,
+          label: "I did not receive a meaningful employer response",
+        },
+      ].map((o) => (
+        <label
+          className={`response-choice ${value === o.value ? "selected" : ""}`}
+          key={String(o.value)}
+        >
+          <input
+            type="radio"
+            name={name}
+            checked={value === o.value}
+            onChange={() => onChange(o.value)}
+          />
+          {o.label}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+type ReviewRole = {
+  id: string;
+  title: string;
+  source: string;
+  closed: boolean;
+  reviewed: boolean;
+  application_id: string | null;
+};
 export function ResponseReportForm({
   organisationId,
 }: {
   organisationId: string;
 }) {
   const session = useSession(),
+    [roles, setRoles] = useState<ReviewRole[]>([]),
+    [roleId, setRoleId] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [responded, setResponded] = useState(false);
+    [responded, setResponded] = useState(false),
+    [loading, setLoading] = useState(false);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      try {
+        const r = await fetch(
+          `/api/applications/reports?organisationId=${organisationId}`,
+          { cache: "no-store", signal },
+        );
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        setRoles(d.roles || []);
+      } catch (e) {
+        if (!signal?.aborted)
+          setMessage(
+            e instanceof Error
+              ? e.message
+              : "Role history could not be loaded.",
+          );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [organisationId],
+  );
+  useEffect(() => {
+    if (!session.user) return;
+    const c = new AbortController();
+    void load(c.signal);
+    return () => c.abort();
+  }, [load, session.user?.id]);
+  const selected = roles.find((r) => r.id === roleId);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!selected || selected.reviewed) return;
     const form = e.currentTarget,
       f = new FormData(form);
     setBusy(true);
     try {
       const d = await sendJson("/api/applications/reports", {
-        organisationId,
-        jobReference: f.get("reference"),
-        applicationDate: new Date(String(f.get("applied"))).toISOString(),
+        ...(selected.application_id
+          ? { applicationId: selected.application_id }
+          : {
+              organisationId,
+              jobReference: selected.id,
+              applicationDate: new Date(String(f.get("applied"))).toISOString(),
+            }),
         responseReceived: responded,
         responseDate: responded
           ? new Date(String(f.get("replied"))).toISOString()
@@ -377,7 +614,9 @@ export function ResponseReportForm({
       });
       setMessage(d.message);
       form.reset();
+      setRoleId("");
       setResponded(false);
+      await load();
     } catch (e) {
       setMessage(
         e instanceof Error ? e.message : "Check the dates and try again.",
@@ -390,37 +629,70 @@ export function ResponseReportForm({
     <details className="trust-disclosure">
       <summary>Share your application experience</summary>
       <p className="fineprint">
-        For applications made outside Westmere. Report a meaningful employer
-        reply, rather than an automated receipt. To update an experience, use
-        the same job reference. Internal applications can be reported from My
-        applications.
+        Choose a position this business published in the last six months,
+        including closed roles. Each job title can be reviewed once. On-site
+        figures come from recorded employer responses; matching feedback dates
+        can be affirmed. Off-site experiences are self-reported.
       </p>
       {session.user ? (
         <form className="form-stack" onSubmit={submit}>
           <label className="field-label">
-            Job title or reference
-            <input name="reference" minLength={3} maxLength={300} required />
+            Position
+            <select
+              required
+              value={roleId}
+              onChange={(e) => setRoleId(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">
+                {loading ? "Loading role history…" : "Choose a position"}
+              </option>
+              {roles.map((r) => (
+                <option
+                  key={r.id}
+                  value={r.id}
+                  disabled={
+                    r.reviewed || (r.source === "direct" && !r.application_id)
+                  }
+                >
+                  {r.title}
+                  {r.closed ? " · Closed" : ""}
+                  {r.reviewed
+                    ? " · Already reviewed"
+                    : r.source === "direct" && !r.application_id
+                      ? " · Recorded application required"
+                      : ""}
+                </option>
+              ))}
+            </select>
           </label>
-          <label className="field-label">
-            When did you apply?
-            <input name="applied" type="datetime-local" required />
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={responded}
-              onChange={(e) => setResponded(e.target.checked)}
-            />
-            I received a meaningful employer response
-          </label>
+          {!loading && !roles.length && (
+            <p className="fineprint">
+              No positions were published in the last six months.
+            </p>
+          )}
+          {selected?.source === "external" && (
+            <label className="field-label">
+              When did you apply?
+              <input name="applied" type="datetime-local" required />
+            </label>
+          )}
+          <ResponseChoices
+            value={responded}
+            onChange={setResponded}
+            name={`response-${organisationId}`}
+          />
           {responded && (
             <label className="field-label">
-              When did they respond?
+              When did they first respond?
               <input name="replied" type="datetime-local" required />
             </label>
           )}
-          <button className="button secondary" disabled={busy}>
-            Save my experience for review
+          <button
+            className="button secondary"
+            disabled={busy || !selected || selected.reviewed}
+          >
+            Save my experience
           </button>
         </form>
       ) : (
@@ -450,21 +722,19 @@ type Report = {
   response_received: boolean;
   confirmed_at: string;
   moderation_status: string;
+  corroborated?: boolean | null;
 };
 function TrustActivityForUser() {
   const session = useSession();
-  const [cases, setCases] = useState<Case[]>([]),
-    [reports, setReports] = useState<Report[]>([]),
+  const [reports, setReports] = useState<Report[]>([]),
     [message, setMessage] = useState("");
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const results = await Promise.all([
-        fetch("/api/trust/cases", { cache: "no-store", signal }),
         fetch("/api/applications/reports", { cache: "no-store", signal }),
       ]);
-      const [a, b] = await Promise.all(results.map((r) => r.json()));
-      if (!results[0].ok || !results[1].ok) throw new Error(a.error || b.error);
-      setCases(a.cases);
+      const [b] = await Promise.all(results.map((r) => r.json()));
+      if (!results[0].ok) throw new Error(b.error);
       setReports(b.reports);
     } catch (e) {
       if (!signal?.aborted)
@@ -480,14 +750,8 @@ function TrustActivityForUser() {
     try {
       const d = await sendJson(
         "/api/applications/reports",
-        r.application_id
-          ? { applicationId: r.application_id, responseReceived: false }
-          : {
-              organisationId: r.organisation_id,
-              jobReference: r.job_reference,
-              applicationDate: r.application_date,
-              responseReceived: false,
-            },
+        { reportId: r.id },
+        "PATCH",
       );
       setMessage(d.message);
       await load();
@@ -506,25 +770,12 @@ function TrustActivityForUser() {
     <>
       <Message>{message}</Message>
       <section className="panel">
-        <h2>Your concerns and appeals</h2>
-        {!cases.length && <p>No cases submitted yet.</p>}
-        {cases.map((c) => (
-          <article className="activity-item" key={c.id}>
-            <h3>{c.kind.replaceAll("_", " ")}</h3>
-            <p className="badge">{c.status.replaceAll("_", " ")}</p>
-            <p>{c.detail}</p>
-            {c.resolution && (
-              <p className="notice">Reviewer update: {c.resolution}</p>
-            )}
-          </article>
-        ))}
-      </section>
-      <section className="panel">
         <h2>Your response reports</h2>
         <p className="muted">
-          Corrections and fresh confirmations return to review. Silence reports
-          need confirmation within the last 30 days to contribute to public
-          statistics.
+          Off-site no-response reports can be reconfirmed here without creating
+          another review. They need confirmation within the last 30 days to
+          contribute to public statistics. On-site figures use recorded
+          activity.
         </p>
         {!reports.length && <p>No reports submitted yet.</p>}
         {reports.map((r) => (
@@ -534,21 +785,14 @@ function TrustActivityForUser() {
               {r.response_received
                 ? "Response received"
                 : "No response reported"}{" "}
-              · {r.moderation_status} · Confirmed{" "}
-              {new Date(r.confirmed_at).toLocaleDateString("en-AU")}
+              ·{" "}
+              {r.corroborated
+                ? "Affirmed against recorded activity"
+                : r.moderation_status}{" "}
+              · Confirmed {new Date(r.confirmed_at).toLocaleDateString("en-AU")}
             </p>
             <div className="actions-row">
-              <Link
-                className="text-link"
-                href={
-                  r.application_id
-                    ? "/applications"
-                    : `/companies/${r.organisation_id}`
-                }
-              >
-                Update or correct this experience
-              </Link>
-              {!r.response_received && (
+              {!r.response_received && !r.application_id && (
                 <button
                   className="button secondary"
                   onClick={() => void reconfirm(r)}

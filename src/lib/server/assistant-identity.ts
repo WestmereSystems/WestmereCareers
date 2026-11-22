@@ -25,7 +25,7 @@ export function assistantIdentity(
   if (!secret)
     throw new PremiumError(
       "NOT_CONFIGURED",
-      "AI assistance is being prepared. Your CV has not been sent anywhere.",
+      "Career assistance is being prepared. Your CV has not been sent anywhere.",
       503,
     );
   const id = userId || readGuestToken(cookie, secret) || randomUUID();

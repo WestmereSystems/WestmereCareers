@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CheckCheck, ArrowRight, X } from "lucide-react";
+import { Bell, CheckCheck, FileCheck2, ArrowRight, X } from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "./providers";
 
 export type Notice = {
+  category?: "account" | "billing";
   id: string;
   title: string;
   message: string;
@@ -29,6 +30,8 @@ type NotificationState = {
   error: string;
   refresh: () => Promise<void>;
   markRead: (id?: string) => Promise<void>;
+  clear: (id?: string) => Promise<void>;
+  revision: number;
 };
 const NotificationContext = createContext<NotificationState>({
   items: [],
@@ -37,6 +40,8 @@ const NotificationContext = createContext<NotificationState>({
   error: "",
   refresh: async () => {},
   markRead: async () => {},
+  clear: async () => {},
+  revision: 0,
 });
 
 export function NotificationProvider({
@@ -48,6 +53,7 @@ export function NotificationProvider({
   const [owner, setOwner] = useState(session.user?.id);
   const [items, setItems] = useState<Notice[]>([]);
   const [unread, setUnread] = useState(0);
+  const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(Boolean(session.user));
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
@@ -57,7 +63,7 @@ export function NotificationProvider({
     const controller = new AbortController();
     request.current = controller;
     try {
-      const response = await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications?preview=1", {
         cache: "no-store",
         signal: controller.signal,
       });
@@ -70,6 +76,7 @@ export function NotificationProvider({
         setItems(data.notifications ?? []);
         setUnread(data.unread ?? 0);
         setError("");
+        setRevision((value) => value + 1);
       }
     } catch (cause) {
       if (!controller.signal.aborted)
@@ -102,19 +109,21 @@ export function NotificationProvider({
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh]);
-  const markRead = useCallback(
-    async (id?: string) => {
+  const update = useCallback(
+    async (action: "read" | "clear", id?: string) => {
       const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(id ? { id } : {}),
+        body: JSON.stringify({ action, ...(id ? { id } : {}) }),
       });
       if (!response.ok)
-        throw new Error("This notification could not be marked read.");
+        throw new Error("Your notification could not be updated. Try again.");
       await refresh();
     },
     [refresh],
   );
+  const markRead = useCallback((id?: string) => update("read", id), [update]);
+  const clear = useCallback((id?: string) => update("clear", id), [update]);
   const current = owner === session.user?.id;
   return (
     <NotificationContext.Provider
@@ -125,6 +134,8 @@ export function NotificationProvider({
         error: current ? error : "",
         refresh,
         markRead,
+        clear,
+        revision,
       }}
     >
       {children}
@@ -133,9 +144,22 @@ export function NotificationProvider({
 }
 
 export function NotificationPreview() {
-  const { items, unread, loading, error, refresh } =
+  const { items, unread, loading, error, refresh, clear } =
     useContext(NotificationContext);
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  async function dismiss(id?: string) {
+    setBusy(true);
+    try {
+      await clear(id);
+      setMessage("");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
   const ref = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -164,7 +188,11 @@ export function NotificationPreview() {
       className="notification-preview"
       ref={ref}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (
+          event.relatedTarget &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false);
       }}
     >
       <button
@@ -213,6 +241,16 @@ export function NotificationPreview() {
               <X size={18} />
             </button>
           </div>
+          {items.length > 0 && (
+            <button
+              className="text-button notification-clear-all"
+              disabled={busy}
+              onClick={() => void dismiss()}
+            >
+              Clear menu
+            </button>
+          )}
+          {message && <p role="status">{message}</p>}
           {loading ? (
             <p role="status">Loading your updates…</p>
           ) : error ? (
@@ -221,7 +259,10 @@ export function NotificationPreview() {
             <ul className="notification-preview-list">
               {items.slice(0, 4).map((notice) => (
                 <li key={notice.id}>
-                  <Link href={notice.path} onClick={() => setOpen(false)}>
+                  <Link
+                    href={`/account?tab=notifications#notification-${notice.id}`}
+                    onClick={() => setOpen(false)}
+                  >
                     <span
                       className={
                         notice.read_at ? "notice-dot read" : "notice-dot"
@@ -229,6 +270,13 @@ export function NotificationPreview() {
                       aria-label={notice.read_at ? "Read" : "Unread"}
                     />
                     <div>
+                      {notice.category === "billing" && (
+                        <FileCheck2
+                          size={20}
+                          className="billing-notice-icon"
+                          aria-label="Billing confirmation"
+                        />
+                      )}
                       <strong>{notice.title}</strong>
                       <p>{notice.message}</p>
                       <time dateTime={notice.created_at}>
@@ -239,6 +287,15 @@ export function NotificationPreview() {
                       </time>
                     </div>
                   </Link>
+                  <button
+                    type="button"
+                    className="icon-button notification-dismiss"
+                    aria-label={`Clear ${notice.title} from menu`}
+                    disabled={busy}
+                    onClick={() => void dismiss(notice.id)}
+                  >
+                    <X size={15} />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -267,28 +324,68 @@ export function NotificationPreview() {
 export function Notifications() {
   const session = useSession();
   const state = useContext(NotificationContext);
-  const [older, setOlder] = useState<Notice[]>([]);
-  const [more, setMore] = useState(true);
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{
+    owner?: string;
+    items: Notice[];
+    pages: number;
+    total: number;
+    page: number;
+  }>({ items: [], pages: 1, total: 0, page: 1 });
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  // Keep loaded rows when the preview refreshes; new arrivals must not create a gap.
   useEffect(() => {
-    setOlder((previous) => [
-      ...new Map(
-        [...previous, ...state.items].map((notice) => [notice.id, notice]),
-      ).values(),
-    ]);
-  }, [state.items]);
-  const items = [
-    ...new Map(
-      [...older, ...state.items].map((notice) => [notice.id, notice]),
-    ).values(),
-  ].sort(
-    (a, b) =>
-      b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
-  );
-  if (session.loading || state.loading)
-    return <p role="status">Loading notifications…</p>;
+    setPage(1);
+  }, [session.user?.id]);
+  useEffect(() => {
+    if (!session.user) return;
+    const controller = new AbortController();
+    setLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/notifications?page=${page}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const body = await response.json();
+        if (!response.ok)
+          throw Error(body.error || "Your notifications could not be loaded.");
+        if (!controller.signal.aborted) {
+          if (page > body.pages) {
+            setPage(body.pages);
+            return;
+          }
+          setData({
+            owner: session.user!.id,
+            items: body.notifications,
+            pages: body.pages,
+            total: body.total,
+            page,
+          });
+          setMessage("");
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted)
+          setMessage(cause instanceof Error ? cause.message : "Try again.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [session.user?.id, page, state.revision]);
+  async function mark(id?: string) {
+    setBusy(true);
+    try {
+      await state.markRead(id);
+      setMessage("");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (session.loading) return <p role="status">Loading notifications…</p>;
   if (!session.user)
     return (
       <div className="panel">
@@ -299,26 +396,13 @@ export function Notifications() {
         </button>
       </div>
     );
-  async function mark(id?: string) {
-    setBusy(true);
-    try {
-      await state.markRead(id);
-      setOlder((values) =>
-        values.map((notice) =>
-          !id || notice.id === id
-            ? { ...notice, read_at: new Date().toISOString() }
-            : notice,
-        ),
-      );
-      setMessage("");
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const current = data.owner === session.user.id;
+  const items = current && data.page === page ? data.items : [];
+  const pageNumbers = [...new Set([1, page - 1, page, page + 1, data.pages])]
+    .filter((n) => n >= 1 && n <= data.pages)
+    .sort((a, b) => a - b);
   return (
-    <section className="panel profile-notifications">
+    <section className="panel profile-notifications" aria-busy={loading}>
       <div className="section-heading">
         <div>
           <p className="eyebrow">Your activity, kept close</p>
@@ -336,23 +420,36 @@ export function Notifications() {
         )}
       </div>
       <p className="muted">
-        Application receipts, intentional first views and employer decisions
-        appear here. A view confirms that someone opened your application,
+        Your complete account and application history, including updates cleared
+        from the bell menu. An application view records an intentional opening,
         rather than a full assessment.
       </p>
-      {state.error && (
-        <p className="message" role="status">
-          {state.error}{" "}
+      {message && (
+        <p role="status" className="message">
+          {message}{" "}
           <button className="text-button" onClick={() => void state.refresh()}>
             Try again
           </button>
         </p>
       )}
-      {items.length ? (
+      {loading && !items.length ? (
+        <p role="status">Loading notifications…</p>
+      ) : items.length ? (
         <ul className="notification-list">
           {items.map((notice) => (
-            <li key={notice.id} className={notice.read_at ? "read" : "unread"}>
+            <li
+              key={notice.id}
+              id={`notification-${notice.id}`}
+              className={notice.read_at ? "read" : "unread"}
+            >
               <div>
+                {notice.category === "billing" && (
+                  <FileCheck2
+                    size={24}
+                    className="billing-notice-icon"
+                    aria-label="Billing confirmation"
+                  />
+                )}
                 <span className="badge">{notice.read_at ? "Read" : "New"}</span>
                 <h3>{notice.title}</h3>
                 <p>{notice.message}</p>
@@ -360,7 +457,7 @@ export function Notifications() {
                   {new Date(notice.created_at).toLocaleString("en-AU")}
                 </time>
                 <Link className="text-link" href={notice.path}>
-                  View details <ArrowRight size={14} />
+                  View related activity <ArrowRight size={14} />
                 </Link>
               </div>
               {!notice.read_at && (
@@ -376,7 +473,7 @@ export function Notifications() {
           ))}
         </ul>
       ) : (
-        !state.error && (
+        !message && (
           <div className="notification-empty">
             <Bell size={32} />
             <h3>You’re up to date.</h3>
@@ -384,40 +481,51 @@ export function Notifications() {
           </div>
         )
       )}
-      {more && items.length >= 20 && (
-        <button
-          className="button secondary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              const last = items.at(-1)!;
-              const query = new URLSearchParams({
-                before: last.created_at,
-                beforeId: last.id,
-              });
-              const response = await fetch(`/api/notifications?${query}`, {
-                cache: "no-store",
-              });
-              const data = await response.json();
-              if (!response.ok) throw new Error(data.error);
-              setOlder((previous) => [...previous, ...data.notifications]);
-              setMore(data.notifications.length === 20);
-            } catch {
-              setMessage(
-                "Older notifications could not be loaded. Please try again.",
-              );
-            } finally {
-              setBusy(false);
-            }
-          }}
+      {current && data.pages > 1 && (
+        <nav
+          className="notification-pagination"
+          aria-label="Notification pages"
         >
-          Load older notifications
-        </button>
+          <button
+            type="button"
+            className="button secondary small"
+            disabled={page === 1 || loading}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </button>
+          {pageNumbers.map((n, i) => (
+            <span key={n}>
+              {i > 0 && n > pageNumbers[i - 1] + 1 && (
+                <span className="pagination-gap" aria-hidden="true">
+                  …
+                </span>
+              )}
+              <button
+                type="button"
+                className="button secondary small"
+                aria-label={`Page ${n}`}
+                aria-current={page === n ? "page" : undefined}
+                disabled={loading}
+                onClick={() => setPage(n)}
+              >
+                {n}
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            className="button secondary small"
+            disabled={page === data.pages || loading}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </button>
+        </nav>
       )}
-      {message && (
-        <p className="message" role="status">
-          {message}
+      {current && (
+        <p className="fineprint">
+          Page {page} of {data.pages} · {data.total} updates
         </p>
       )}
     </section>

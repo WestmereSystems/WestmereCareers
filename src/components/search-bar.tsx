@@ -1,14 +1,16 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, ArrowRight, TrendingUp } from "lucide-react";
 import { jobSuggestions, locationSuggestions } from "@/lib/suggestions";
 
-function SuggestionInput({
+export function SuggestionInput({
   kind,
   value,
   onChange,
+  label,
 }: {
+  label?: string;
   kind: "job" | "location";
   value: string;
   onChange: (s: string) => void;
@@ -16,8 +18,25 @@ function SuggestionInput({
   const id = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const options =
-    kind === "job" ? jobSuggestions(value) : locationSuggestions(value);
+  const [popular, setPopular] = useState<string[]>([]);
+  useEffect(() => {
+    if (kind !== "job") return;
+    const controller = new AbortController();
+    fetch("/api/discovery", { signal: controller.signal, cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!controller.signal.aborted && Array.isArray(d?.searches))
+          setPopular(d.searches);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [kind]);
+  const isPopular = kind === "job" && !value.trim() && popular.length > 0;
+  const options = isPopular
+    ? popular
+    : kind === "job"
+      ? jobSuggestions(value)
+      : locationSuggestions(value);
   const Icon = kind === "job" ? Search : MapPin;
   function select(value: string) {
     onChange(value);
@@ -29,7 +48,10 @@ function SuggestionInput({
       <Icon size={21} aria-hidden="true" />
       <div>
         <label htmlFor={id}>
-          {kind === "job" ? "What’s your next move?" : "Where feels like you?"}
+          {label ||
+            (kind === "job"
+              ? "What’s your next move?"
+              : "Where feels like you?")}
         </label>
         <input
           id={id}
@@ -103,7 +125,13 @@ function SuggestionInput({
             }
           >
             <span className="suggestion-label">
-              {value ? "Suggestions" : "Popular searches"}
+              {value
+                ? "Suggestions"
+                : isPopular
+                  ? "Popular searches"
+                  : kind === "job"
+                    ? "Suggested searches"
+                    : "Suggested locations"}
             </span>
             {options.slice(0, 6).map((option, index) => (
               <button

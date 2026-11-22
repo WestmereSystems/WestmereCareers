@@ -113,6 +113,7 @@ describe("shared billing lease", () => {
             status: "active",
             created: 2000,
             cancel_at_period_end: false,
+            cancel_at: 2500,
             items: {
               data: [
                 {
@@ -142,6 +143,8 @@ describe("shared billing lease", () => {
         p_stripe_subscription_id: "sub_current",
         p_status: "active",
         p_event_created: 1000,
+        p_cancel_at_period_end: true,
+        p_current_period_end: new Date(2500 * 1000).toISOString(),
       }),
     );
   });

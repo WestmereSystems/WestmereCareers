@@ -1,4 +1,4 @@
-import { assertIndividual } from "@/lib/server/business";
+import { assertStudioLaunchAccess } from "@/lib/server/launch";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/server/auth";
@@ -16,6 +16,10 @@ import {
 import { openAIClient, premiumAdmin } from "@/lib/premium/providers";
 import { studioRequestSchema } from "@/lib/premium/contracts";
 import { generateStudioReview } from "@/lib/premium/studio-review";
+import {
+  assistantAttemptId,
+  assistantResponse,
+} from "@/lib/premium/assistant-response";
 import { POST as paidStudio } from "@/app/api/studio/route";
 
 export const runtime = "nodejs";
@@ -28,13 +32,18 @@ const response = (body: unknown) =>
 
 export async function GET(request: Request) {
   try {
-    const { supabase, user, isPremium, business, testingAccess } =
-      await getSessionContext();
-    if (supabase && user) assertIndividual(business);
+    await assertStudioLaunchAccess();
+    const {
+      supabase,
+      user,
+      isPremium,
+      testingAccess,
+      enterpriseCareersAccess,
+    } = await getSessionContext();
     if (!supabase)
       throw new PremiumError(
         "NOT_CONFIGURED",
-        "AI assistance is being prepared. Your CV has not been sent anywhere.",
+        "Career assistance is being prepared. Your CV has not been sent anywhere.",
         503,
       );
     if (isPremium && user) {
@@ -43,14 +52,21 @@ export async function GET(request: Request) {
         .select("current_period_start,current_period_end")
         .eq("user_id", user.id)
         .single();
-      const subscription =
-        testingAccess?.tier === "careers_plus"
+      const subscription = enterpriseCareersAccess
+        ? {
+            current_period_start: enterpriseCareersAccess.startsAt,
+            current_period_end: enterpriseCareersAccess.expiresAt,
+          }
+        : testingAccess?.tier === "careers_plus"
           ? {
               current_period_start: testingAccess.startsAt,
               current_period_end: testingAccess.expiresAt,
             }
           : paidSubscription;
-      if ((!testingAccess && error) || !subscription)
+      if (
+        (!testingAccess && !enterpriseCareersAccess && error) ||
+        !subscription
+      )
         throw new PremiumError(
           "USAGE_UNAVAILABLE",
           "Your studio allowance is temporarily unavailable.",
@@ -72,15 +88,24 @@ export async function GET(request: Request) {
         );
       return response({
         tier: "Careers+",
-        cap: 30,
-        remaining: Math.max(0, 30 - (count || 0)),
+        cap: 100,
+        remaining: Math.max(0, 100 - (count || 0)),
         renewsAt: subscription.current_period_end,
       });
     }
     const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     const cookie = (await cookies()).get(guestCookie)?.value;
-    if (!user && !readGuestToken(cookie, secret))
+    if (!user && !readGuestToken(cookie, secret)) {
+      const identity = assistantIdentity(cookie, null, request, secret);
+      (await cookies()).set(guestCookie, identity.token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 365 * 24 * 60 * 60,
+      });
       return response({ tier: "Guest", cap: 1, remaining: 1 });
+    }
     const identity = assistantIdentity(
       cookie,
       user?.id || null,
@@ -94,7 +119,7 @@ export async function GET(request: Request) {
     if (error || typeof data !== "number")
       throw new PremiumError(
         "USAGE_UNAVAILABLE",
-        "Your free AI allowance is temporarily unavailable.",
+        "Your free Assistant allowance is temporarily unavailable.",
         503,
       );
     return response({
@@ -109,14 +134,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
+    await assertStudioLaunchAccess();
+    assistantAttemptId(request);
     const context = await getSessionContext();
     if (!context.supabase)
       throw new PremiumError(
         "NOT_CONFIGURED",
-        "AI assistance is being prepared. Your CV has not been sent anywhere.",
+        "Career assistance is being prepared. Your CV has not been sent anywhere.",
         503,
       );
-    if (context.user) assertIndividual(context.business);
     if (context.isPremium) return paidStudio(request);
     const parsed = studioRequestSchema.safeParse(await boundedJson(request));
     if (!parsed.success)
@@ -162,28 +188,14 @@ export async function POST(request: Request) {
         path: "/",
         maxAge: 365 * 24 * 60 * 60,
       });
-    let settled = false;
-    try {
-      const result = await generateStudioReview(client, parsed.data);
-      const { data: success, error: settleError } = await admin.rpc(
-        "settle_trial_ai_usage",
-        { p_reservation: reservation, p_success: true },
-      );
-      if (settleError || success !== true)
-        throw new PremiumError(
-          "USAGE_SETTLEMENT_PENDING",
-          "Your review could not be completed safely. Please try again later.",
-          503,
-        );
-      settled = true;
-      return response({ result });
-    } finally {
-      if (!settled)
-        await admin.rpc("settle_trial_ai_usage", {
-          p_reservation: reservation,
-          p_success: false,
-        });
-    }
+    return await assistantResponse(request, {
+      reservation,
+      paid: false,
+      userId: context.user?.id || null,
+      principal: identity.principal,
+      generate: (signal, onPreview) =>
+        generateStudioReview(client, parsed.data, signal, onPreview),
+    });
   } catch (error) {
     return premiumError(error);
   }

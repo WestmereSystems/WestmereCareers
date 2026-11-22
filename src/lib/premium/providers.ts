@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { PremiumError } from "./http";
+import { billingPlans, type BillingMode } from "./billing-mode";
 
 export function premiumAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,12 +30,15 @@ export function openAIClient() {
   return new OpenAI({ apiKey, timeout: 50000, maxRetries: 0 });
 }
 
-export function stripeClient() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !/^(sk|rk)_test_/.test(key))
+export function stripeClient(mode: BillingMode = "test") {
+  const key =
+    mode === "live"
+      ? process.env.STRIPE_LIVE_SECRET_KEY
+      : process.env.STRIPE_SECRET_KEY;
+  if (!key || !new RegExp(`^(sk|rk)_${mode}_`).test(key))
     throw new PremiumError(
       "NOT_CONFIGURED",
-      "Sandbox billing is not configured. No payment has been taken.",
+      "Billing is not configured. No payment has been taken.",
       503,
     );
   // Keep each operation bounded below the 90-second per-user billing lease.
@@ -42,8 +46,11 @@ export function stripeClient() {
   return new Stripe(key, { timeout: 8000, maxNetworkRetries: 0 });
 }
 
-export function careersPriceId(): string {
-  const id = process.env.STRIPE_PRICE_ID;
+export function careersPriceId(mode: BillingMode = "test"): string {
+  const id =
+    mode === "live"
+      ? billingPlans("live").find((p) => p.code === "careers_plus")?.priceId
+      : process.env.STRIPE_PRICE_ID;
   if (!id)
     throw new PremiumError(
       "NOT_CONFIGURED",

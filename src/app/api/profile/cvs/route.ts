@@ -21,11 +21,13 @@ export async function GET(request: Request) {
         throw new ApiError(400, "Choose a CV.");
       const { data, error } = await supabase
         .from("candidate_cvs")
-        .select("storage_path,filename,media_type")
+        .select("storage_path,filename,media_type,extracted_text")
         .eq("id", id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (error || !data) throw new ApiError(404, "CV not found.");
+      if (new URL(request.url).searchParams.get("text") === "1")
+        return json({ id, text: data.extracted_text, filename: data.filename });
       const file = await premiumAdmin()
         .storage.from("candidate-documents")
         .download(data.storage_path);
@@ -63,7 +65,13 @@ export async function POST(request: Request) {
   let release: (() => Promise<void>) | undefined;
   try {
     assertSameOrigin(request);
-    const { user } = await requireSession();
+    const { user, launchAccess } = await requireSession();
+    if (launchAccess?.applicantAllowed === false)
+      throw new ApiError(
+        403,
+        "Applicant CV storage opens at public launch. Complete your business onboarding to continue.",
+        "APPLICANT_LAUNCH_CLOSED",
+      );
     release = await beginUpload(user.id);
     const form = await uploadForm(request);
     const file = form.get("file");
@@ -82,7 +90,7 @@ export async function POST(request: Request) {
     if (count >= 20)
       throw new ApiError(
         409,
-        "Your history holds 20 CVs. Delete an older version before uploading another.",
+        "Your library holds 20 CVs. Delete at least one resume before uploading another.",
       );
     const uploaded = await admin.storage
       .from("candidate-documents")
@@ -102,12 +110,20 @@ export async function POST(request: Request) {
       await admin.storage.from("candidate-documents").remove([path]);
       throw new ApiError(503, "Your CV could not be saved.");
     }
+    const selection = await admin
+      .from("profiles")
+      .select("active_cv_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    const selectedAsBase = selection.data?.active_cv_id === id;
     return json(
       {
         id,
+        selectedAsBase,
         text: parsed.text,
-        message:
-          "CV uploaded privately. Review its extracted text, then choose it as your base CV.",
+        message: selectedAsBase
+          ? "Your first CV was uploaded privately and selected as your base CV."
+          : "CV uploaded privately. Choose it as your base CV when you are ready.",
       },
       201,
     );
@@ -187,7 +203,7 @@ export async function DELETE(request: Request) {
       );
     return json({
       message:
-        "CV file and history entry deleted. Any base CV text and submitted applications are separate; clear the profile text if you no longer need it.",
+        "CV removed from your library. If it was selected, your account CV selection and its text were cleared. Submitted applications retain their original copies.",
     });
   } catch (e) {
     return apiError(e);

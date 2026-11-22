@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
-import {
-  reconcileCustomer,
-  validatedCareersPrice,
-} from "@/lib/premium/billing";
+import { reconcileCustomer } from "@/lib/premium/billing";
 import { cronAuthorized } from "@/lib/premium/cron";
 import { premiumError, PremiumError } from "@/lib/premium/http";
-import {
-  careersPriceId,
-  premiumAdmin,
-  stripeClient,
-} from "@/lib/premium/providers";
+import { premiumAdmin } from "@/lib/premium/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,14 +30,11 @@ export async function GET(request: Request) {
   try {
     // Resolve every required setting before any database mutation. Missing secrets
     // cannot trigger partial customer creation, entitlement writes or Stripe calls.
-    careersPriceId();
-    const stripe = stripeClient();
     const admin = premiumAdmin();
     const deadline = performance.now() + 80000;
-    await validatedCareersPrice(stripe);
     const { data: customers, error } = await admin
       .from("billing_customers")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id,livemode")
       .order("last_reconciliation_attempt_at", {
         ascending: true,
         nullsFirst: true,
@@ -58,7 +48,7 @@ export async function GET(request: Request) {
       );
     const { data: businessCustomers, error: businessError } = await admin
       .from("organisation_billing_accounts")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id,livemode,is_primary")
       .order("last_reconciliation_attempt_at", {
         ascending: true,
         nullsFirst: true,
@@ -70,7 +60,10 @@ export async function GET(request: Request) {
         "Business reconciliation is temporarily unavailable.",
         503,
       );
-    const selected = [...(customers ?? []), ...(businessCustomers ?? [])];
+    const selected = [
+      ...(customers ?? []),
+      ...(businessCustomers ?? []).filter((c) => c.is_primary !== false),
+    ];
     const counts = {
       selected: selected.length,
       updated: 0,
@@ -87,6 +80,7 @@ export async function GET(request: Request) {
           const changed = await reconcileCustomer(
             customer.stripe_customer_id,
             Math.floor(Date.now() / 1000),
+            "livemode" in customer && customer.livemode ? "live" : "test",
           );
           if (changed) counts.updated++;
           else counts.ignored++;

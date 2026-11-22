@@ -1,8 +1,13 @@
+import { findPlace, distanceKm } from "./locations";
 import type { Job } from "./jobs";
 
 export type JobSort =
   "relevance" | "newest" | "salary-high" | "response-fast" | "match";
 export type JobFilters = {
+  distance?: number | null;
+  listedWithin?: number | null;
+  listedFrom?: string;
+  listedTo?: string;
   keyword?: string;
   location?: string;
   workMode?: string[];
@@ -12,6 +17,7 @@ export type JobFilters = {
   strongMatchesOnly?: boolean;
   directOnly?: boolean;
   cvText?: string;
+  additionalExperience?: string;
 };
 
 export type PublicJobQuery = JobFilters & {
@@ -31,7 +37,24 @@ export function parseJobQuery(params: URLSearchParams): PublicJobQuery {
   const rawPage = Number(params.get("page"));
   const rawSort = clean("sort");
   return {
-    ...(params.get("samples") === "1" ? { samples: true } : {}),
+    distance: [5, 10, 25, 50, 100, 250].includes(Number(params.get("distance")))
+      ? Number(params.get("distance"))
+      : null,
+    listedWithin: [1, 3, 7, 14, 30, 40].includes(
+      Number(params.get("listedWithin")),
+    )
+      ? Number(params.get("listedWithin"))
+      : null,
+    listedFrom:
+      /^\d{4}-\d{2}-\d{2}$/.test(clean("listedFrom")) &&
+      Number.isFinite(Date.parse(clean("listedFrom")))
+        ? clean("listedFrom")
+        : undefined,
+    listedTo:
+      /^\d{4}-\d{2}-\d{2}$/.test(clean("listedTo")) &&
+      Number.isFinite(Date.parse(clean("listedTo")))
+        ? clean("listedTo")
+        : undefined,
     keyword: clean("q"),
     location: clean("where"),
     workMode: selected("workMode", ["Hybrid", "Remote", "On-site"]),
@@ -58,6 +81,11 @@ export function parseJobQuery(params: URLSearchParams): PublicJobQuery {
 /** Serialise public filters only. Private CV text and consent never enter a URL. */
 export function serialiseJobQuery(filters: PublicJobQuery): string {
   const params = new URLSearchParams();
+  if (filters.distance) params.set("distance", String(filters.distance));
+  if (filters.listedWithin)
+    params.set("listedWithin", String(filters.listedWithin));
+  if (filters.listedFrom) params.set("listedFrom", filters.listedFrom);
+  if (filters.listedTo) params.set("listedTo", filters.listedTo);
   if (filters.samples) params.set("samples", "1");
   if (filters.keyword) params.set("q", filters.keyword);
   if (filters.location) params.set("where", filters.location);
@@ -107,7 +135,7 @@ const skillAliases: Record<string, string[]> = {
 };
 
 /** Evidence of named skills only. The score is not a hiring probability or CV quality rating. */
-export function cvMatch(job: Job, cvText: string) {
+export function cvMatch(job: Job, cvText: string, additionalExperience = "") {
   const text = ` ${normalise(cvText)} `;
   const skills = [...new Set(job.skills)];
   const matchedSkills = skills.filter((skill) => {
@@ -116,9 +144,21 @@ export function cvMatch(job: Job, cvText: string) {
       text.includes(` ${normalise(alias)} `),
     );
   });
+  const extra = ` ${normalise(additionalExperience)} `;
+  const additionalSkills = skills.filter(
+    (skill) =>
+      !matchedSkills.includes(skill) &&
+      [normalise(skill), ...(skillAliases[normalise(skill)] ?? [])].some(
+        (alias) => extra.includes(` ${normalise(alias)} `),
+      ),
+  );
   return {
-    score: skills.length ? matchedSkills.length / skills.length : 0,
+    // Additional details can only add a small bonus; they never dilute CV evidence.
+    score: skills.length
+      ? (matchedSkills.length + additionalSkills.length * 0.25) / skills.length
+      : 0,
     matchedSkills,
+    ...(additionalSkills.length ? { additionalSkills } : {}),
     missingSkills: skills.filter((skill) => !matchedSkills.includes(skill)),
   };
 }
@@ -142,17 +182,44 @@ export function filterJobs(jobs: Job[], filters: JobFilters = {}): Job[] {
   const query = normalise(filters.keyword ?? "");
   const terms = query.split(" ").filter(Boolean);
   const location = normalise(filters.location ?? "");
+  const origin = filters.distance ? findPlace(filters.location || "") : null;
+  const now = Date.now();
   const scored = jobs.map((job, index) => ({
     job,
     index,
-    match: cvMatch(job, filters.cvText ?? ""),
+    match: cvMatch(job, filters.cvText ?? "", filters.additionalExperience),
   }));
   const filtered = scored.filter(({ job, match }) => {
     const haystack = normalise(
       `${job.title} ${job.company} ${job.category} ${job.description} ${job.skills.join(" ")}`,
     );
     if (!terms.every((term) => haystack.includes(term))) return false;
-    if (!locationMatches(job, location)) return false;
+    if (filters.distance) {
+      if (!origin) return false;
+      if (!(
+        job.workMode === "Remote" && job.city === "Anywhere in Australia"
+      )) {
+        const target =
+          job.latitude != null && job.longitude != null
+            ? { latitude: job.latitude, longitude: job.longitude }
+            : findPlace(job.city, job.state);
+        if (!target || distanceKm(origin, target) > filters.distance)
+          return false;
+      }
+    } else if (!locationMatches(job, location)) return false;
+    const posted = Date.parse(job.postedAt);
+    if (filters.listedWithin && posted < now - filters.listedWithin * 86400000)
+      return false;
+    if (
+      filters.listedFrom &&
+      posted < Date.parse(`${filters.listedFrom}T00:00:00Z`)
+    )
+      return false;
+    if (
+      filters.listedTo &&
+      posted >= Date.parse(`${filters.listedTo}T00:00:00Z`) + 86400000
+    )
+      return false;
     if (filters.workMode?.length && !filters.workMode.includes(job.workMode))
       return false;
     if (
@@ -164,7 +231,9 @@ export function filterJobs(jobs: Job[], filters: JobFilters = {}): Job[] {
     // Annual salary filters do not guess an annual income from an hourly rate.
     if (
       filters.minSalary != null &&
-      (job.salaryPeriod !== "year" || job.salaryMax < filters.minSalary)
+      (job.salaryPeriod !== "year" ||
+        job.salaryMax === null ||
+        job.salaryMax < filters.minSalary)
     )
       return false;
     if (filters.strongMatchesOnly && match.score < 0.6) return false;
@@ -195,7 +264,7 @@ export function filterJobs(jobs: Job[], filters: JobFilters = {}): Job[] {
         // Group annual and hourly pay rather than applying an unverified hours-per-year conversion.
         result =
           a.job.salaryPeriod === b.job.salaryPeriod
-            ? b.job.salaryMax - a.job.salaryMax
+            ? (b.job.salaryMax ?? -1) - (a.job.salaryMax ?? -1)
             : a.job.salaryPeriod === "year"
               ? -1
               : 1;
@@ -220,6 +289,8 @@ export { jobSuggestions, locationSuggestions } from "./suggestions";
 export function formatSalary(
   job: Pick<Job, "salaryMin" | "salaryMax" | "salaryPeriod" | "superIncluded">,
 ): string {
+  if (job.salaryMin === null || job.salaryMax === null)
+    return "Salary not specified";
   const hasCents =
     !Number.isInteger(job.salaryMin) || !Number.isInteger(job.salaryMax);
   const currency = new Intl.NumberFormat("en-AU", {

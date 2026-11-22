@@ -1,3 +1,5 @@
+// These regressions exercise the public-launch behaviour; founding access has dedicated API/database coverage.
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({

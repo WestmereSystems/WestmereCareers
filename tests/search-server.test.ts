@@ -1,3 +1,5 @@
+// These regressions exercise the public-launch behaviour; founding access has dedicated API/database coverage.
+vi.mock("@/lib/server/launch", async () => import("./fixtures/open-launch"));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({ client: vi.fn() }));
 vi.mock("../src/lib/supabase/public", () => ({ publicClient: mock.client }));
@@ -41,17 +43,16 @@ function query(data: unknown[] = [], count = 0, error: unknown = null) {
 
 beforeEach(() => vi.resetAllMocks());
 describe("public search boundaries", () => {
-  it("offers explicit fictional inventory on a connected site without reading or seeding live jobs", async () => {
-    const from = vi.fn();
+  it("ignores the retired sample switch and never resolves fictional detail IDs", async () => {
+    const builder = query([]);
+    const from = vi.fn(() => builder);
     mock.client.mockReturnValue({ from });
     const result = await getPublicJobs({ samples: true });
-    expect(result.source).toBe("demo");
-    expect(result.total).toBe(demoJobs.length);
-    expect(from).not.toHaveBeenCalled();
+    expect(result.source).toBe("live");
+    expect(result.total).toBe(0);
+    expect(from).toHaveBeenCalledWith("jobs");
     const detail = await getPublicJob(demoJobs[0].id);
-    expect(detail.source).toBe("demo");
-    expect(detail.job?.id).toBe(demoJobs[0].id);
-    expect(from).not.toHaveBeenCalled();
+    expect(detail).toEqual({ source: "live", job: null });
   });
 
   it("allowlists filter values and clamps user-supplied pages and lengths", () => {
@@ -124,26 +125,23 @@ describe("public search boundaries", () => {
       expect.any(String),
     );
   });
-  it("uses labelled paginated fixtures only while unconfigured", async () => {
+  it("fails closed with an empty inventory when unconfigured", async () => {
     mock.client.mockReturnValue(null);
     const result = await getPublicJobs({ page: 2, pageSize: 12 });
-    expect(result.source).toBe("demo");
-    expect(result.total).toBe(20);
-    expect(result.jobs).toHaveLength(8);
+    expect(result.source).toBe("live");
+    expect(result.jobs).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.error).toBeTruthy();
   });
-  it("resolves saved roles outside the first search page and reports stale IDs", async () => {
+  it("does not resurrect fictional saved roles after an outage", async () => {
     mock.client.mockReturnValue(null);
-    const result = await getPublicJobsByIds([
-      demoJobs[18].id,
-      "closed-demo-role",
-      demoJobs[1].id,
-    ]);
-    expect(result.jobs.map((job) => job.id)).toEqual([
-      demoJobs[18].id,
-      demoJobs[1].id,
-    ]);
-    expect(result.unavailableIds).toEqual(["closed-demo-role"]);
+    const ids = [demoJobs[18].id, "closed-demo-role", demoJobs[1].id];
+    const result = await getPublicJobsByIds(ids);
+    expect(result.jobs).toEqual([]);
+    expect(result.unavailableIds).toEqual(ids);
+    expect(result.source).toBe("live");
   });
+
   it("validates live saved IDs and applies public publication checks", async () => {
     const id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
     const builder = query([
@@ -177,4 +175,39 @@ describe("public search boundaries", () => {
       "state.eq.VIC,and(work_mode.eq.Remote,city.eq.Anywhere in Australia)",
     );
   });
+});
+
+it("requests a count on the radius RPC itself, keeps cross-state matches and paginates from that count", async () => {
+  const builder = query(
+    [
+      {
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        title: "Canberra role",
+        city: "Canberra",
+        state: "ACT",
+      },
+    ],
+    25,
+  );
+  const rpc = vi.fn().mockReturnValue(builder);
+  const from = vi.fn();
+  mock.client.mockReturnValue({ rpc, from });
+  const result = await getPublicJobs({
+    location: "Queanbeyan, NSW",
+    distance: 250,
+    page: 2,
+    pageSize: 12,
+  });
+  expect(rpc).toHaveBeenCalledWith(
+    "jobs_within_distance",
+    { p_lat: -35.35493, p_lon: 149.232, p_km: 250 },
+    { count: "exact" },
+  );
+  expect(from).not.toHaveBeenCalled();
+  expect(builder.or).not.toHaveBeenCalledWith(
+    expect.stringContaining("state.eq.NSW"),
+  );
+  expect(result.total).toBe(25);
+  expect(result.jobs[0].city).toBe("Canberra");
+  expect(builder.range).toHaveBeenCalledWith(12, 23);
 });

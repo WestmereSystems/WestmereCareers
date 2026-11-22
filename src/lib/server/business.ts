@@ -8,18 +8,18 @@ import type { BusinessSummary } from "@/lib/business";
 export async function businessFor(
   supabase: SupabaseClient,
   userId: string,
-  testing?: { tier: string; startsAt: string; expiresAt: string } | null,
+  _testing?: { tier: string; startsAt: string; expiresAt: string } | null,
 ): Promise<BusinessSummary | null> {
   const [account, members, requests] = await Promise.all([
     supabase
       .from("business_accounts")
-      .select("kind,trading_name,terms_version")
+      .select("kind,trading_name,terms_version,default_organisation_id")
       .eq("user_id", userId)
       .maybeSingle(),
     supabase
       .from("organisation_members")
       .select(
-        "organisation_id,role,organisations(name,is_verified,suspended_at)",
+        "organisation_id,role,organisations(name,is_verified,is_test,suspended_at,avatar_path,kind,agency_specialisms,agency_regions)",
       )
       .eq("user_id", userId),
     supabase
@@ -37,70 +37,60 @@ export async function businessFor(
   if (!account.data && !members.data?.length && !requests.data?.length)
     return null;
   const ids = (members.data || []).map((m) => m.organisation_id);
-  const plans = ids.length
-    ? await supabase
-        .from("employer_plans")
-        .select("organisation_id,tier")
-        .in("organisation_id", ids)
-        .lte("starts_at", new Date().toISOString())
-        .gt("ends_at", new Date().toISOString())
+  const shared = ids.length
+    ? await supabase.rpc("my_business_team_tiers")
     : { data: [], error: null };
-  if (plans.error)
+  if (shared.error)
     throw new ApiError(503, "Your business plan could not be checked.");
-  const [{ data: subscriptions, error: paidError }, { data: test }] =
-    await Promise.all([
-      ids.length
-        ? supabase
-            .from("business_subscriptions")
-            .select(
-              "organisation_id,tier,status,current_period_start,current_period_end",
-            )
-            .in("organisation_id", ids)
-        : Promise.resolve({ data: [], error: null }),
-      testing === undefined
-        ? supabase.rpc("my_testing_access")
-        : Promise.resolve({ data: testing }),
-    ]);
-  if (paidError)
-    throw new ApiError(503, "Your business plan could not be checked.");
-  const organisations = (members.data || []).map((m) => {
-    const paid = subscriptions?.find(
-      (p) =>
-        p.organisation_id === m.organisation_id &&
-        ["active", "trialing"].includes(p.status) &&
-        Date.parse(p.current_period_start) <= Date.now() &&
-        Date.parse(p.current_period_end) > Date.now(),
-    );
-    const testTier =
-      m.role === "owner" &&
-      test?.tier !== "careers_plus" &&
-      (test?.tier?.startsWith("agency_")
-        ? account.data?.kind === "agency"
-        : account.data?.kind === "employer")
-        ? test?.tier
-        : null;
-    const org = m.organisations as unknown as {
-      name: string;
-      is_verified: boolean;
-      suspended_at: string | null;
-    };
-    return {
-      id: m.organisation_id,
-      name: org.name,
-      role: m.role,
-      verified: org.is_verified && !org.suspended_at,
-      tier:
-        testTier ||
-        paid?.tier ||
-        plans.data?.find((p) => p.organisation_id === m.organisation_id)
-          ?.tier ||
-        null,
-    };
-  });
+  const sharedTiers = (Array.isArray(shared.data) ? shared.data : []) as {
+    id: string;
+    tier: string | null;
+  }[];
+  const organisations = (members.data || [])
+    .filter((m) => m.organisations)
+    .map((m) => {
+      const org = m.organisations as unknown as {
+        name: string;
+        kind?: "employer" | "agency";
+        agency_specialisms?: string[];
+        agency_regions?: string[];
+        avatar_path?: string | null;
+        is_verified: boolean;
+        is_test?: boolean;
+        suspended_at: string | null;
+      };
+      return {
+        id: m.organisation_id,
+        name: org.name,
+        kind: org.kind || "employer",
+        specialisms: org.agency_specialisms || [],
+        regions: org.agency_regions || [],
+        avatarPath: org.avatar_path,
+        role: m.role,
+        verified: org.is_verified && !org.suspended_at,
+        isTest: org.is_test === true,
+        tier:
+          sharedTiers.find((team) => team.id === m.organisation_id)?.tier ??
+          null,
+      };
+    });
   return {
     needsOnboarding: account.data?.terms_version !== terms.version,
-    kind: account.data?.kind === "agency" ? "agency" : "employer",
+    kind:
+      organisations.find(
+        (o) => o.id === account.data?.default_organisation_id && o.verified,
+      )?.kind ||
+      organisations.find((o) => o.role === "owner")?.kind ||
+      (account.data?.kind === "agency" ? "agency" : "employer"),
+    defaultOrganisationId:
+      organisations.find(
+        (o) => o.id === account.data?.default_organisation_id && o.verified,
+      )?.id || null,
     tradingName:
+      organisations.find(
+        (o) => o.id === account.data?.default_organisation_id && o.verified,
+      )?.name ||
+      organisations.find((o) => o.verified)?.name ||
       account.data?.trading_name ||
       organisations[0]?.name ||
       requests.data?.[0]?.business_name ||
@@ -117,7 +107,20 @@ export function assertIndividual(business: BusinessSummary | null | undefined) {
   if (business)
     throw new PremiumError(
       "INDIVIDUAL_ACCOUNT_REQUIRED",
-      "Careers+ and candidate AI tools are for individual accounts. Use a separate personal account for your own career tools.",
+      "Use a personal account to access the Careers+ subscription and billing portal. Employer and agency accounts, including Enterprise, manage their business subscription in Profile → Billing.",
+      403,
+    );
+}
+
+// isPremium is resolved from the caller's own billing identity by getSessionContext.
+export function assertCareerTools(
+  business: BusinessSummary | null | undefined,
+  isPremium: boolean,
+) {
+  if (business && !isPremium)
+    throw new PremiumError(
+      "ENTERPRISE_OR_PERSONAL_REQUIRED",
+      "Use a personal Careers+ account or subscribe to Enterprise on this billing account to explore the candidate tools. Invited team accounts do not inherit Careers+.",
       403,
     );
 }

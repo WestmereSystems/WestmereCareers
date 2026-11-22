@@ -20,12 +20,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NoticeProvider, useNotice } from "./notices";
+import { NoticeProvider } from "./notices";
 import { NotificationProvider } from "./notifications";
 
+import { ProviderIcon } from "./provider-icons";
 import type { BusinessSummary } from "@/lib/business";
 
 type Profile = {
+  billingSandbox?: boolean;
+  businessPaymentsReady?: boolean;
+  marketplaceOpen?: boolean;
+  launchAccess?: {
+    kind: string | null;
+    expiresAt: string | null;
+    allowed: boolean;
+  } | null;
   testingAccess?: { tier: string; startsAt: string; expiresAt: string } | null;
   business?: BusinessSummary | null;
   configured: boolean;
@@ -54,17 +63,29 @@ const SessionContext = createContext<SessionValue>({
 });
 export const useSession = () => useContext(SessionContext);
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  launchOpen = false,
+}: {
+  children: React.ReactNode;
+  launchOpen?: boolean;
+}) {
   return (
     <NoticeProvider>
-      <SessionProviders>{children}</SessionProviders>
+      <SessionProviders launchOpen={launchOpen}>{children}</SessionProviders>
     </NoticeProvider>
   );
 }
-function SessionProviders({ children }: { children: React.ReactNode }) {
+function SessionProviders({
+  children,
+  launchOpen,
+}: {
+  children: React.ReactNode;
+  launchOpen: boolean;
+}) {
   const pathname = usePathname();
-  const notify = useNotice();
   const [profile, setProfile] = useState<Profile>({
+    marketplaceOpen: launchOpen,
     configured: false,
     user: null,
     isPremium: false,
@@ -72,10 +93,12 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
     staffRole: null,
   });
   const [authOpen, setAuthOpen] = useState(false);
-  const [newAccount, setNewAccount] = useState(false);
-  const [fullName, setFullName] = useState("");
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (codeSent) codeInput.current?.focus();
+  }, [codeSent]);
   const [authProviders, setAuthProviders] = useState({
     google: false,
     azure: false,
@@ -92,7 +115,12 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         setProfile({
+          marketplaceOpen: data.marketplaceOpen === true,
+          launchAccess: data.launchAccess ?? null,
           business: data.business ?? null,
+          testingAccess: data.testingAccess ?? null,
+          billingSandbox: data.billingSandbox === true,
+          businessPaymentsReady: data.businessPaymentsReady === true,
           configured: Boolean(data.configured),
           user: data.user ?? null,
           sampleWorkspace: data.sampleWorkspace === true,
@@ -180,7 +208,7 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
     };
   }, [authOpen]);
   useEffect(() => {
-    if (!authOpen) return;
+    if (!authOpen || !profile.marketplaceOpen) return;
     const c = new AbortController();
     fetch("/api/auth/options", { signal: c.signal })
       .then((r) => r.json())
@@ -193,7 +221,7 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
     return () => c.abort();
-  }, [authOpen]);
+  }, [authOpen, profile.marketplaceOpen]);
   async function signIn(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -207,7 +235,6 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             email,
             ...(codeSent ? { code } : {}),
-            ...(newAccount ? { fullName } : {}),
           }),
         },
       );
@@ -218,27 +245,14 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
       }
       if (r.ok) {
         setCodeSent(true);
-        notify({
-          title: "Your sign-in code is on its way",
-          message:
-            "Enter the newest code from your inbox. It expires 15 minutes after it is issued and can only be used once. Request a new code if it expires.",
-        });
+        setStatus(
+          "Your sign-in code is on its way. Enter the newest code from your inbox below. It expires after 15 minutes and can only be used once.",
+        );
       } else {
-        setStatus("");
-        notify({
-          title: codeSent
-            ? "That code could not be verified"
-            : "Sign-in unavailable",
-          message: data.error || "Please try again.",
-          tone: "error",
-        });
+        setStatus(data.error || "Please try again.");
       }
     } catch {
-      notify({
-        title: "Sign-in unavailable",
-        message: "We couldn’t connect. Please try again.",
-        tone: "error",
-      });
+      setStatus("We couldn’t connect. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -313,6 +327,7 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
         !profile.business &&
         !pathname.startsWith("/employers") &&
         !profile.user.fullName &&
+        profile.marketplaceOpen &&
         !profile.loading && <NameOnboarding onComplete={refresh} />}
       {authOpen && (
         <div className="modal-backdrop" onClick={() => setAuthOpen(false)}>
@@ -334,146 +349,162 @@ function SessionProviders({ children }: { children: React.ReactNode }) {
             <div className="round-icon">
               <Mail size={24} />
             </div>
-            <div className="auth-audience-switch">
-              <span>For job seekers</span>
-              <Link
-                href="/employers/sign-in"
-                onClick={() => setAuthOpen(false)}
-              >
-                Hiring? Employer sign in →
-              </Link>
-            </div>
-            <p className="eyebrow">A little closer to your next chapter</p>
-            <h2 id="signin-title">Your next chapter starts here.</h2>
-            <p className="muted">
-              Sign up or log in to save roles, follow your applications and
-              prepare with Careers+.
-            </p>
-            <div className="personal-auth-benefits dot-surface">
-              <h3>Make more of your next move.</h3>
-              <p>
-                Keep your saved roles, private CV and application activity
-                together.
-              </p>
-              <ul>
-                <li>Follow recorded application progress</li>
-                <li>Save roles and choose job alerts</li>
-                <li>Prepare your CV with optional Careers+ tools</li>
-              </ul>
-            </div>
-            <form onSubmit={signIn}>
-              {newAccount && !codeSent && (
-                <label className="field-label">
-                  Your name
-                  <input
-                    autoComplete="name"
-                    required
-                    maxLength={120}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                </label>
-              )}
-              <label className="field-label" htmlFor="signin-email">
-                Email address
-              </label>
-              <input
-                id="signin-email"
-                type="email"
-                autoComplete="email"
-                required
-                autoFocus
-                readOnly={codeSent}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-              />
-              {codeSent && (
-                <label className="field-label" htmlFor="signin-code">
-                  Sign-in code
-                  <input
-                    id="signin-code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    pattern="[0-9]{6,8}"
-                    minLength={6}
-                    maxLength={8}
-                    required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  />
-                </label>
-              )}
-              <button className="button primary full" disabled={busy}>
-                {busy ? (
-                  <LoaderCircle className="spin" size={18} />
-                ) : (
-                  <Mail size={18} />
-                )}
-                {codeSent
-                  ? "Verify code and sign in"
-                  : "Email me a sign-in code"}
-                <ArrowRight size={17} />
-              </button>
-            </form>
-            {!codeSent && (
+            {!profile.marketplaceOpen ? (
               <>
-                <div className="auth-options">
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy || !authProviders.google}
-                    onClick={() => void oauth("google")}
-                  >
-                    Continue with Google
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy || !authProviders.azure}
-                    onClick={() => void oauth("azure")}
-                  >
-                    Continue with Microsoft
-                  </button>
-                </div>
-                <p className="fineprint">
-                  {!authProviders.google && !authProviders.azure
-                    ? "Google and Microsoft sign-in are being connected. Use an email code above."
-                    : "Or continue with a provider"}
+                <p className="eyebrow">Coming across Australia</p>
+                <h2 id="signin-title">Applicant accounts open at launch.</h2>
+                <p className="muted">
+                  Westmere Careers is still in founding onboarding. Applicant
+                  registration and public access open when the site launches.
                 </p>
-                <label className="checkbox-label">
+                <Link
+                  className="button primary full"
+                  href="/launch#candidate-updates"
+                  onClick={() => setAuthOpen(false)}
+                >
+                  Email me when Westmere launches <ArrowRight size={17} />
+                </Link>
+                <p className="fineprint">
+                  Employers, agencies and approved accounts can continue through{" "}
+                  <Link
+                    href="/launch/sign-in"
+                    onClick={() => setAuthOpen(false)}
+                  >
+                    business sign in
+                  </Link>
+                  .
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="auth-audience-switch">
+                  <span>For job seekers</span>
+                  <Link
+                    href="/employers/sign-in"
+                    onClick={() => setAuthOpen(false)}
+                  >
+                    Hiring? Employer sign in →
+                  </Link>
+                </div>
+                <p className="eyebrow">A little closer to your next chapter</p>
+                <h2 id="signin-title">Your next chapter starts here.</h2>
+                <p className="muted">
+                  Sign up or log in to save roles, follow your applications and
+                  prepare with Careers+.
+                </p>
+                <div className="personal-auth-benefits dot-surface">
+                  <h3>Make more of your next move.</h3>
+                  <p>
+                    Keep your saved roles, private CV and application activity
+                    together.
+                  </p>
+                  <ul>
+                    <li>Follow recorded application progress</li>
+                    <li>Save roles and choose job alerts</li>
+                    <li>Prepare your CV with optional Careers+ tools</li>
+                  </ul>
+                </div>
+                <form onSubmit={signIn}>
+                  <label className="field-label" htmlFor="signin-email">
+                    Email address
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={newAccount}
-                    onChange={(e) => setNewAccount(e.target.checked)}
+                    id="signin-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    autoFocus
+                    readOnly={codeSent}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                   />
-                  I’m creating a new account
-                </label>
+                  {codeSent && (
+                    <label className="field-label" htmlFor="signin-code">
+                      Sign-in code
+                      <input
+                        id="signin-code"
+                        ref={codeInput}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]{6,8}"
+                        minLength={6}
+                        maxLength={8}
+                        required
+                        value={code}
+                        onChange={(e) =>
+                          setCode(e.target.value.replace(/\D/g, ""))
+                        }
+                      />
+                    </label>
+                  )}
+                  <button className="button primary full" disabled={busy}>
+                    {busy ? (
+                      <LoaderCircle className="spin" size={18} />
+                    ) : (
+                      <Mail size={18} />
+                    )}
+                    {codeSent
+                      ? "Verify code and sign in"
+                      : "Email me a sign-in code"}
+                    <ArrowRight size={17} />
+                  </button>
+                </form>
+                {!codeSent && (
+                  <>
+                    <p className="auth-divider">Or continue with a provider</p>
+                    <div className="auth-options">
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={busy || !authProviders.google}
+                        onClick={() => void oauth("google")}
+                      >
+                        <ProviderIcon provider="google" /> Continue with Google
+                      </button>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={busy || !authProviders.azure}
+                        onClick={() => void oauth("azure")}
+                      >
+                        <ProviderIcon provider="azure" /> Continue with
+                        Microsoft
+                      </button>
+                    </div>
+                    {!authProviders.google && !authProviders.azure && (
+                      <p className="fineprint">
+                        Google and Microsoft sign-in are being connected. Use an
+                        email code above.
+                      </p>
+                    )}
+                  </>
+                )}
+                {codeSent && (
+                  <button
+                    className="text-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setCodeSent(false);
+                      setCode("");
+                      setStatus("");
+                    }}
+                  >
+                    Change email or request a new code
+                  </button>
+                )}
+                {status && (
+                  <p role="alert" className="message">
+                    {status}
+                  </p>
+                )}
+                <p className="fineprint">
+                  Your profile and CV stay private unless you choose to share
+                  them in an application.
+                </p>
               </>
             )}
-            {codeSent && (
-              <button
-                className="text-button"
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setCodeSent(false);
-                  setCode("");
-                  setStatus("");
-                }}
-              >
-                Change email or request a new code
-              </button>
-            )}
-            {status && (
-              <p role="alert" className="message error-message">
-                {status}
-              </p>
-            )}
-            <p className="fineprint">
-              Your profile and CV stay private unless you choose to share them
-              in an application.
-            </p>
           </section>
         </div>
       )}

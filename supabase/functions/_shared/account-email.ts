@@ -7,7 +7,7 @@ const escape = (s: string) =>
       ]!,
   );
 export const emailLogo =
-  "https://westmere-careers.vercel.app/brand/westmere-email-logo.png?v=2";
+  "https://westmere.com.au/brand/westmere-email-logo.png?v=2";
 export function renderAccountEmail(
   id: string,
   recipient: string,
@@ -23,8 +23,10 @@ export function renderAccountEmail(
     !snapshot ||
     ![
       "/account",
+      "/account?tab=team",
       "/account?tab=dashboard",
       "/account?tab=verification",
+      "/account?tab=billing",
       "/applications",
       "/employers/dashboard",
       "/employers/sample",

@@ -10,13 +10,25 @@ import {
 import { checkRpc } from "@/lib/server/trust";
 
 export const dynamic = "force-dynamic";
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { supabase, user } = await requireSession();
+    const organisationId = new URL(request.url).searchParams.get(
+      "organisationId",
+    );
+    if (organisationId) {
+      if (!z.uuid().safeParse(organisationId).success)
+        throw new ApiError(400, "Choose a business.");
+      const result = await supabase.rpc("response_report_roles", {
+        p_org: organisationId,
+      });
+      checkRpc(result.error);
+      return json({ roles: result.data || [] });
+    }
     const { data, error } = await supabase
       .from("response_reports")
       .select(
-        "id,organisation_id,application_id,job_reference,application_date,response_received,confirmed_at,moderation_status",
+        "id,organisation_id,application_id,job_reference,application_date,response_received,confirmed_at,moderation_status,corroborated",
       )
       .eq("candidate_id", user.id)
       .order("confirmed_at", { ascending: false })
@@ -69,8 +81,14 @@ export async function POST(request: Request) {
     if (error?.code === "22023")
       throw new ApiError(
         400,
-        "Check the employer, application date and response date.",
+        "Select a published position and check the application and response dates.",
         "INVALID_REPORT",
+      );
+    if (error?.code === "23505")
+      throw new ApiError(
+        409,
+        "You have already reviewed this job title for this business.",
+        "ROLE_ALREADY_REVIEWED",
       );
     if (error?.code === "P0001")
       throw new ApiError(
@@ -84,14 +102,42 @@ export async function POST(request: Request) {
         "Your report was not saved. Please try again.",
         "REPORT_NOT_SAVED",
       );
+    const saved = await supabase
+      .from("response_reports")
+      .select("corroborated")
+      .eq("id", data)
+      .maybeSingle();
     return json(
       {
         reportId: data,
-        message:
-          "Your experience has been recorded privately for review. It is not published automatically.",
+        message: saved.data?.corroborated
+          ? "Your experience agrees with the recorded application activity and has been affirmed. On-site statistics use the recorded activity."
+          : "Your experience was recorded privately. Off-site reports are self-reported and reviewed. On-site statistics continue to use recorded activity.",
       },
       201,
     );
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    assertSameOrigin(request);
+    const { reportId } = await parseBody(
+      request,
+      z.object({ reportId: z.uuid() }).strict(),
+      1000,
+    );
+    const { supabase } = await requireSession();
+    const result = await supabase.rpc("confirm_response_report", {
+      p_report: reportId,
+    });
+    checkRpc(result.error);
+    return json({
+      message:
+        "Your existing no-response report has been reconfirmed. No additional review was created.",
+    });
   } catch (error) {
     return apiError(error);
   }

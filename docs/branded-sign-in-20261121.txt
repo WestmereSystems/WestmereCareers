@@ -1,0 +1,25 @@
+Branded sign-in activated — 21 November 2026
+
+The owner explicitly approved Supabase's Custom Domain add-on at USD10/month plus applicable tax and configuration of auth.westmere.com.au. The add-on is enabled for project ldmwqupidlgrkkjjpcvn (WestmereCareers).
+
+DNS is hosted at VentraIP. Added only the auth CNAME to ldmwqupidlgrkkjjpcvn.supabase.co and the corresponding _acme-challenge.auth TXT validation record, both with a 300-second TTL. The apex, www and mail records were retained. All three authoritative nameservers return the expected validation record. Some public resolvers still return a cached NXDOMAIN from the preceding zone version; the old SOA negative-cache lifetime is 3600 seconds. Requested a refresh using Cloudflare's official cache purge tool.
+
+Google client Westmere Careers Website (623732264561-vngdgkrr42jftde30r4pgoanipvl4jnp.apps.googleusercontent.com) and Microsoft app Westmere Careers (8d9e68d2-7188-47f8-a9f9-71f68d529072) both have the new https://auth.westmere.com.au/auth/v1/callback saved. The original Supabase callback remains allowed on both providers. Client IDs were matched against Supabase's enabled providers. No secrets, scopes, tenant audience or security switches were changed. Google lists westmere.com.au as an authorized domain; its existing Testing publishing status is unchanged.
+
+Public propagation read-back at approximately 08:55 UTC: both Google (8.8.8.8) and Cloudflare (1.1.1.1) return NOERROR and the correct TXT value. Registry trace confirms the expected nameserver delegation. All three authoritative IPv4 nameserver addresses return the correct record and current SOA zone serial 2026112103; the cached NXDOMAIN responses came from preceding serial 2026112102. No CAA restriction was found at the parent domain.
+
+Certificate readiness and activation: HTTPS certificate verification passed at approximately 09:15 UTC. Supabase's General Settings then offered activation. Activated the hostname and confirmed the dashboard displays "Active custom domain: auth.westmere.com.au" and "currently active and is serving traffic". The initial DNS delay was allowed to expire; no TLS validation was bypassed. Google's public cache-flush form could not connect to its reCAPTCHA service, so that refresh did not complete; no interactive CAPTCHA was solved.
+
+Production verification after activation:
+- Both existing public OAuth authorization endpoints return HTTP302 to the correct provider, advertising https://auth.westmere.com.au/auth/v1/callback. No OAuth error was returned. Diagnostic output excluded state, cookies and tokens.
+- The production application's Continue with Google button reaches Google's account chooser, which now says "to continue to westmere.com.au". No Google account was selected or new consent granted.
+- The production Continue with Microsoft button completed existing-account sign-in and returned to https://westmere-careers.vercel.app/account as louis.sibul@westmere.com.au with the existing Employer Growth subscription. No new Microsoft consent or permission prompt appeared.
+- The signed-in Billing page loads the active Growth subscription and explicit current-Terms renewal checkbox/action. The Terms remain unaccepted by this agent; the owner must accept them personally before plan changes. No subscription, card, plan coverage or account identity was changed during verification.
+- Proof: artifacts/branded-auth-domain-active.png and artifacts/google-branded-sign-in.png. The Google proof is cropped to the branding panel to omit the browser's saved account email list.
+
+The existing application Supabase API URL is retained: Supabase switches the advertised OAuth callback upon custom-domain activation, while its default endpoint continues to work. This avoids changing default browser session-cookie names merely for display branding. No code or Vercel environment change was necessary for the sign-in hostname. The website's current Vercel canonical hostname is separate from the new authentication hostname.
+
+References:
+https://supabase.com/docs/guides/platform/custom-domains
+https://supabase.com/docs/guides/platform/manage-your-usage/custom-domains
+https://developers.cloudflare.com/dns/troubleshooting/dns-issues/

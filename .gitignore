@@ -12,3 +12,5 @@ coverage/
 supabase/.temp/
 supabase/.branches/
 artifacts/
+# Local outreach artifacts contain recipient-specific unsubscribe capabilities.
+deliverables/

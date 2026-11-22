@@ -73,7 +73,7 @@ export async function DELETE(request: Request) {
     const job = (Array.isArray(data?.jobs) ? data.jobs[0] : data?.jobs) as
       { organisation_id: string } | undefined;
     if (!data || !job) throw new ApiError(404, "Document not found.");
-    await requireEmployer(job.organisation_id);
+    await requireEmployer(job.organisation_id, false, data.job_id, "listing");
     const removed = await admin.storage
       .from("employer-assets")
       .remove([data.storage_path]);

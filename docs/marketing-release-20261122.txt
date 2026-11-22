@@ -1,0 +1,30 @@
+Westmere marketing preferences and employer invitations — 22 November 2026
+
+Canonical production: https://westmere.com.au
+Production deployment: dpl_AqQjMmpa5LZtaTbswLLqa2pLMTg9 (READY)
+Combined release snapshot: a5485537211f775e8c96bb5bbc2c8785bb745aec
+Supabase project: ldmwqupidlgrkkjjpcvn
+Applied migration: 20261122063708_marketing_preferences_and_suppressions
+Edge delivery worker: westmere-alerts v14, ACTIVE
+
+The combined Vercel release preserves the current production source, adds the marketing controls and the separately authorised provider-selected business email change. Coordination was explicitly approved by the user in the Launch Westmere Careers chat. No further release was made by this chat after that combined deployment.
+
+Delivered: personalised Y Victoria, Ausgrid and Wiley supplier introductions in deliverables/employer-invitations-20261122/index.html and three individual HTML files, with plain-text alternatives and optional provider JSON payloads. Signed Louis only; includes https://westmere.com.au and Westmere Systems ABN 16 319 214 903. HTML preview logos are embedded for offline display. Each bottom unsubscribe button contains the intended recipient's live, private removal capability. Keep the recipient-specific files private. No email has been queued or sent.
+
+Official supplier contact pages were checked on 22 November 2026. These are narrowly scoped supplier introductions, not ongoing newsletter enrolments. The private preparation RPC records the source and basis, refuses a suppressed address and never sends a message. The three real recipient contacts remain enabled for their supplier-introduction purpose only.
+
+Candidates, employers and agencies have a default-on marketing preference in Account Settings. Prior withdrawals survive defaults and registration; an enabled default is not consent evidence. Saving the enabled marketing preference records an affirmative choice. The private register tracks opt-outs, including contacts without accounts. The Admin panel provides search, 25-row pagination, automatic refresh and manual suppression with a reason. Withdrawals cancel queued/leased marketing and launch messages and are rechecked before provider handoff. Essential account mail and separately requested search alerts retain their existing controls. Provider suppression is not cleared by opting back in.
+
+Verification:
+- Full shared regression suite: 484 tests passed in 64 files. The older legacy-seed database fixture was corrected to apply later migrations in dependency order; all 128 backend regression cases passed.
+- Focused marketing/launch checks: 29 passed. After the final email-logo fallback adjustment, 18 marketing checks passed again. Final workspace TypeScript check passed.
+- Isolated production-source Next.js build passed, including all four deployment-traced PDF upload workers. Combined production build, TypeScript and PDF checks also passed.
+- All three HTML drafts and the local/production unsubscribe confirmation page were visually inspected. The live business Settings screen displayed the new marketing checkbox enabled and its save action. The available signed-in business account did not have the staff Admin tab; admin operations were independently verified with authenticated administrator database calls and access-denial tests.
+- Live unauthenticated Settings and Admin GET/POST requests returned 401; cross-origin preference changes returned 403.
+- Live unsubscribe GET returned 303 to the confirmation page, with no database change. Landing page returned 200, no-referrer/no-store, no private recipient address and a plain HTML POST confirmation button.
+- Two unauthenticated RFC 8058-style confirmation POSTs for a disposable example.invalid address returned 200. Hosted preference changed to disabled and one withdrawal event was recorded. The real administrator register RPC automatically included the withdrawal. The QA address and its audit record were removed afterwards; zero QA contacts/events remain.
+- A rollback-only hosted transaction verified manual administrator suppression and register update, with no retained test contact.
+- Final hosted counts: all three intended draft recipients unchanged; marketing outbox messages=0; launch campaigns=0. No actual prospect removal capability was confirmed.
+- Private tables use RLS with no ordinary-role policies and no direct anon/authenticated grants. Security advisors reported the expected INFO for these intentionally locked tables; the pre-existing leaked-password-protection warning remains unrelated and unchanged.
+
+Implementation and operating notes: docs/marketing-communications.md.

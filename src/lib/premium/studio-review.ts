@@ -7,12 +7,15 @@ import {
 } from "./contracts";
 import type { openAIClient } from "./providers";
 import { PremiumError } from "./http";
+import { assistantPreview, type AssistantPreview } from "./assistant-preview";
 
 export async function generateStudioReview(
   client: ReturnType<typeof openAIClient>,
   input: StudioRequest,
+  signal?: AbortSignal,
+  onPreview?: (preview: AssistantPreview) => void,
 ) {
-  const response = await client.responses.create({
+  const parameters = {
     model: process.env.OPENAI_MODEL || "gpt-6.1-sol",
     instructions: studioInstructions,
     input: studioInput(input),
@@ -20,13 +23,28 @@ export async function generateStudioReview(
     max_output_tokens: 6500,
     text: {
       format: {
-        type: "json_schema",
+        type: "json_schema" as const,
         name: "westmere_cv_review",
         strict: true,
         schema: studioOutputJsonSchema,
       },
     },
-  });
+  };
+  let response;
+  if (onPreview) {
+    const stream = client.responses.stream(parameters, { signal });
+    let lastPreview = "";
+    stream.on("response.output_text.delta", (event) => {
+      const preview = assistantPreview(event.snapshot);
+      const serialized = JSON.stringify(preview);
+      if (serialized !== lastPreview) {
+        lastPreview = serialized;
+        onPreview(preview);
+      }
+    });
+    response = await stream.finalResponse();
+  } else response = await client.responses.create(parameters, { signal });
+  signal?.throwIfAborted();
   if (response.status !== "completed" || !response.output_text)
     throw new PremiumError(
       "GENERATION_INCOMPLETE",

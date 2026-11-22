@@ -1,12 +1,14 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   parseJobQuery,
   serialiseJobQuery,
   type JobFilters,
 } from "@/lib/search";
+import { savedSearchFilterCount } from "@/lib/saved-search-filters";
+import { PageControls } from "./page-controls";
 import { useSession } from "./providers";
 import { sendJson } from "./trust-workflows";
 type Saved = {
@@ -18,6 +20,10 @@ type Saved = {
   employment_types: string[];
   min_salary: number | null;
   direct_only: boolean;
+  distance?: number | null;
+  listed_within?: number | null;
+  listed_from?: string;
+  listed_to?: string;
   alerts_enabled: boolean;
   frequency: "daily" | "weekly";
   next_run_at: string | null;
@@ -36,6 +42,10 @@ const filtersOf = (s: Saved): JobFilters => ({
   employmentType: s.employment_types,
   minSalary: s.min_salary,
   directOnly: s.direct_only,
+  distance: s.distance,
+  listedWithin: s.listed_within,
+  listedFrom: s.listed_from,
+  listedTo: s.listed_to,
 });
 function SearchForm({
   saved,
@@ -52,9 +62,32 @@ function SearchForm({
   const [alerts, setAlerts] = useState(saved?.alerts_enabled ?? false),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [filterCount, setFilterCount] = useState(
+    savedSearchFilterCount(filters),
+  );
+  function countForm(form: HTMLFormElement) {
+    const f = new FormData(form);
+    return savedSearchFilterCount({
+      keyword: String(f.get("keyword") || ""),
+      location: String(f.get("location") || ""),
+      workMode: f.getAll("workMode") as string[],
+      employmentType: f.getAll("employmentType") as string[],
+      minSalary: Number(f.get("salary")),
+      directOnly: f.get("direct") === "on",
+      listedWithin: Number(f.get("listedWithin")),
+      listedFrom: String(f.get("listedFrom") || ""),
+      listedTo: String(f.get("listedTo") || ""),
+    });
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    if (countForm(e.currentTarget) < 2) {
+      setMessage(
+        "Choose at least two specific filters before saving your search.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const d = await sendJson("/api/saved-searches", {
@@ -67,6 +100,12 @@ function SearchForm({
           employmentType: f.getAll("employmentType"),
           minSalary: f.get("salary") ? Number(f.get("salary")) : null,
           directOnly: f.get("direct") === "on",
+          distance: f.get("distance") ? Number(f.get("distance")) : null,
+          listedWithin: f.get("listedWithin")
+            ? Number(f.get("listedWithin"))
+            : null,
+          listedFrom: f.get("listedFrom") || null,
+          listedTo: f.get("listedTo") || null,
         },
         alertsEnabled: alerts,
         frequency: f.get("frequency"),
@@ -81,7 +120,16 @@ function SearchForm({
     }
   }
   return (
-    <form className="form-stack" onSubmit={submit}>
+    <form
+      className="form-stack"
+      onSubmit={submit}
+      onChange={(e) => setFilterCount(countForm(e.currentTarget))}
+    >
+      <p className="fineprint">
+        Choose at least two specific filters, such as a role and location.{" "}
+        {filterCount} of 2 required filter groups selected. Selecting every
+        option in a group does not narrow your search.
+      </p>
       <label className="field-label">
         Search name
         <input
@@ -96,6 +144,46 @@ function SearchForm({
           }
         />
       </label>
+      <div className="form-grid">
+        <label className="field-label">
+          Distance
+          <select name="distance" defaultValue={filters.distance || ""}>
+            <option value="">Selected location only</option>
+            {[5, 10, 25, 50, 100, 250].map((km) => (
+              <option key={km} value={km}>
+                Within {km} km
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          When listed
+          <select name="listedWithin" defaultValue={filters.listedWithin || ""}>
+            <option value="">Any time</option>
+            {[1, 3, 7, 14, 30, 40].map((days) => (
+              <option key={days} value={days}>
+                Last {days} days
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          From date (UTC)
+          <input
+            name="listedFrom"
+            type="date"
+            defaultValue={filters.listedFrom || ""}
+          />
+        </label>
+        <label className="field-label">
+          Through date (UTC)
+          <input
+            name="listedTo"
+            type="date"
+            defaultValue={filters.listedTo || ""}
+          />
+        </label>
+      </div>
       <div className="form-grid">
         <label className="field-label">
           Job title or keywords
@@ -157,8 +245,8 @@ function SearchForm({
         />
       </label>
       <p className="fineprint">
-        Hourly rates are annualised at 38 hours × 52 weeks for this filter. This
-        is a comparison estimate.
+        Only advertised annual salary ranges are compared. Hourly roles are
+        excluded; annual hours are not assumed.
       </p>
       <label className="checkbox-label">
         <input
@@ -197,7 +285,7 @@ function SearchForm({
         job browser; your CV is never saved in these filters or included in
         alerts.
       </p>
-      <button className="button primary" disabled={busy}>
+      <button className="button primary" disabled={busy || filterCount < 2}>
         {busy ? "Saving…" : saved ? "Update saved search" : "Save this search"}
       </button>
       {message && (
@@ -218,33 +306,56 @@ function SavedSearchesForUser() {
     [suppressed, setSuppressed] = useState(false),
     [message, setMessage] = useState(""),
     [editing, setEditing] = useState<Saved | null>(null),
-    [ready, setReady] = useState(false);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const r = await fetch("/api/saved-searches", {
-        cache: "no-store",
-        signal,
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      setSearches(d.searches);
-      setDeliveries(d.deliveries);
-      setConfigured(d.configured);
-      setSuppressed(d.suppressed);
-      setReady(true);
-    } catch (e) {
-      if (!signal?.aborted)
-        setMessage(
-          e instanceof Error ? e.message : "Saved searches are unavailable.",
-        );
-    }
+    [ready, setReady] = useState(false),
+    [previewAvailableAt, setPreviewAvailableAt] = useState(0),
+    [clock, setClock] = useState(Date.now()),
+    [previewBusy, setPreviewBusy] = useState(false);
+  const [emailPage, setEmailPage] = useState(1);
+  const [deliveryTotal, setDeliveryTotal] = useState(0);
+  const previewPending = useRef(false);
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 30000);
+    return () => clearInterval(timer);
   }, []);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const r = await fetch(`/api/saved-searches?emailPage=${emailPage}`, {
+          cache: "no-store",
+          signal,
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        if (signal?.aborted) return;
+        setSearches(d.searches);
+        setDeliveryTotal(d.deliveryTotal || 0);
+        setDeliveries(d.deliveries);
+        setConfigured(d.configured);
+        setSuppressed(d.suppressed);
+        setPreviewAvailableAt(
+          d.previewAvailableAt ? Date.parse(d.previewAvailableAt) : 0,
+        );
+        setReady(true);
+      } catch (e) {
+        if (!signal?.aborted)
+          setMessage(
+            e instanceof Error ? e.message : "Saved searches are unavailable.",
+          );
+      }
+    },
+    [emailPage],
+  );
   useEffect(() => {
     const c = new AbortController();
     if (session.user) void load(c.signal);
     return () => c.abort();
   }, [session.user?.id, load]);
   async function action(s: Saved, type: "pause" | "delete" | "preview") {
+    if (type === "preview") {
+      if (previewPending.current || previewAvailableAt > Date.now()) return;
+      previewPending.current = true;
+      setPreviewBusy(true);
+    }
     try {
       const d =
         type === "pause"
@@ -264,10 +375,18 @@ function SavedSearchesForUser() {
               type === "delete" ? "DELETE" : "POST",
             );
       setMessage(d.message);
+      if (type === "preview")
+        setPreviewAvailableAt(Date.now() + 15 * 60 * 1000);
       if (editing?.id === s.id) setEditing(null);
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Please try again.");
+      if (type === "preview") await load();
+    } finally {
+      if (type === "preview") {
+        previewPending.current = false;
+        setPreviewBusy(false);
+      }
     }
   }
   if (session.loading) return <p role="status">Loading your account…</p>;
@@ -276,8 +395,8 @@ function SavedSearchesForUser() {
       <div className="panel">
         <h2>Keep a good search close.</h2>
         <p>
-          Sign in to save your filters across devices and choose optional Resend
-          email alerts.
+          Sign in to save your filters across devices and choose optional email
+          alerts.
         </p>
         <button className="button primary" onClick={session.openAuth}>
           Sign in to save a search
@@ -290,7 +409,7 @@ function SavedSearchesForUser() {
         {suppressed
           ? "Email delivery is paused after a bounce or complaint. Contact support before re-enabling alerts."
           : configured
-            ? "Job alerts use Resend and your verified account email. You choose when to hear from us."
+            ? "Job alerts go to your verified account email. You choose when to hear from us."
             : "Your searches can be saved now. Email delivery is being connected; no alerts will be sent until setup is complete."}
       </p>
       {message && (
@@ -299,8 +418,8 @@ function SavedSearchesForUser() {
         </p>
       )}
       <p className="fineprint">
-        Keep up to 20 searches. Preview emails are limited to three per 24
-        hours.
+        Keep up to 20 searches. Wait 15 minutes between preview emails across
+        all your searches.
       </p>
       <div className="saved-search-layout">
         <section className="panel">
@@ -367,9 +486,14 @@ function SavedSearchesForUser() {
                 {s.alerts_enabled && configured && !suppressed && (
                   <button
                     className="text-link"
+                    disabled={previewBusy || previewAvailableAt > clock}
                     onClick={() => void action(s, "preview")}
                   >
-                    Send a preview to my email
+                    {previewBusy
+                      ? "Queueing preview…"
+                      : previewAvailableAt > clock
+                        ? `Preview available in ${Math.ceil((previewAvailableAt - clock) / 60000)} min`
+                        : "Send a preview to my email"}
                   </button>
                 )}
               </div>
@@ -377,13 +501,13 @@ function SavedSearchesForUser() {
           ))}
         </section>
       </div>
-      {deliveries.length > 0 && (
+      {deliveryTotal > 0 && (
         <section className="panel">
           <h2>Recent email activity</h2>
           <p className="fineprint">
-            Accepted means Resend accepted the request. Delivered means the
-            receiving mail server accepted it; neither confirms it was read or
-            placed in your inbox.
+            Accepted means our email delivery service accepted the request.
+            Delivered means the receiving mail server accepted it; neither
+            confirms it was read or placed in your inbox.
           </p>
           {deliveries.map((d) => (
             <p className="activity-item" key={d.id}>
@@ -393,6 +517,13 @@ function SavedSearchesForUser() {
               {new Date(d.created_at).toLocaleString("en-AU")}
             </p>
           ))}
+          <PageControls
+            page={emailPage}
+            total={deliveryTotal}
+            size={10}
+            label="Recent email activity pages"
+            onPage={setEmailPage}
+          />
           <button className="button secondary" onClick={() => void load()}>
             Refresh delivery status
           </button>

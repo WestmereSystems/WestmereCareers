@@ -6,6 +6,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  X,
   BarChart3,
   Eye,
   Users,
@@ -15,6 +16,8 @@ import {
 } from "lucide-react";
 import { useSession } from "./providers";
 import { AustraliaDiscovery } from "./australia-discovery";
+import { sandboxPlans } from "@/lib/billing-plans";
+import { businessPlanFeatures } from "@/lib/plan-features";
 export function EmployerMarketing() {
   const session = useSession(),
     router = useRouter();
@@ -25,86 +28,10 @@ export function EmployerMarketing() {
   }, [session.user, session.business, router]);
   const start = session.business
     ? "/account?tab=billing"
-    : `/employers/sign-in${agency ? "?kind=agency" : ""}`;
-  const plans = agency
-    ? [
-        {
-          name: "Agency Starter",
-          price: "A$199",
-          suffix: "/month",
-          description: "A clear foundation for your recruitment desk.",
-          features: [
-            "Verified agency profile",
-            "Role and application management",
-            "Hiring activity dashboard",
-            "Configurable team reminders",
-          ],
-        },
-        {
-          name: "Agency Growth",
-          price: "A$399",
-          suffix: "/month",
-          description: "Understand your reach as your client portfolio grows.",
-          features: [
-            "Everything in Agency Starter",
-            "Discovery analytics",
-            "Search keyword insights",
-            "Regional audience overview",
-          ],
-          featured: true,
-        },
-        {
-          name: "Agency Enterprise",
-          price: "A$799",
-          suffix: "/month",
-          description: "An agreed service for your recruitment operation.",
-          features: [
-            "Everything in Agency Growth",
-            "Multiple authorised organisations",
-            "Organisation and role filters",
-            "Sandbox access to current hiring tools",
-          ],
-        },
-      ]
-    : [
-        {
-          name: "Starter",
-          price: "A$129",
-          suffix: "/month",
-          description: "Bring clarity to your next hire.",
-          features: [
-            "Verified company profile",
-            "Role and application management",
-            "Hiring activity dashboard",
-            "Configurable team reminders",
-          ],
-        },
-        {
-          name: "Growth",
-          price: "A$249",
-          suffix: "/month",
-          description: "Make your next chapter a bigger one.",
-          features: [
-            "Everything in Starter",
-            "Discovery analytics",
-            "Search keyword insights",
-            "Regional audience overview",
-          ],
-          featured: true,
-        },
-        {
-          name: "Enterprise",
-          price: "A$499",
-          suffix: "/month",
-          description: "A considered fit for established hiring teams.",
-          features: [
-            "Everything in Growth",
-            "Multiple authorised organisations",
-            "Organisation and role filters",
-            "Sandbox access to current hiring tools",
-          ],
-        },
-      ];
+    : `/employers/sign-in?register=1${agency ? "&kind=agency" : ""}`;
+  const plans = sandboxPlans.filter(
+    (plan) => plan.audience === (agency ? "agency" : "employer"),
+  );
   return (
     <>
       <section className="employer-hero">
@@ -143,10 +70,10 @@ export function EmployerMarketing() {
         </div>
         <figure className="employer-hero-photo">
           <img
-            src="/images/creative-colleagues.webp"
-            alt="Colleagues bringing their experience together at work"
-            width={1260}
-            height={709}
+            src="/images/cafe-team.webp"
+            alt="Three cafe colleagues sharing ideas around a laptop"
+            width={1920}
+            height={1280}
           />
           <figcaption>Good hiring feels human.</figcaption>
         </figure>
@@ -160,7 +87,7 @@ export function EmployerMarketing() {
             give every candidate a clearer next step. Your private hiring
             dashboard brings it together.
           </p>
-          <Link href="/employers/preview" className="button secondary">
+          <Link href="/employers" className="button secondary">
             Preview Dashboard <ArrowUpRight size={17} />
           </Link>
         </div>
@@ -220,16 +147,17 @@ export function EmployerMarketing() {
           </div>
         </div>
         <p className="notice">
-          Sandbox-only monthly test prices. No real money is charged. These are
-          not approved live offers. GST collection is disabled.
+          Optional monthly subscriptions for verified employers and agencies.
+          Review the total and renewal terms in checkout. During founding
+          launch, profiles and vacancies remain private.
         </p>
         <div className="business-plan-grid">
           {plans.map((p) => (
             <article
               key={p.name}
-              className={`business-plan ${p.featured ? "featured-plan" : ""}`}
+              className={`business-plan ${p.code.endsWith("growth") ? "featured-plan" : ""}`}
             >
-              {p.featured && (
+              {p.code.endsWith("growth") && (
                 <div className="plan-ribbon">
                   <Sparkles size={15} />
                   Built for growing {agency ? "agencies" : "businesses"}
@@ -237,21 +165,31 @@ export function EmployerMarketing() {
               )}
               <h3>{p.name}</h3>
               <p className="plan-price">
-                {p.price}
-                {"suffix" in p && <small>{p.suffix}</small>}
+                {new Intl.NumberFormat("en-AU", {
+                  style: "currency",
+                  currency: "AUD",
+                  maximumFractionDigits: 0,
+                }).format(p.amount / 100)}
+                <small>/month</small>
               </p>
-              <p className="muted">{p.description}</p>
-              <ul>
-                {p.features.map((f) => (
-                  <li key={f}>
-                    <Check size={17} />
-                    {f}
+              <ul className="plan-features">
+                {businessPlanFeatures(p.code).map((feature) => (
+                  <li
+                    key={feature.label}
+                    className={feature.included ? "" : "feature-unavailable"}
+                  >
+                    {feature.included ? (
+                      <Check size={17} aria-label="Included" />
+                    ) : (
+                      <X size={17} aria-label="Not included" />
+                    )}
+                    {feature.label}
                   </li>
                 ))}
               </ul>
               <Link
                 href={start}
-                className={`button ${p.featured ? "primary" : "secondary"}`}
+                className={`button ${p.code.endsWith("growth") ? "primary" : "secondary"}`}
               >
                 Get Started <ArrowRight size={16} />
               </Link>
@@ -259,12 +197,11 @@ export function EmployerMarketing() {
           ))}
         </div>
         <p className="fineprint">
-          Prices in Australian dollars, including any applicable GST. Sandbox
-          subscriptions use a separately confirmed checkout. Live business
-          services require an accepted order. Listing allowances, duration,
-          service scope and any additional charges are confirmed before
-          purchase. Signing in does not start a paid plan. We give at least 30
-          days’ notice of renewal price increases.
+          Prices in Australian dollars. GST is not currently charged.
+          Subscriptions use a separately confirmed checkout. Listing allowances,
+          duration, service scope and any additional charges are confirmed
+          before purchase. Signing in does not start a paid plan. We give at
+          least 30 days’ notice of renewal price increases.
         </p>
         <div className="ad-prices">
           <div>
@@ -307,8 +244,10 @@ export function EmployerMarketing() {
           </h2>
           <p className="muted">
             See recorded search appearances, listing and company-profile views,
-            recognised search keywords and broad visitor regions. Turn attention
-            into a more thoughtful hiring strategy.
+            recognised search keywords from their first appearance, capital-city
+            markers and selectable state and territory outlines. Compare
+            regional tables and turn attention into a more thoughtful hiring
+            strategy.
           </p>
           <ul className="check-list">
             <li>
@@ -324,7 +263,7 @@ export function EmployerMarketing() {
               Privacy-conscious, aggregated reporting
             </li>
           </ul>
-          <Link href="/employers/preview?tab=discovery" className="text-link">
+          <Link href="/employers?tab=discovery" className="text-link">
             Explore Discovery <ArrowUpRight size={17} />
           </Link>
         </div>

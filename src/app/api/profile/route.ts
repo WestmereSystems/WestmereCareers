@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { profileLinksSchema, safeProfileLinks } from "@/lib/candidate-profile";
 import { getSessionContext, requireSession } from "@/lib/server/auth";
 import {
   ApiError,
@@ -12,6 +13,9 @@ export const dynamic = "force-dynamic";
 const input = z
   .object({
     fullName: z.string().trim().min(1, "Add your name.").max(120).optional(),
+    firstName: z.string().trim().min(1).max(120).optional(),
+    lastName: z.string().trim().max(120).optional(),
+    socialLinks: profileLinksSchema.optional(),
     cvText: z.string().max(40_000).optional(),
     applicationEmailEnabled: z.boolean().optional(),
   })
@@ -25,7 +29,7 @@ export async function GET() {
       const result = await supabase
         .from("profiles")
         .select(
-          "full_name,cv_text,updated_at,active_cv_id,application_email_enabled",
+          "full_name,first_name,last_name,social_links,cv_text,updated_at,active_cv_id,application_email_enabled",
         )
         .eq("id", user.id)
         .maybeSingle();
@@ -35,7 +39,12 @@ export async function GET() {
           "Your profile is temporarily unavailable.",
           "PROFILE_UNAVAILABLE",
         );
-      profile = result.data;
+      profile = result.data
+        ? {
+            ...result.data,
+            social_links: safeProfileLinks(result.data.social_links),
+          }
+        : null;
     }
     return json({
       configured: Boolean(supabase),
@@ -57,7 +66,29 @@ export async function POST(request: Request) {
       id: user.id,
       updated_at: new Date().toISOString(),
     };
-    if (body.fullName !== undefined) profile.full_name = body.fullName;
+    if (body.fullName !== undefined) {
+      profile.full_name = body.fullName;
+      const [first, ...last] = body.fullName.split(/\s+/);
+      profile.first_name = first;
+      profile.last_name = last.join(" ");
+    }
+    if (body.firstName !== undefined || body.lastName !== undefined) {
+      if (body.firstName === undefined || body.lastName === undefined)
+        throw new ApiError(400, "Save both name fields together.");
+      if (
+        [body.firstName, body.lastName].filter(Boolean).join(" ").length > 120
+      )
+        throw new ApiError(
+          400,
+          "Please keep your full name within 120 characters.",
+        );
+      profile.first_name = body.firstName;
+      profile.last_name = body.lastName;
+      profile.full_name = [body.firstName, body.lastName]
+        .filter(Boolean)
+        .join(" ");
+    }
+    if (body.socialLinks !== undefined) profile.social_links = body.socialLinks;
     if (body.cvText !== undefined) profile.cv_text = body.cvText;
     if (body.applicationEmailEnabled !== undefined)
       profile.application_email_enabled = body.applicationEmailEnabled;

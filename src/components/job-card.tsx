@@ -1,7 +1,8 @@
+import { companyPath } from "@/lib/company-urls";
 import Link from "next/link";
 import {
   MapPin,
-  ShieldCheck,
+  CircleCheck,
   Clock3,
   ArrowUpRight,
   Check,
@@ -20,16 +21,18 @@ export function ResponseInsight({ job }: { job: Job }) {
       <MessageCircle size={14} />
       <span>
         {unresponsive
-          ? "Unresponsive · candidate reported"
+          ? job.source === "direct"
+            ? "No recorded response after two months"
+            : "Unresponsive · candidate reported"
           : job.responseDays !== null
-            ? `${job.responseDays}-day first response`
+            ? `${job.responseDays}-day average first response`
             : "Not enough response data"}
       </span>
       <small>
         {unresponsive
-          ? `${job.noResponseReports}/${job.eligibleReports} reports: no reply >2 months`
+          ? `${job.noResponseReports}/${job.eligibleReports} ${job.source === "direct" ? "applications" : "reports"}: no reply >2 months`
           : job.responseDays !== null
-            ? `${job.responseReports} reports with a response`
+            ? `${job.responseReports} ${job.source === "direct" ? "recorded responses" : "reports with a response"}`
             : "Small or insufficient recent sample"}
       </small>
     </div>
@@ -39,17 +42,19 @@ export function JobCard({
   job,
   featured = false,
   match,
+  children,
 }: {
   job: Job;
   featured?: boolean;
   match?: number;
+  children?: React.ReactNode;
 }) {
   return (
     <article className={`job-card ${featured ? "featured" : ""}`}>
       <div className="job-card-top">
         <Link
           className={`company-monogram tone-${job.companyInitial.charCodeAt(0) % 4}`}
-          href={`/companies/${job.organisationId ?? job.id}`}
+          href={companyPath(job.company, job.organisationId ?? job.id)}
           aria-label={`${job.company} profile`}
         >
           {job.avatarPath && job.organisationId ? (
@@ -80,22 +85,41 @@ export function JobCard({
         <SaveButton id={job.id} compact />
       </div>
       <div className="job-card-title">
-        <Link className="job-primary-link" href={`/jobs/${job.id}`}>
-          <h3>{job.title}</h3>
-        </Link>
+        {job.isClosed ? (
+          <h3>
+            <span className="badge">Role closed</span> {job.title}
+          </h3>
+        ) : (
+          <Link className="job-primary-link" href={`/jobs/${job.id}`}>
+            <h3>
+              {job.isTest && (
+                <span className="badge">Test role · fictional</span>
+              )}
+              {job.title}
+            </h3>
+          </Link>
+        )}
         <Link
           className="company-name"
-          href={`/companies/${job.organisationId ?? job.id}`}
+          href={companyPath(job.company, job.organisationId ?? job.id)}
         >
-          {job.company}
-          {job.isVerified && (
-            <ShieldCheck
+          {job.isVerified && !job.isTest && (
+            <CircleCheck
               size={16}
+              className="business-verified-icon"
               aria-label="Business identity and hiring authority checked"
             />
           )}
+          {job.company}
+          {job.advertiserKind === "agency" && " · Recruitment agency"}
         </Link>
       </div>
+      {job.advertiserKind === "agency" && (
+        <p className="fineprint">
+          Client: {job.clientLabel || "Confidential client"}. Applications go to
+          the recruiting agency.
+        </p>
+      )}
       <div className="job-facts">
         <span>
           <MapPin size={14} />
@@ -118,6 +142,7 @@ export function JobCard({
         )}
       </div>
       <ResponseInsight job={job} />
+      {children}
     </article>
   );
 }

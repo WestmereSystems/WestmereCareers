@@ -1,36 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { CareerChat, CvScore, extractCv } from "./career-assistant";
-import { useNotice, individualNotice } from "./notices";
+import { RoleStrength } from "./role-strength";
+import type { AssistantAttachment } from "@/lib/assistant-attachments";
+import { CareerChat } from "./career-assistant";
+import { useNotice, individualNotice, foundingCareersNotice } from "./notices";
 import { AnimatedArt } from "./animated-art";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  CheckCheck,
-  Copy,
-  Download,
   FilePenLine,
-  FileText,
   Layers3,
   Leaf,
   LoaderCircle,
-  LockKeyhole,
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Star,
   Target,
-  Upload,
-  X,
 } from "lucide-react";
-import { SavedCVButton } from "./profile-tools";
 import { useSession } from "@/components/providers";
 import type { Job } from "@/lib/jobs";
-import { studioReviewText, type StudioResult } from "@/lib/premium/contracts";
-import { useAssistantAllowance } from "./assistant-allowance";
 
 async function billingRedirect(
   endpoint: "checkout" | "portal",
@@ -66,7 +59,13 @@ async function billingRedirect(
 
 export function CareersPlus() {
   const session = useSession();
-  const notify = useNotice();
+  if (
+    !session.loading &&
+    session.user &&
+    session.isPremium &&
+    session.marketplaceOpen
+  )
+    redirect("/studio");
   return <CareersPlusContent key={session.user?.id ?? "signedout"} />;
 }
 function CheckoutNotice({
@@ -78,7 +77,6 @@ function CheckoutNotice({
 }) {
   const status = useSearchParams().get("checkout");
   const session = useSession();
-  const notify = useNotice();
   useEffect(() => {
     onComplete(status === "complete");
     if (status === "complete") {
@@ -106,7 +104,15 @@ function CareersPlusContent() {
     },
     [],
   );
+  useEffect(() => {
+    if (!session.loading && !session.marketplaceOpen)
+      notify(foundingCareersNotice);
+  }, [session.loading, session.marketplaceOpen, notify]);
   async function billing(kind: "checkout" | "portal") {
+    if (!session.marketplaceOpen) {
+      notify(foundingCareersNotice);
+      return;
+    }
     if (session.business) {
       notify(individualNotice);
       return;
@@ -114,7 +120,7 @@ function CareersPlusContent() {
     if (billingRequest.current) return;
     if (!session.configured) {
       setMessage(
-        "Subscriptions are being prepared. You can explore the studio’s static example while we finish connecting the service.",
+        "Subscriptions are being prepared. You can explore the Studio while we finish connecting the service.",
       );
       return;
     }
@@ -183,10 +189,10 @@ function CareersPlusContent() {
       <section className="container human-story premium-human-story">
         <figure className="people-photo">
           <img
-            src="/images/focused-work.webp"
-            alt="A person working thoughtfully on a laptop by a window"
-            width="1260"
-            height="840"
+            src="/images/laptop-work.webp"
+            alt="A man working on a laptop beside a bright window"
+            width="1920"
+            height="1280"
             loading="lazy"
           />
         </figure>
@@ -298,12 +304,12 @@ function CareersPlusContent() {
           <p className="fineprint">
             Billed monthly. Renews monthly until canceled.
             <br />
-            GST included where applicable. No annual commitment.
+            GST is not currently charged. No annual commitment.
           </p>
           <ul className="check-list">
             <li>
               <Check />
-              30 CV studio requests per billing month
+              100 Assistant requests per billing month
             </li>
             <li>
               <Check />
@@ -347,7 +353,7 @@ function CareersPlusContent() {
             </button>
           )}
           <Link href="/studio" className="button secondary">
-            Explore the static example
+            Open the Studio
             <ArrowUpRight size={16} />
           </Link>
           {session.user && (
@@ -414,54 +420,6 @@ function CareersPlusContent() {
   );
 }
 
-const sampleCv = `Alex Morgan
-Product Designer · Melbourne
-
-SUMMARY
-Product designer with experience researching and redesigning digital onboarding journeys.
-
-EXPERIENCE
-Product Designer — Example Studio
-2022–2026
-• Worked with product and engineering to redesign onboarding using usability findings.
-• Built Figma prototypes and ran usability sessions with customers.
-• Documented interaction decisions and checked designs for accessibility.
-
-SKILLS
-Figma, user research, prototyping, interaction design, accessibility.`;
-
-const sampleResult: StudioResult = {
-  summary:
-    "Bring the clearest evidence of your product design work closer to the top, and use direct language to describe your contribution.",
-  improvements: [
-    "Lead with your onboarding and research experience so a reader quickly understands your focus.",
-    "Use direct verbs and retain the collaboration with product and engineering.",
-    "Add a measurable result only when you have evidence for it.",
-  ],
-  revisedCv: `Alex Morgan
-Product Designer · Melbourne
-
-SUMMARY
-Product designer focused on research-led onboarding experiences, with practical skills in prototyping, interaction design and accessibility.
-
-EXPERIENCE
-Product Designer — Example Studio
-2022–2026
-• Used usability findings to guide an onboarding redesign, working with product and engineering.
-• Built Figma prototypes and facilitated customer usability sessions.
-• Documented interaction decisions and reviewed designs for accessibility.
-
-SKILLS
-Figma, user research, prototyping, interaction design, accessibility.`,
-  coverLetter: "",
-  matchedSkills: [],
-  missingSkills: [],
-};
-
-function descriptionFor(job: Job) {
-  return `${job.description}\n\nResponsibilities\n${job.responsibilities.map((item) => `• ${item}`).join("\n")}\n\nRequirements\n${job.requirements.map((item) => `• ${item}`).join("\n")}`;
-}
-
 type StudioProps = {
   jobs: Job[];
   initialJobId?: string;
@@ -471,7 +429,8 @@ type StudioProps = {
 };
 
 export function ApplicationStudio(props: StudioProps) {
-  return <StudioEditor {...props} />;
+  const session = useSession();
+  return <StudioEditor key={session.user?.id || "guest"} {...props} />;
 }
 
 function StudioEditor({
@@ -482,674 +441,74 @@ function StudioEditor({
   initialNotice,
 }: StudioProps) {
   const session = useSession();
-  const notify = useNotice();
-  const { allowance, refresh: refreshAllowance } = useAssistantAllowance();
-  const owner = useRef(session.user?.id);
-  const initialJob = jobs.find((job) => job.id === initialJobId);
-  const [mode, setMode] = useState<"improve" | "tailor">(
-    initialJob || initialTailor ? "tailor" : "improve",
-  );
-  const [cv, setCv] = useState("");
-  const [goals, setGoals] = useState("");
-  const [jobId, setJobId] = useState(initialJob?.id ?? "");
-  const [jobTitle, setJobTitle] = useState(initialJob?.title ?? "");
-  const [jobDescription, setJobDescription] = useState(
-    initialJob ? descriptionFor(initialJob) : "",
-  );
-  const [consent, setConsent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [result, setResult] = useState<StudioResult | null>(null);
-  const [isExample, setIsExample] = useState(false);
-  const [reviewedCv, setReviewedCv] = useState("");
-  const [reviewedLetter, setReviewedLetter] = useState("");
-  const [copied, setCopied] = useState(false);
-  const uploadRef = useRef<HTMLInputElement>(null);
-  const resultRef = useRef<HTMLElement>(null);
-  const studioRequest = useRef<AbortController | null>(null);
-  const mounted = useRef(true);
-  useEffect(() => {
-    // Keep a guest's review when they deliberately sign in for their extra allowance;
-    // clear private material on sign-out or a change between identified accounts.
-    if (owner.current && owner.current !== session.user?.id) {
-      studioRequest.current?.abort();
-      studioRequest.current = null;
-      setCv("");
-      setGoals("");
-      setResult(null);
-      setReviewedCv("");
-      setReviewedLetter("");
-      setConsent(false);
-      setBusy(false);
-      setMessage("");
-    }
-    owner.current = session.user?.id;
-  }, [session.user?.id]);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      studioRequest.current?.abort();
-    };
-  }, []);
-
-  function showResult(output: StudioResult, example = false) {
-    setResult(output);
-    setIsExample(example);
-    setReviewedCv(output.revisedCv);
-    setReviewedLetter(output.coverLetter);
-    setCopied(false);
-  }
-  function selectJob(id: string) {
-    setJobId(id);
-    const job = jobs.find((item) => item.id === id);
-    if (job) {
-      setJobTitle(job.title);
-      setJobDescription(descriptionFor(job));
-    } else {
-      setJobTitle("");
-      setJobDescription("");
-    }
-  }
-  async function readFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setMessage("");
-    if (session.business) {
-      notify(individualNotice);
-      event.target.value = "";
-      return;
-    }
-    try {
-      const parsed = await extractCv(file);
-      setCv(parsed.text);
-      setConsent(false);
-      setMessage(parsed.message);
-    } catch (e) {
-      notify({
-        title: "CV upload",
-        message: e instanceof Error ? e.message : "Try another document.",
-        tone: "error",
-      });
-    }
-    event.target.value = "";
-  }
-  async function generate(event: React.FormEvent) {
-    event.preventDefault();
-    if (session.business) {
-      notify(individualNotice);
-      return;
-    }
-    setMessage("");
-    if (studioRequest.current) return;
-    if (!session.configured) {
-      setMessage(
-        "The connected CV studio is being prepared. You can still explore the clearly labelled static example. Your CV has not been sent anywhere.",
-      );
-      return;
-    }
-    if (allowance?.remaining === 0) {
-      if (!session.user) session.openAuth();
-      else
-        notify({
-          title: "Your available reviews are used",
-          message:
-            "Explore Careers+ or return when your billing-period allowance renews. Your existing review stays here.",
-          href: "/careers-plus",
-          label: "Explore Careers+",
-        });
-      return;
-    }
-    if (cv.trim().length < 100) {
-      setMessage(
-        "Add at least 100 characters of CV text so the studio has enough context.",
-      );
-      return;
-    }
-    if (mode === "tailor" && jobDescription.trim().length < 50) {
-      setMessage(
-        "Choose a role or add at least 50 characters of the job description.",
-      );
-      return;
-    }
-    if (!consent) {
-      setMessage(
-        "Please confirm that you agree to sending this text to OpenAI for your review.",
-      );
-      return;
-    }
-    const controller = new AbortController();
-    studioRequest.current = controller;
-    setBusy(true);
-    try {
-      const response = await fetch(
-        session.isPremium ? "/api/studio" : "/api/assistant",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            mode,
-            cv,
-            goals,
-            consent,
-            ...(mode === "tailor" ? { jobTitle, jobDescription } : {}),
-          }),
-        },
-      );
-      const data = await response.json();
-      if (!mounted.current || controller.signal.aborted) return;
-      if (!response.ok)
-        throw new Error(
-          data.error ||
-            "The studio could not complete your review. Please try again.",
-        );
-      if (!data.result || typeof data.result.revisedCv !== "string")
-        throw new Error(
-          "The studio returned an incomplete review. Please try again.",
-        );
-      showResult(data.result);
-      setMessage(
-        "Your review is ready. Check every fact and keep the changes that feel right.",
-      );
-      resultRef.current?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
-    } catch (error) {
-      if (mounted.current && !controller.signal.aborted)
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "The studio is temporarily unavailable. Your draft remains in the editor.",
-        );
-    } finally {
-      if (mounted.current && !controller.signal.aborted) {
-        studioRequest.current = null;
-        setBusy(false);
-        void refreshAllowance();
-      }
-    }
-  }
-  function resultText() {
-    if (result && !reviewedCv && !reviewedLetter)
-      return studioReviewText(result);
-    return `${isExample ? "STATIC EXAMPLE — FICTIONAL CV\n\n" : ""}${reviewedCv}${reviewedLetter ? `\n\nCOVER LETTER\n\n${reviewedLetter}` : ""}`;
-  }
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(resultText());
-      setCopied(true);
-    } catch {
-      setMessage(
-        "Your browser couldn’t copy automatically. Select and copy the reviewed text in the editor.",
-      );
-    }
-  }
-  function download() {
-    const url = URL.createObjectURL(
-      new Blob([resultText()], { type: "text/plain;charset=utf-8" }),
-    );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = isExample
-      ? "westmere-static-example.txt"
-      : result && !result.revisedCv && !result.coverLetter
-        ? "westmere-cv-review.txt"
-        : "westmere-reviewed-cv.txt";
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  useEffect(() => {
-    if (!session.loading && session.business) notify(individualNotice);
-  }, [session.loading, session.business, notify]);
+  const jobId = initialJobId || "";
+  const [documents, setDocuments] = useState<AssistantAttachment[]>([]);
   return (
-    <main id="main">
+    <main id="main" className="studio-page">
       <section className="page-intro container studio-intro">
-        <span className="studio-floating-icon" aria-hidden="true">
-          <Sparkles size={45} />
-        </span>
-        <div className="plus-wordmark" style={{ marginBottom: 18 }}>
-          <Sparkles size={18} />
-          Careers<span>+</span>
-        </div>
-        <h1>Your experience, in focus.</h1>
+        <p className="eyebrow">Your next chapter, in your words</p>
+        <h1>
+          {session.user && session.isPremium
+            ? "Your Careers+ Studio."
+            : "Westmere Assistant."}
+        </h1>
         <p className="muted">
-          Make a clearer CV, prepare for a specific role, or find a better way
-          to describe the work you’ve already done.
+          A space for your CV, cover letters and career questions.
         </p>
       </section>
       <div className="container page-content">
-        {initialNotice && (
-          <div className="notice" role="status">
-            {initialNotice}
-          </div>
-        )}
-        {!session.isPremium && (
-          <div
-            className="notice"
-            style={{ display: "flex", gap: 12, alignItems: "start" }}
-          >
-            <Sparkles
-              size={20}
-              style={{ flexShrink: 0, color: "var(--purple)" }}
-            />
-            <p>
-              Try one free guest review, then sign in for three additional
-              account reviews. Careers+ includes 30 requests per billing period
-              at A$25/month. Daily preview limits apply.{" "}
-              <Link className="text-button" href="/careers-plus">
-                Explore Careers+
-              </Link>
-            </p>
-          </div>
-        )}
-        <section className="studio-chat-panel panel dot-surface">
-          <h2>Talk through your next step.</h2>
-          <CareerChat
-            job={initialJob}
-            cv={cv}
-            onCvChange={setCv}
-            onResult={showResult}
-          />
-        </section>
-        {result && <CvScore result={result} />}
-        <div className="studio-layout">
-          <section className="panel" aria-labelledby="studio-editor-heading">
-            <h2 id="studio-editor-heading">
-              A little context goes a long way.
-            </h2>
-            <p className="fineprint">
-              Paste your CV or upload a PDF, DOCX or text file. This editor
-              keeps its contents in this page’s memory; refresh or leave to
-              clear it.
-            </p>
-            <form onSubmit={generate} style={{ marginTop: 22 }}>
-              <label className="field-label" htmlFor="studio-mode">
-                What would you like help with?
-              </label>
-              <select
-                id="studio-mode"
-                value={mode}
-                onChange={(event) => {
-                  setMode(event.target.value as "improve" | "tailor");
-                  setConsent(false);
-                }}
-              >
-                <option value="improve">Improve my CV generally</option>
-                <option value="tailor">Tailor my CV to a role</option>
-              </select>
-              <div className="actions-row">
-                <label
-                  className="field-label"
-                  htmlFor="studio-cv"
-                  style={{ margin: 0 }}
-                >
-                  Your CV text
-                </label>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => uploadRef.current?.click()}
-                >
-                  <Upload
-                    size={13}
-                    style={{ marginRight: 5, verticalAlign: "middle" }}
-                  />
-                  Upload CV
-                </button>
-              </div>
-              <input
-                ref={uploadRef}
-                type="file"
-                accept=".pdf,.docx,.txt"
-                onChange={(event) => void readFile(event)}
-                aria-label="Import a plain-text CV"
-                hidden
-              />
-              <SavedCVButton onLoad={setCv} maxLength={24000} />
-              <textarea
-                id="studio-cv"
-                value={cv}
-                onChange={(event) => {
-                  setCv(event.target.value);
-                  setConsent(false);
-                }}
-                placeholder="Start with your experience, skills and achievements. Include only information you want the studio to review."
-                maxLength={24000}
-                autoComplete="off"
-                spellCheck
-              />
-              <div className="actions-row" style={{ marginTop: -7 }}>
-                <span className="fineprint">
-                  {cv.length.toLocaleString("en-AU")} / 24,000 characters
-                </span>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => {
-                    setCv(sampleCv);
-                    setConsent(false);
-                    setMessage(
-                      "Fictional example CV loaded. No personal details were used.",
-                    );
-                  }}
-                >
-                  Use an example CV
-                </button>
-              </div>
-              <label
-                className="field-label"
-                htmlFor="studio-goals"
-                style={{ marginTop: 22 }}
-              >
-                Anything you’d like to focus on?{" "}
-                <span className="muted">(optional)</span>
-              </label>
-              <textarea
-                id="studio-goals"
-                value={goals}
-                onChange={(event) => {
-                  setGoals(event.target.value);
-                  setConsent(false);
-                }}
-                placeholder="For example: make my summary clearer, or highlight my experience working with customers."
-                maxLength={2000}
-                style={{ minHeight: 95, height: 95 }}
-              />
-              {mode === "tailor" && (
-                <>
-                  <label className="field-label" htmlFor="studio-role">
-                    Choose a role, or add your own
-                  </label>
-                  <select
-                    id="studio-role"
-                    value={jobId}
-                    onChange={(event) => {
-                      selectJob(event.target.value);
-                      setConsent(false);
-                    }}
-                  >
-                    <option value="">Paste a job description below</option>
-                    {jobs.map((job) => (
-                      <option value={job.id} key={job.id}>
-                        {job.title} · {job.company}
-                        {isDemoInventory ? " (example)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="field-label" htmlFor="studio-job-title">
-                    Job title <span className="muted">(optional)</span>
-                  </label>
-                  <input
-                    id="studio-job-title"
-                    value={jobTitle}
-                    maxLength={200}
-                    onChange={(event) => {
-                      setJobTitle(event.target.value);
-                      setConsent(false);
-                    }}
-                    placeholder="The role you’re applying for"
-                    style={{ width: "100%", marginBottom: 18 }}
-                  />
-                  <label className="field-label" htmlFor="studio-description">
-                    Job description
-                  </label>
-                  <textarea
-                    id="studio-description"
-                    value={jobDescription}
-                    onChange={(event) => {
-                      setJobDescription(event.target.value);
-                      setConsent(false);
-                    }}
-                    placeholder="Include the role’s responsibilities and requirements."
-                    maxLength={16000}
-                    style={{ minHeight: 180 }}
-                  />
-                  {isDemoInventory && jobId && (
-                    <p className="fineprint" style={{ marginBottom: 18 }}>
-                      This selected role is fictional sample content from the
-                      development preview.
-                    </p>
-                  )}
-                </>
-              )}
-              <label className="fineprint" style={{ marginTop: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                />
-                <span>
-                  I agree to send the text above to OpenAI for this review. I’ll
-                  remove sensitive details I don’t need to share and check the
-                  suggestions before using them.
-                </span>
-              </label>
-              <button
-                className="button purple full"
-                type="submit"
-                disabled={busy}
-              >
-                {busy ? (
-                  <LoaderCircle className="spin" size={17} />
-                ) : (
-                  <Sparkles size={17} />
-                )}{" "}
-                {busy
-                  ? "Bringing your experience into focus…"
-                  : session.isPremium
-                    ? mode === "tailor"
-                      ? "Prepare my application"
-                      : "Review my CV"
-                    : allowance?.remaining === 0 && !session.user
-                      ? "Sign in for 3 more free uses"
-                      : "Use a free CV review"}
-                {!busy && <ArrowRight size={16} />}
-              </button>
-              <p className="fineprint" style={{ marginTop: 14 }}>
-                {allowance
-                  ? `${allowance.remaining} of ${allowance.cap} reviews available${session.isPremium ? " this billing period" : " in this allowance"}. `
-                  : "Allowances are checked securely before a review. "}
-                One completed request uses one review; failed requests return
-                the allowance. Search skill-match filters run separately.
-              </p>
-              {message && (
-                <p className="message" role="status">
-                  {message}
-                </p>
-              )}
-            </form>
-          </section>
+        <div className="studio-workspace">
           <section
-            ref={resultRef}
-            className="panel"
-            aria-labelledby="studio-result-heading"
-            style={{ scrollMarginTop: 100 }}
+            className="studio-chat-panel panel"
+            aria-label="Careers+ Studio conversation workspace"
           >
-            <div className="result-heading">
-              <h2 id="studio-result-heading">Room for your next chapter.</h2>
-              <Leaf size={20} color="var(--primary)" />
-            </div>
-            {!result ? (
-              <div className="studio-empty">
-                <div
-                  className="round-icon"
-                  style={{ background: "var(--lilac)", color: "var(--purple)" }}
-                >
-                  <FileText size={27} />
-                </div>
-                <h3 style={{ fontSize: 22 }}>Your work has a story.</h3>
-                <p className="muted">
-                  Start with what you’ve done. The studio helps you express it
-                  clearly, while keeping your voice and the facts intact.
-                </p>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => {
-                    showResult(sampleResult, true);
-                    setMessage(
-                      "Showing a static demonstration with a fictional CV. It is not a review of your editor contents.",
-                    );
-                  }}
-                >
-                  See a static example
-                  <ArrowRight size={16} />
-                </button>
-                <p className="fineprint">
-                  Fictional sample. No account, payment or AI request.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="notice" style={{ marginTop: 22 }} role="status">
-                  {isExample ? (
-                    <>
-                      <strong>Static example · fictional CV.</strong> This
-                      demonstrates the format using Alex Morgan’s example CV.
-                    </>
-                  ) : (
-                    <>
-                      <strong>Your review is ready.</strong> Check every claim,
-                      date and qualification before you use it.
-                    </>
-                  )}
-                </div>
-                <p className="result-copy">{result.summary}</p>
-                <div className="result-section">
-                  <h3>Small changes, clearer strengths.</h3>
-                  <ul>
-                    {result.improvements.map((improvement, index) => (
-                      <li key={index}>{improvement}</li>
-                    ))}
-                  </ul>
-                </div>
-                {result.revisedCv && (
-                  <div className="result-section">
-                    <label className="field-label" htmlFor="studio-reviewed-cv">
-                      Review and edit your CV
-                    </label>
-                    <textarea
-                      id="studio-reviewed-cv"
-                      className="result-copy"
-                      value={reviewedCv}
-                      onChange={(event) => {
-                        setReviewedCv(event.target.value);
-                        setCopied(false);
-                      }}
-                      style={{ minHeight: 390 }}
-                      spellCheck
-                    />
-                  </div>
-                )}
-                {result.coverLetter && (
-                  <div className="result-section">
-                    <label
-                      className="field-label"
-                      htmlFor="studio-reviewed-letter"
-                    >
-                      Review and edit your cover letter
-                    </label>
-                    <textarea
-                      id="studio-reviewed-letter"
-                      className="result-copy"
-                      value={reviewedLetter}
-                      onChange={(event) => {
-                        setReviewedLetter(event.target.value);
-                        setCopied(false);
-                      }}
-                      style={{ minHeight: 240 }}
-                      spellCheck
-                    />
-                  </div>
-                )}
-                {result.matchedSkills.length > 0 && (
-                  <div className="result-section">
-                    <h3>Evidence that connects with the role</h3>
-                    <ul>
-                      {result.matchedSkills.map((skill) => (
-                        <li key={skill}>{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {result.missingSkills.length > 0 && (
-                  <div className="result-section">
-                    <h3>Requirements not yet evidenced</h3>
-                    <p className="fineprint">
-                      These weren’t clear in the supplied CV. Add them only if
-                      they accurately reflect your experience.
-                    </p>
-                    <ul>
-                      {result.missingSkills.map((skill) => (
-                        <li key={skill}>{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <div className="inline-actions">
-                  <button
-                    type="button"
-                    className="button secondary small"
-                    onClick={() => void copy()}
-                  >
-                    {copied ? <CheckCheck size={15} /> : <Copy size={15} />}{" "}
-                    {copied ? "Copied" : "Copy reviewed text"}
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary small"
-                    onClick={download}
-                  >
-                    <Download size={15} />
-                    Download .txt
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Clear review output"
-                    onClick={() => {
-                      setResult(null);
-                      setReviewedCv("");
-                      setReviewedLetter("");
-                      setIsExample(false);
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <p className="fineprint" style={{ marginTop: 18 }}>
-                  Keep your voice. Add a number or achievement only when you can
-                  substantiate it. These suggestions do not guarantee an
-                  interview or an employer’s screening result.
-                </p>
-              </>
-            )}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "start",
-                paddingTop: 20,
-                marginTop: 25,
-                borderTop: "1px solid var(--line)",
-              }}
-            >
-              <LockKeyhole
-                size={15}
-                style={{ flexShrink: 0, color: "var(--muted)" }}
-              />
-              <p className="fineprint">
-                Your CV isn’t used to make your profile publicly searchable.
-                Applying to an employer is always a separate choice.
+            <h2>
+              <Star size={22} aria-hidden="true" />
+              Westmere Assistant
+            </h2>
+            {initialNotice && (
+              <p className="notice" role="status">
+                {initialNotice}
               </p>
-            </div>
+            )}
+            {isDemoInventory && (
+              <p className="demo-note">
+                Example roles are fictional. Your documents remain private.
+              </p>
+            )}
+            {!session.isPremium && (
+              <p className="notice">
+                Every signed-in account includes three free Assistant requests,
+                including employer and agency accounts. Only completed answers
+                use a request. Paid access includes 100 requests per billing
+                period and up to 10 saved chats.
+                {session.business && (
+                  <>
+                    {" "}
+                    Enterprise access belongs to its billing owner; invited
+                    accounts retain their own free allowance.{" "}
+                    <Link href="/account?tab=billing">
+                      Review business plans
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
+            <CareerChat
+              key={jobId}
+              job={jobs.find((job) => job.id === jobId)}
+              initialMode={jobId || initialTailor ? "tailor" : undefined}
+              showHistoryOnDesktop
+              onAttachmentsChange={setDocuments}
+            />
           </section>
         </div>
+        <RoleStrength documents={documents} />
+        <p className="fineprint studio-privacy-note">
+          Your conversations are private. Your CV isn’t used to make your
+          profile publicly searchable. Applying to an employer is always a
+          separate choice.
+        </p>
       </div>
     </main>
   );

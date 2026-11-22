@@ -3,6 +3,7 @@ export type BusinessSummary = {
   needsOnboarding?: boolean;
   kind: BusinessKind;
   tradingName: string;
+  defaultOrganisationId?: string | null;
   verified: boolean;
   pending: boolean;
   tier: string | null;
@@ -10,7 +11,12 @@ export type BusinessSummary = {
     id: string;
     name: string;
     role: string;
+    kind?: BusinessKind;
+    specialisms?: string[];
+    regions?: string[];
+    avatarPath?: string | null;
     verified: boolean;
+    isTest?: boolean;
     tier: string | null;
   }[];
 };

@@ -1,3 +1,4 @@
+import { assertPurchasesOpen } from "@/lib/server/launch";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -19,7 +20,17 @@ import {
   requireOrigin,
 } from "@/lib/premium/http";
 import { apiError, ApiError } from "@/lib/server/http";
-import { sandboxPlans } from "@/lib/billing-plans";
+import {
+  billingPlans,
+  livePortal,
+  liveBusinessBillingReady,
+  liveIndividualBillingReady,
+} from "@/lib/premium/billing-mode";
+import { subscriptionTiming } from "@/lib/premium/subscription-timing";
+import {
+  businessPlanLimit,
+  type BusinessPlanCoverage,
+} from "@/lib/business-plan";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const json = (data: unknown) =>
@@ -35,32 +46,43 @@ export async function GET(request: Request) {
       ? await businessCustomer(scope)
       : await customerFor(scope.user);
     const base = {
-      sandbox: true,
+      sandbox: scope.mode === "test",
+      paymentsReady:
+        scope.mode === "test" ||
+        (scope.audience === "individual"
+          ? liveIndividualBillingReady()
+          : liveBusinessBillingReady()),
       audience: scope.audience,
       testing: scope.testingAccess || null,
-      plans: sandboxPlans.filter((p) => p.audience === scope.audience),
+      plans: billingPlans(scope.mode).filter(
+        (p) => p.audience === scope.audience,
+      ),
       subscription: null,
       paymentMethod: null,
       invoices: [],
       hasCustomer: !!customer,
     };
     if (!customer) return json(base);
-    const stripe = stripeClient();
-    const [record, subscriptions, invoices] = await Promise.all([
+    const stripe = stripeClient(scope.mode);
+    const [record, subscriptions] = await Promise.all([
       stripe.customers.retrieve(customer, {
         expand: ["invoice_settings.default_payment_method"],
       }),
       stripe.subscriptions.list({ customer, status: "all", limit: 100 }),
-      stripe.invoices.list({ customer, limit: 20 }),
     ]);
-    if (record.deleted || record.livemode || subscriptions.has_more)
+    if (
+      record.deleted ||
+      record.livemode !== (scope.mode === "live") ||
+      subscriptions.has_more
+    )
       throw new PremiumError(
         "BILLING_REVIEW_REQUIRED",
-        "This sandbox billing account needs review.",
+        "This billing account needs review.",
         409,
       );
     const candidates = subscriptions.data.filter(
       (s) =>
+        !["canceled", "incomplete_expired"].includes(s.status) &&
         s.items.data.length === 1 &&
         base.plans.some((p) => p.priceId === s.items.data[0].price.id),
     );
@@ -71,19 +93,17 @@ export async function GET(request: Request) {
         b.created - a.created,
     )[0];
     const method = record.invoice_settings.default_payment_method;
+    const timing = s ? subscriptionTiming(s, s.items.data[0]) : null;
     return json({
       ...base,
       subscription: s
         ? {
             id: s.id,
             status: s.status,
-            plan: sandboxPlans.find(
-              (p) => p.priceId === s.items.data[0].price.id,
-            )?.code,
-            renewsAt: new Date(
-              s.items.data[0].current_period_end * 1000,
-            ).toISOString(),
-            cancelAtPeriodEnd: s.cancel_at_period_end,
+            plan: base.plans.find((p) => p.priceId === s.items.data[0].price.id)
+              ?.code,
+            renewsAt: timing!.end,
+            cancelAtPeriodEnd: timing!.cancelScheduled,
             scheduledChange: !!s.schedule,
           }
         : null,
@@ -96,16 +116,6 @@ export async function GET(request: Request) {
               expYear: method.card.exp_year,
             }
           : null,
-      invoices: invoices.data.map((i) => ({
-        id: i.id,
-        number: i.number,
-        status: i.status,
-        total: i.total,
-        currency: i.currency,
-        date: i.created,
-        url: i.hosted_invoice_url,
-        pdf: i.invoice_pdf,
-      })),
     });
   } catch (e) {
     return e instanceof ApiError ? apiError(e) : premiumError(e);
@@ -129,13 +139,18 @@ export async function POST(request: Request) {
       );
     const b = parsed.data;
     const scope = await billingScope(b.organisation);
+    if (b.action === "checkout") await assertPurchasesOpen(scope.audience);
     if (b.action !== "portal" && !scope.eligibleToPurchase)
       throw new PremiumError(
         "VERIFICATION_REQUIRED",
         "Complete business verification and current business Terms before purchasing or changing a plan. Existing billing remains available for cancellation and payment management.",
         409,
       );
-    const stripe = stripeClient();
+    const stripe = stripeClient(scope.mode);
+    const checkoutPlan =
+      b.action === "checkout"
+        ? await validatedPlan(b.plan || "", scope.audience, scope.mode)
+        : null;
     return await withBillingLease(scope.user.id, async (lease) => {
       const customer = scope.organisation
         ? await businessCustomer(scope, b.action === "checkout", lease)
@@ -152,10 +167,13 @@ export async function POST(request: Request) {
         status: "all",
         limit: 100,
       });
-      if (subscriptions.has_more || subscriptions.data.some((s) => s.livemode))
+      if (
+        subscriptions.has_more ||
+        subscriptions.data.some((s) => s.livemode !== (scope.mode === "live"))
+      )
         throw new PremiumError(
           "BILLING_REVIEW_REQUIRED",
-          "This sandbox billing account needs review.",
+          "This billing account needs review.",
           409,
         );
       const existing = subscriptions.data.filter(
@@ -163,13 +181,38 @@ export async function POST(request: Request) {
       );
       if (b.action === "portal" || b.action === "change") {
         const config =
-          scope.audience === "individual" || !scope.eligibleToPurchase
-            ? "bpc_1Uax45RX8vZXnntOsqutY8zk"
-            : businessPortal[scope.audience];
+          scope.mode === "live"
+            ? livePortal(scope.audience, !scope.eligibleToPurchase)
+            : scope.audience === "individual" || !scope.eligibleToPurchase
+              ? "bpc_1Uax45RX8vZXnntOsqutY8zk"
+              : businessPortal[scope.audience];
         const flow: import("stripe").Stripe.BillingPortal.SessionCreateParams["flow_data"] =
           b.action === "change"
             ? await (async () => {
-                const plan = await validatedPlan(b.plan || "", scope.audience);
+                const plan = await validatedPlan(
+                  b.plan || "",
+                  scope.audience,
+                  scope.mode,
+                );
+                if (scope.business) {
+                  const coverage =
+                    await scope.supabase!.rpc("my_business_plan");
+                  if (coverage.error)
+                    throw new PremiumError(
+                      "BILLING_UNAVAILABLE",
+                      "Business coverage could not be checked.",
+                      503,
+                    );
+                  if (
+                    (coverage.data as BusinessPlanCoverage).used >
+                    businessPlanLimit(plan.code)
+                  )
+                    throw new PremiumError(
+                      "BUSINESS_LIMIT",
+                      `This plan includes ${businessPlanLimit(plan.code)} businesses. Update coverage in Profile before changing plans.`,
+                      409,
+                    );
+                }
                 const s = existing[0];
                 if (
                   existing.length !== 1 ||
@@ -223,7 +266,25 @@ export async function POST(request: Request) {
         });
         return json({ url: session.url });
       }
-      const plan = await validatedPlan(b.plan || "", scope.audience);
+      const plan = checkoutPlan!;
+      if (scope.business) {
+        const coverage = await scope.supabase!.rpc("my_business_plan");
+        if (coverage.error)
+          throw new PremiumError(
+            "BILLING_UNAVAILABLE",
+            "Business coverage could not be checked.",
+            503,
+          );
+        if (
+          (coverage.data as BusinessPlanCoverage).used >
+          businessPlanLimit(plan.code)
+        )
+          throw new PremiumError(
+            "BUSINESS_LIMIT",
+            `This plan includes ${businessPlanLimit(plan.code)} businesses. Update coverage in Profile before choosing this plan.`,
+            409,
+          );
+      }
       if (existing.length)
         throw new PremiumError(
           "EXISTING_SUBSCRIPTION",
@@ -257,6 +318,7 @@ export async function POST(request: Request) {
         {
           customer,
           mode: "subscription",
+          integration_identifier: "westmere_business_qmhakzvj",
           line_items: [{ price: plan.priceId, quantity: 1 }],
           metadata: { westmere_price_id: plan.priceId },
           success_url: `${returnUrl}&checkout=complete`,
@@ -265,7 +327,9 @@ export async function POST(request: Request) {
           custom_text: {
             submit: {
               message:
-                "Sandbox test subscription only. No real money is charged. Monthly renewal until canceled; manage cancellation in Billing.",
+                scope.mode === "test"
+                  ? "Sandbox test subscription only. No real money is charged. Monthly renewal until canceled; manage cancellation in Billing."
+                  : `${plan.name} costs A$${plan.amount / 100} per month, including applicable GST, and renews monthly until cancelled. Manage cancellation in Billing. Your business profile and vacancies remain private during founding onboarding.`,
             },
           },
         },

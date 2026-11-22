@@ -1,3 +1,5 @@
+import occupationTitles from "@/content/occupation-titles.json";
+import { australianPlaces } from "./locations";
 const normalise = (text: string) =>
   text
     .toLowerCase()
@@ -107,5 +109,13 @@ function suggest(values: string[], value: string): string[] {
     .map((item) => item.value);
 }
 
-export const jobSuggestions = (query: string) => suggest(titles, query);
-export const locationSuggestions = (query: string) => suggest(locations, query);
+const jobDirectory = [...new Set([...titles, ...occupationTitles])];
+export const jobSuggestions = (query: string) => suggest(jobDirectory, query);
+const locationDirectory = [
+  ...new Set([
+    ...locations,
+    ...australianPlaces.map((p) => `${p.city}, ${p.state}`),
+  ]),
+];
+export const locationSuggestions = (query: string) =>
+  suggest(locationDirectory, query);

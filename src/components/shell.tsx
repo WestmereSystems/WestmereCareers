@@ -1,4 +1,5 @@
 "use client";
+import { launchPath } from "@/lib/launch-paths";
 import { PrivacyChoice } from "./privacy-choice";
 import { AustraliaIcon } from "@/components/australia-icon";
 import Link from "next/link";
@@ -16,8 +17,13 @@ import { ThemeToggle, useSession } from "./providers";
 import { NotificationPreview } from "./notifications";
 
 export function Brand() {
+  const session = useSession();
   return (
-    <Link href="/" className="brand" aria-label="Westmere Careers home">
+    <Link
+      href={launchPath("/", session.marketplaceOpen)}
+      className="brand"
+      aria-label="Westmere Careers home"
+    >
       <span className="brand-mark" aria-hidden="true">
         w
       </span>
@@ -28,9 +34,13 @@ export function Brand() {
   );
 }
 export function Header() {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname
+    .replace(/^\/launch\/preview$/, "/companies")
+    .replace(/^\/launch(?=\/|$)/, "");
   const session = useSession();
   const [menu, setMenu] = useState(false);
+  const hasStudio = Boolean(session.user && session.isPremium);
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -40,33 +50,47 @@ export function Header() {
           aria-label="Main navigation"
         >
           <Link
-            href="/jobs"
+            href={
+              session.marketplaceOpen ? "/jobs" : "/launch#candidate-updates"
+            }
             aria-current={pathname.startsWith("/jobs") ? "page" : undefined}
             className={pathname.startsWith("/jobs") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
-            Find a job
+            {session.marketplaceOpen ? "Find a job" : "For job seekers"}
           </Link>
           <Link
-            href="/companies"
+            href={session.marketplaceOpen ? "/companies" : "/launch/employers"}
             aria-current={
               pathname.startsWith("/companies") ? "page" : undefined
             }
             className={pathname.startsWith("/companies") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
-            Explore employers
+            {session.marketplaceOpen ? "Explore employers" : "Employer onboarding"}
           </Link>
           <Link
-            href="/careers-plus"
-            aria-current={pathname === "/careers-plus" ? "page" : undefined}
-            className={`premium-link ${pathname === "/careers-plus" ? "active" : ""}`}
+            href={
+              hasStudio
+                ? "/studio"
+                : launchPath("/careers-plus", session.marketplaceOpen)
+            }
+            aria-current={
+              pathname === "/careers-plus" || pathname === "/studio"
+                ? "page"
+                : undefined
+            }
+            className={`premium-link ${pathname === "/careers-plus" || pathname === "/studio" ? "active" : ""}`}
             onClick={() => setMenu(false)}
           >
             Careers<span>+</span>
+            {hasStudio && " Studio"}
           </Link>
           <Link
-            href={session.business ? "/account?tab=dashboard" : "/employers"}
+            href={launchPath(
+              session.business ? "/account?tab=dashboard" : "/employers",
+              session.marketplaceOpen,
+            )}
             aria-current={
               pathname.startsWith("/employers") ? "page" : undefined
             }
@@ -99,11 +123,18 @@ export function Header() {
                   "there"}
               </span>
               <NotificationPreview />
-              <Link href="/account" className="button small secondary">
+              <Link
+                href={launchPath("/account", session.marketplaceOpen)}
+                className="button small secondary"
+              >
                 <UserRound size={17} aria-hidden="true" />
                 Profile
               </Link>
             </>
+          ) : !session.marketplaceOpen ? (
+            <Link href="/launch/sign-in" className="button small secondary">
+              Sign in
+            </Link>
           ) : (
             <button
               className="button small secondary"
@@ -146,21 +177,52 @@ export function Footer() {
         <div className="footer-links">
           <div>
             <h3>Your next step</h3>
-            <Link href="/jobs">Find a job</Link>
-            <Link href="/account?tab=saved">Saved roles</Link>
-            <Link href="/account?tab=alerts">Saved searches & alerts</Link>
-            <Link href="/account?tab=trust">My trust activity</Link>
-            <Link href="/account?tab=applications">My applications</Link>
-            {!session.business && <Link href="/studio">Careers+ Studio</Link>}
+            <Link
+              href={
+                session.marketplaceOpen ? "/jobs" : "/launch#candidate-updates"
+              }
+            >
+              {session.marketplaceOpen ? "Find a job" : "Get a launch update"}
+            </Link>
+            {session.marketplaceOpen || session.user ? (
+              <>
+                <Link href="/account?tab=saved">Saved roles</Link>
+                <Link href="/account?tab=alerts">Saved searches & alerts</Link>
+                <Link href="/account?tab=trust">My trust activity</Link>
+                <Link href="/account?tab=applications">My applications</Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={launchPath(
+                    "/employers",
+                    session.marketplaceOpen,
+                  )}
+                >
+                  How employer onboarding works
+                </Link>
+                <Link href="/launch/register">Register your business</Link>
+                <Link href="/launch/sign-in">Already registered? Sign in</Link>
+              </>
+            )}
+            {(session.marketplaceOpen || session.user) &&
+              (!session.business || session.isPremium) && (
+                <Link href="/studio">Careers+ Studio</Link>
+              )}
           </div>
           <div>
             <h3>A better experience</h3>
             <Link
-              href={session.business ? "/account?tab=dashboard" : "/employers"}
+              href={launchPath(
+                session.business ? "/account?tab=dashboard" : "/employers",
+                session.marketplaceOpen,
+              )}
             >
               For employers
             </Link>
-            <Link href="/careers-plus">Careers+</Link>
+            <Link href={launchPath("/careers-plus", session.marketplaceOpen)}>
+              Careers+
+            </Link>
             <Link href="/about">About Westmere</Link>
             <Link href="/transparency">Our transparency promise</Link>
             <Link href="/privacy">Your privacy</Link>

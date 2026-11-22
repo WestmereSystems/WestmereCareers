@@ -1,0 +1,28 @@
+Westmere national founding launch — 22 November 2026
+
+Production source snapshot: a1aeb907d2cadc860036b656c3bb3eb2366b988d
+Production deployment: dpl_4pyYEATqdsKjgak1oVohZ17tN7UL (READY)
+Canonical site: https://westmere.com.au
+Vercel project: westmere-careers (order-ward)
+Supabase project: ldmwqupidlgrkkjjpcvn
+Hosted migrations: 20261122044604_launch_billing_and_administration; 20261122045504_retained_billing_stream_coverage
+
+Implemented: administrator sandbox exception; isolated live business catalog, credentials, portal and signed webhook selection; retained billing histories; permanent confirmed personal-to-business conversion with Careers+ cancellation; protected staff sign-in; paginated registrations and restrictions; mailing suppression; idempotent one-time launch and email control; shared production Careers+ marketing and founding availability notice; Australia-wide marketing; canonical sign-in, billing and email links.
+
+Live Stripe account: acct_1UeSWmD2lLFfQL14, charges and payouts enabled, no outstanding account requirements.
+Administrator sandbox account remains acct_1UawPPRX8vZXnntO.
+Six live monthly AUD plans verified: employer 129/249/499; agency 199/399/799. User confirmed no GST collection. Employer and agency live Checkout probes reported expected totals, amount_tax=0, automatic_tax=false, no customer or subscription and no payment. Probe sessions expire automatically after 31 minutes.
+Production live portal configurations and independent webhook secret are stored in Vercel Production. The approved restricted runtime key is stored as a Vercel Production Secret, with no value written to source, local files or chat. A fresh deployment reports businessPaymentsReady=true. The deployed verification command ran inside Vercel and confirmed the actual key can read all six live prices/products, create/retrieve the disposable customer, list payment methods/subscriptions/invoices/charges, create a zero-tax invoice preview, create sessions for all three portal configurations, and create/expire employer and agency Checkout sessions. The empty customer was deleted. No payment method, charge or subscription was created. Missing and invalid signatures return 400 for both live and sandbox webhooks.
+
+DNS records confirmed in VentraIP screenshot, public Google and Cloudflare resolver responses, and Vercel domain configuration: apex A 216.150.1.1; www CNAME 467b471636d55a4e.vercel-dns-017.com. Vercel reports configured with valid certificates; www redirects 308 with path/query preserved. This computer still has the prior apex IP cached; edge probes use the expected IP with normal TLS certificate verification.
+Auth Site URL and canonical callback saved in Supabase. Existing exact staging callbacks retained. Auth custom domain auth.westmere.com.au remains active. Mail queue site and unsubscribe origins use westmere.com.au.
+
+Validation: 281 application/API tests in 56 files; 128 backend database cases before the final narrow stale-stream guard; 19 founding database cases; 11 launch administration/history cases; 10 targeted billing/coverage cases after that guard. Latest Terms/GST follow-up: 27 billing/conversion cases plus 17 founding/Careers+/email cases, TypeScript and production build including four traced PDF-worker checks passed. No real payment, AI request, account conversion or launch announcement was executed.
+
+Hosted invariants: marketplace_open=false; 17 auth registrations; launch campaigns=0; protected owner role=admin. Profiles and vacancies remain private; launch still requires the administrator's explicit action.
+
+Runtime verification log: Live billing verified: six AUD monthly prices; restricted runtime key; customer, invoice preview and three portals; employer and agency checkout with zero tax; temporary sessions expired and empty customer deleted. No payment or subscription created.
+
+Terms version 2026-11-22.1 corrects former sandbox-only/blocked-conversion clauses and states that GST is not currently charged. Existing business accounts must explicitly accept the current version before a new purchase; previous acceptance records remain retained.
+
+Local operator helper follow-up: missing/wrong-mode keys throw a fixed message without printing the supplied credential. This helper is not a public application route.

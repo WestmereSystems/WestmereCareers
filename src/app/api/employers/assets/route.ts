@@ -20,6 +20,8 @@ export async function POST(request: Request) {
     const { supabase, user } = await requireEmployer(
       organisationId,
       kind !== "document",
+      kind === "document" ? z.uuid().parse(form.get("jobId")) : undefined,
+      "listing",
     );
     const file = form.get("file");
     if (

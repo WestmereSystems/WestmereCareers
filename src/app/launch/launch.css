@@ -1,0 +1,133 @@
+.founding-lead {
+  font-size: 1.2rem;
+  line-height: 1.75;
+  max-width: 44rem;
+}
+.launch-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.launch-hero-actions > div {
+  flex: 1;
+}
+.launch-hero-actions .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.launch-hero-note {
+  margin-top: 1rem;
+}
+.founding-home-plans {
+  padding-block: 2rem 4rem;
+  scroll-margin-top: 6rem;
+}
+.launch-plan-options {
+  scroll-margin-top: 6rem;
+}
+.founding-assistant-access {
+  margin-block: 2rem;
+}
+.founding-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-block: 1rem 4rem;
+}
+.founding-benefits h2 {
+  font-size: 1.3rem;
+}
+.founding-story {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-block: 2rem 4rem;
+}
+.founding-story h2,
+.founding-candidate h2 {
+  font-size: 1.9rem;
+}
+.founding-story p,
+.founding-story li {
+  line-height: 1.8;
+}
+.founding-story li {
+  margin-bottom: 0.6rem;
+}
+.founding-candidate {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  padding-block: 3rem 5rem;
+  border-top: 1px solid var(--line);
+}
+.founding-page {
+  padding-block: 3rem 5rem;
+}
+.founding-request-page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  padding-block: 4rem;
+}
+.founding-form {
+  display: grid;
+  gap: 1.2rem;
+  min-width: 0;
+}
+.founding-form label:not(.checkbox-label) {
+  display: grid;
+  gap: 0.4rem;
+}
+.founding-form input:not([type="checkbox"]),
+.founding-form select {
+  width: 100%;
+  min-height: 3rem;
+}
+.founding-form small {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.founding-form .checkbox-label {
+  align-items: flex-start;
+  line-height: 1.6;
+}
+.founding-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.founding-preview-note {
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 800px) {
+  .founding-request-page,
+  .founding-story,
+  .founding-candidate {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .founding-benefits {
+    grid-template-columns: 1fr;
+  }
+  .founding-request-page {
+    padding-block: 2rem;
+  }
+  .founding-candidate {
+    padding-block: 2rem;
+  }
+  .launch-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .launch-hero-actions .hero-actions > .button {
+    flex: 1 1 14rem;
+  }
+}

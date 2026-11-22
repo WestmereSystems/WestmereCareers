@@ -56,6 +56,9 @@ export function discoveryRegion(headers: Headers, vercel: boolean) {
   if (!vercel) return "UNKNOWN";
   const country = headers.get("x-vercel-ip-country");
   if (!country) return "UNKNOWN";
+  // GeoIP providers can identify these Australian external territories by their
+  // own ISO country codes. Discovery groups them with WA, not overseas traffic.
+  if (country === "CX" || country === "CC") return "WA";
   if (country !== "AU") return "OTHER";
   const region = headers.get("x-vercel-ip-country-region") || "";
   return ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"].includes(region)

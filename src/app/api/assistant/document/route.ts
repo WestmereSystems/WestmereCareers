@@ -1,5 +1,5 @@
+import { assertStudioLaunchAccess } from "@/lib/server/launch";
 import { getSessionContext } from "@/lib/server/auth";
-import { assertIndividual } from "@/lib/server/business";
 import { assistantIdentity } from "@/lib/server/assistant-identity";
 import { premiumAdmin } from "@/lib/premium/providers";
 import { premiumError } from "@/lib/premium/http";
@@ -11,8 +11,8 @@ export async function POST(request: Request) {
   let network: string | undefined, token: string | undefined;
   try {
     assertSameOrigin(request);
-    const { user, business } = await getSessionContext();
-    if (user) assertIndividual(business);
+    await assertStudioLaunchAccess();
+    const { user } = await getSessionContext();
     network = assistantIdentity(
       undefined,
       user?.id || null,
@@ -44,12 +44,12 @@ export async function POST(request: Request) {
     if (text.trim().length < 100)
       throw new ApiError(
         400,
-        "There is not enough readable CV text. Upload a text-based PDF or DOCX, or paste your CV. Scanned PDFs need text recognition first.",
+        "There is not enough readable CV text. Upload a text-based PDF, DOCX or TXT file. Scanned PDFs need text recognition first.",
       );
     if (text.length > 24000)
       throw new ApiError(
         400,
-        "Keep your CV under 24,000 characters. Paste the relevant sections instead.",
+        "Keep your CV under 24,000 characters. Upload a shorter document containing the relevant sections.",
       );
     return json({
       text,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         .replace(/[\u0000-\u001f\u007f/\\]/g, "_")
         .slice(0, 180),
       message:
-        "Text extracted for this session only. Check it before consenting to an AI review. The original file is not saved.",
+        "Text extracted for this session only. Only extracted text is shared after you give consent for a request. The original file is not saved.",
     });
   } catch (e) {
     if (e instanceof ApiError) return apiError(e);

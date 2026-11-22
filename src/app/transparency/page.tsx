@@ -30,13 +30,16 @@ export default function Transparency() {
         being submitted or opened. An outbound click is not evidence of a
         submission. External listings are labelled before you leave.
       </p>
-      <h2>Candidate-reported employer responses</h2>
+      <h2>Recorded and reported employer responses</h2>
       <p>
-        Response times describe reports from candidates. They are separate from
-        Westmere-recorded application activity. A meaningful response is a
-        direct contact or a specific application decision; an automated decision
-        is labelled as such. Receipts, marketing and generic processing notices
-        do not count.
+        For applications submitted on Westmere, response times use the first
+        recorded employer message or application decision. Receipts, list views,
+        document openings and generic closure notices do not count. Candidate
+        reports cannot replace these recorded dates. For off-site applications,
+        we rely on the candidate’s reported experience. A meaningful response is
+        a direct contact or a specific application decision; an automated
+        decision is labelled as such. Receipts, marketing and generic processing
+        notices do not count.
       </p>
       <p>
         “More than two months” means strictly beyond two calendar months from
@@ -45,18 +48,23 @@ export default function Transparency() {
       </p>
       <h2>When an employer may be labelled unresponsive</h2>
       <p>
-        The proposed public label requires at least 10 unique eligible candidate
-        reports, with more than half reporting no meaningful reply beyond two
+        The proposed public label requires at least 10 unique eligible
+        candidates, with more than half having no meaningful reply beyond two
         months. The numerator, denominator and reporting period must be visible.
         Smaller samples show “Not enough response data”. A new employer is not
         presumed unresponsive.
       </p>
       <p>
         The initial reporting cohort covers applications submitted three to six
-        months before a snapshot. No-response reports need reconfirmation within
-        30 days. Late replies and corrections update the figures. A median
-        response time is calculated only among respondents who reported
-        receiving a response, and is shown alongside no-response counts.
+        months before a snapshot. Off-site no-response reports need
+        reconfirmation within 30 days. On-site silence is determined from the
+        absence of a recorded meaningful response. Late recorded replies update
+        the figures. The average response time is calculated only among
+        responders, requires at least five responses, and is shown alongside
+        no-response counts. On-site listing figures use only on-site application
+        activity; off-site listing figures use accepted off-site reports.
+        Employer profile figures combine these sources, counting each candidate
+        once.
       </p>
       <h2>Reports describe experiences, not everyone</h2>
       <p>
@@ -67,15 +75,18 @@ export default function Transparency() {
       </p>
       <h2>Fairness for candidates and employers</h2>
       <p>
-        Reports must be moderated, duplicates excluded, and small samples
-        suppressed. Employers need a correction and appeal process. Payment
-        cannot remove valid negative reports or improve a responsiveness label.
+        Off-site reports are reviewed, duplicates excluded, and small samples
+        suppressed. Each candidate can review a job title at a business once,
+        choosing from positions published in the last six months. On-site
+        feedback is affirmed when its dates agree with recorded activity;
+        discrepancies do not change the recorded statistics. Payment cannot
+        remove valid negative reports or improve a responsiveness label.
       </p>
       <div className="notice" style={{ marginTop: 25 }}>
-        Development preview: all sample employers and response figures are
-        fictional. The connected staging service supports independent business
-        and listing review, moderated response aggregation and private appeals.
-        No genuine vacancies or candidate reports have been seeded.
+        Employer response information is published only when there is enough
+        recent, eligible evidence. When there is not enough evidence, we say so.
+        Test companies, vacancies and synthetic reports are excluded from the
+        public marketplace.
       </div>
       <h2>Trust stays part of the free service</h2>
       <p>

@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     const { data: memberships, error } = await supabase
       .from("organisation_members")
       .select(
-        "organisation_id,role,organisations(name,is_verified,suspended_at)",
+        "organisation_id,role,organisations(name,is_verified,suspended_at,kind)",
       )
       .eq("user_id", user.id)
       .in("role", ["owner", "admin", "recruiter"]);
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         ? member.organisations[0]
         : member.organisations;
       return business?.is_verified && !business.suspended_at
-        ? [{ id: member.organisation_id, name: business.name }]
+        ? [{ id: member.organisation_id, name: business.name, kind: business.kind }]
         : [];
     });
     if (
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
         businesses,
         roles: [],
       });
-    const roles = await allRows<HiringRole>((start, end) =>
+    let roles = await allRows<HiringRole>((start, end) =>
       supabase
         .from("jobs")
         .select("id,title,organisation_id,status,published_at,expires_at")
@@ -90,6 +90,12 @@ export async function GET(request: Request) {
         .order("id")
         .range(start, end),
     );
+    if (businesses.some(b=>b.kind==="agency")) {
+      const overview=await supabase.rpc("role_overview");
+      if(overview.error)throw new ApiError(503,"Vacancy scope could not be checked.");
+      const allowed=new Set((overview.data || []).map((r:{id:string})=>r.id));
+      roles=roles.filter(r=>businesses.find(b=>b.id===r.organisation_id)?.kind!=="agency" || allowed.has(r.id));
+    }
     if (job && !roles.some((role) => role.id === job))
       throw new ApiError(
         403,

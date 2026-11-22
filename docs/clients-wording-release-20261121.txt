@@ -1,0 +1,21 @@
+Clients wording and empty states — 21 November 2026
+
+Deploy Result
+URL: https://westmere-careers.vercel.app/account?tab=clients
+Target: production
+Status: READY; canonical aliases assigned; no alias error
+Runtime source commit: 18f3ebf09b34cce9de5b5a4561e8965213193d30
+Framework: Next.js 16.4.6
+Remote build duration: 30 seconds
+Deployment: dpl_38wvuwxtXew793wfxPrMpyrmKHAP
+Previous production: dpl_ETGBHQoqBvopgC2aQdrC2YyU7U7w
+
+The wording follows the selected organisation's approved employer/agency type. Employer owners see Agency authorisations and an explanation of confirming or revoking agencies' recruitment mandates. Agencies see client-management wording explaining independent mandate review, application recipients and vacancy assignments. The Business workspace selector now has explanatory help and uses the existing form spacing.
+
+Loaded empty responses show clear guidance for employer owners, agency owners/admins with no clients, agency owners/admins with clients but no authorisations, recruiters without visible mandates, and independent reviewers with an empty queue. Loading responses do not display an empty-result claim; existing authorisations continue to render their original controls. No API, permission, database, billing or authorisation-state mutation was included.
+
+Release isolation: all 242 input file hashes were matched to the current live founding-launch deployment before preparing this release. Post-deployment source inspection confirms that only src/components/agency-workspace.tsx differs; no source files were removed. Existing uncommitted workspace work and the live founding-launch changes are preserved. Source snapshot and payload records are in artifacts/clients-release-source.json and artifacts/clients-deployment-files.json.
+
+Verification: TypeScript passed. Eight existing agency billing/team regression cases passed. Seven isolated rendered previews checked employer empty, agency owner empty, client-without-mandate, recruiter empty, reviewer empty, existing authorisation and loading states. A default Turbopack production build and all four deployment-traced PDF worker checks passed. The earlier local webpack diagnostic build compiled but did not produce the Turbopack worker naming required by the existing PDF validation script; the final build used the production default bundler and passed that check.
+
+Live browser: the existing louis.sibul@westmere.com.au session opened Clients, selected Westmere Test — Harbour Collective, and displayed Agency authorisations, employer-specific guidance, and No agency authorisations yet with the selected business name. No browser console errors were reported. Vercel's scoped /account and /api/employers/agency runtime-error scan over the selected five-minute window returned no errors. Proof: artifacts/clients-employer-live.png. No local development server was started.

@@ -20,7 +20,7 @@ vi.mock("@/lib/premium/billing", () => ({
     work({ userId: u, token: "lease", deadline: performance.now() + 50000 }),
   assertBillingLeaseFresh: () => {},
 }));
-import { POST } from "../src/app/api/billing/account/route";
+import { GET, POST } from "../src/app/api/billing/account/route";
 import { billingScope } from "../src/lib/premium/business-billing";
 import { sandboxPlans } from "../src/lib/billing-plans";
 const org = "20000000-0000-4000-8000-000000000001",
@@ -36,7 +36,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SITE_URL", origin);
   m.session.mockResolvedValue({
     user: { id: "owner", email: "owner@example.test" },
-    supabase: {},
+    supabase: { rpc: async () => ({ data: { used: 1 }, error: null }) },
     business: {
       kind: "employer",
       organisations: [
@@ -52,11 +52,9 @@ beforeEach(() => {
     },
     error: null,
   });
-  m.admin.mockReturnValue({
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: m.mapping }) }),
-    }),
-  });
+  const mappingQuery = { eq: vi.fn(), maybeSingle: m.mapping };
+  mappingQuery.eq.mockReturnValue(mappingQuery);
+  m.admin.mockReturnValue({ from: () => ({ select: () => mappingQuery }) });
   const plan = sandboxPlans.find((p) => p.code === "growth")!;
   m.retrievePrice.mockResolvedValue({
     id: plan.priceId,
@@ -93,10 +91,123 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("sandbox billing boundaries", () => {
+  it("shows only the three agency plans for the approved WM Recruitment test agency", async () => {
+    m.session.mockResolvedValue({
+      user: { id: "f5a9d75a-d982-4089-ba39-ec1d0b5d8e0c" },
+      supabase: {},
+      business: {
+        kind: "agency",
+        needsOnboarding: true,
+        organisations: [
+          {
+            id: "77549531-6dc1-4a4c-99f5-f9366fa922e9",
+            role: "owner",
+            kind: "agency",
+            verified: true,
+            name: "WM Recruitment",
+          },
+        ],
+      },
+    });
+    m.mapping.mockResolvedValue({ data: null, error: null });
+    const response = await GET(
+      new Request(
+        origin +
+          "/api/billing/account?organisation=77549531-6dc1-4a4c-99f5-f9366fa922e9",
+      ),
+    );
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.audience).toBe("agency");
+    expect(
+      data.plans.map((p: { code: string; amount: number }) => [
+        p.code,
+        p.amount,
+      ]),
+    ).toEqual([
+      ["agency_starter", 19900],
+      ["agency_growth", 39900],
+      ["agency_enterprise", 79900],
+    ]);
+    expect(m.retrievePrice).not.toHaveBeenCalled();
+    expect(m.checkout).not.toHaveBeenCalled();
+  });
+  it("uses the same account billing stream when another owned business is selected", async () => {
+    const account = await m.session();
+    const anotherOrg = "20000000-0000-4000-8000-000000000002";
+    account.business.organisations.push({
+      id: anotherOrg,
+      role: "owner",
+      verified: true,
+      name: "Another business",
+    });
+    m.session.mockResolvedValue(account);
+    expect(
+      (await POST(request({ organisation: org, action: "portal" }))).status,
+    ).toBe(200);
+    expect(
+      (await POST(request({ organisation: anotherOrg, action: "portal" })))
+        .status,
+    ).toBe(200);
+    expect(m.portal.mock.calls.map(([params]) => params.customer)).toEqual([
+      "cus_business",
+      "cus_business",
+    ]);
+  });
+  it("blocks a plan change below the linked business count before opening Stripe", async () => {
+    const account = await m.session();
+    account.supabase.rpc = async () => ({ data: { used: 4 }, error: null });
+    m.session.mockResolvedValue(account);
+    const response = await POST(
+      request({ organisation: org, action: "change", plan: "growth" }),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "BUSINESS_LIMIT" });
+    expect(m.portal).not.toHaveBeenCalled();
+    expect(m.checkout).not.toHaveBeenCalled();
+  });
+  it("shows a timestamp-only Stripe cancellation as ending access, not renewal", async () => {
+    m.list.mockResolvedValue({
+      has_more: false,
+      data: [
+        {
+          id: "sub_business",
+          status: "active",
+          livemode: false,
+          cancel_at_period_end: false,
+          cancel_at: 1797493407,
+          items: {
+            data: [
+              {
+                current_period_start: 1794901407,
+                current_period_end: 1797493407,
+                price: { id: sandboxPlans[1].priceId },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    m.stripe.mockReturnValue({
+      customers: {
+        retrieve: async () => ({ livemode: false, invoice_settings: {} }),
+      },
+      subscriptions: { list: m.list },
+      invoices: { list: async () => ({ data: [] }) },
+    });
+    const response = await GET(
+      new Request(origin + "/api/billing/account?organisation=" + org),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).subscription).toMatchObject({
+      cancelAtPeriodEnd: true,
+      renewsAt: "2026-12-17T07:43:27.000Z",
+    });
+  });
   it("requires the verified owner and does not confer billing rights on hiring recruiters", async () => {
     m.session.mockResolvedValue({
       user: { id: "recruiter" },
-      supabase: {},
+      supabase: { rpc: async () => ({ data: { used: 1 }, error: null }) },
       business: {
         kind: "employer",
         organisations: [{ id: org, role: "recruiter", verified: true }],
@@ -110,7 +221,7 @@ describe("sandbox billing boundaries", () => {
   it("preserves cancellation and payment management when business verification is suspended or Terms need renewal", async () => {
     m.session.mockResolvedValue({
       user: { id: "owner" },
-      supabase: {},
+      supabase: { rpc: async () => ({ data: { used: 1 }, error: null }) },
       business: {
         kind: "employer",
         needsOnboarding: true,

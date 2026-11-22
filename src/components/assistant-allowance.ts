@@ -15,7 +15,7 @@ export function useAssistantAllowance() {
   const controller = useRef<AbortController | null>(null);
   const refresh = useCallback(
     async (broadcast = true) => {
-      if (session.loading || session.business) return;
+      if (session.loading) return;
       controller.current?.abort();
       const request = new AbortController();
       controller.current = request;
@@ -27,7 +27,8 @@ export function useAssistantAllowance() {
         const data = await response.json();
         if (!response.ok)
           throw new Error(
-            data.error || "Your AI allowance is temporarily unavailable.",
+            data.error ||
+              "Your Assistant allowance is temporarily unavailable.",
           );
         if (!request.signal.aborted) {
           setAllowance(data);
@@ -45,18 +46,12 @@ export function useAssistantAllowance() {
           setError(
             cause instanceof Error
               ? cause.message
-              : "Your AI allowance is temporarily unavailable.",
+              : "Your Assistant allowance is temporarily unavailable.",
           );
         }
       }
     },
-    [
-      session.loading,
-      session.user?.id,
-      session.isPremium,
-      Boolean(session.business),
-      listenerId,
-    ],
+    [session.loading, session.user?.id, session.isPremium, listenerId],
   );
   useEffect(() => {
     setAllowance(null);

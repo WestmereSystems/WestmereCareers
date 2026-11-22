@@ -1,5 +1,4 @@
-import { assertIndividual } from "@/lib/server/business";
-import { NextResponse } from "next/server";
+import { assertCareerTools } from "@/lib/server/business";
 import { getSessionContext } from "@/lib/server/auth";
 import { studioRequestSchema } from "@/lib/premium/contracts";
 import {
@@ -8,9 +7,13 @@ import {
   PremiumError,
   requireOrigin,
 } from "@/lib/premium/http";
-import { openAIClient, premiumAdmin } from "@/lib/premium/providers";
+import { openAIClient } from "@/lib/premium/providers";
 
 import { generateStudioReview } from "@/lib/premium/studio-review";
+import {
+  assistantAttemptId,
+  assistantResponse,
+} from "@/lib/premium/assistant-response";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,6 +21,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
+    assistantAttemptId(request);
     const { supabase, user, isPremium, business } = await getSessionContext();
     if (!supabase)
       throw new PremiumError(
@@ -31,7 +35,7 @@ export async function POST(request: Request) {
         "Please sign in to use your CV studio.",
         401,
       );
-    assertIndividual(business);
+    assertCareerTools(business, isPremium);
     if (!isPremium)
       throw new PremiumError(
         "PREMIUM_REQUIRED",
@@ -45,7 +49,6 @@ export async function POST(request: Request) {
         parsed.error.issues[0]?.message ?? "Please check the supplied text.",
       );
     const client = openAIClient();
-    const admin = premiumAdmin();
     const { data: reservation, error: reserveError } = await supabase.rpc(
       "reserve_ai_usage",
       { p_mode: parsed.data.mode },
@@ -56,34 +59,13 @@ export async function POST(request: Request) {
         "Your monthly studio allowance is unavailable or has been used. Please check your subscription or try again later.",
         429,
       );
-    let settled = false;
-    try {
-      const result = await generateStudioReview(client, parsed.data);
-      const { error: settleError } = await admin.rpc("settle_ai_usage", {
-        p_reservation_id: reservation,
-        p_success: true,
-      });
-      if (settleError)
-        throw new PremiumError(
-          "USAGE_SETTLEMENT_PENDING",
-          "Your review could not be saved safely. Please try again later.",
-          503,
-        );
-      settled = true;
-      return NextResponse.json(
-        { result, reservationId: reservation },
-        { headers: { "Cache-Control": "no-store" } },
-      );
-    } finally {
-      if (!settled) {
-        // This write is privileged: clients cannot refund their own successful usage.
-        // A temporary DB failure also recovers through the reservation expiry policy.
-        await admin.rpc("settle_ai_usage", {
-          p_reservation_id: reservation,
-          p_success: false,
-        });
-      }
-    }
+    return await assistantResponse(request, {
+      reservation,
+      paid: true,
+      userId: user.id,
+      generate: (signal, onPreview) =>
+        generateStudioReview(client, parsed.data, signal, onPreview),
+    });
   } catch (error) {
     return premiumError(error);
   }
