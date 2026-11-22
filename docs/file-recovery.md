@@ -1,0 +1,17 @@
+# File recovery operations
+
+Westmere keeps encrypted file copies in the private `westmere-file-recovery` Vercel Blob store in Sydney, separate from the Supabase project in Tokyo. It covers candidate documents, application attachments and employer assets. It does not publish these files or include their contents in GitHub.
+
+The daily Vercel Cron runs at 15:10 UTC. The protected administrator can also use **Profile → Admin → File recovery → Back up files now**. A complete snapshot is published only after every encrypted file is downloaded again and its decrypted checksum matches. Disposable private synthetic text is also deleted and restored to test the complete storage path, using the document bucket's allowed MIME type. The probe has no account, vacancy or document record and is removed afterwards.
+
+Snapshots are retained for 30 days. Their encrypted file objects expire within 31 days, allowing a margin around manifest expiry. File names and manifests are encrypted using AES-256-GCM with fresh nonces and authenticated destination paths. The v1 encryption key and storage token are production-only Vercel Secrets. Keep `FILE_RECOVERY_KEY_V1` available while v1 copies exist: replacing it makes those copies unreadable. Do not copy it into source, screenshots or support messages.
+
+To restore an accidentally removed object, choose a snapshot and the missing file in Admin, record a reason and type `RESTORE MISSING FILE`. Restoration refuses an existing current file, verifies the copy and readback, and requires the original CV/application/business reference to remain in the database. It records an administrative audit event. This protects against accidentally undoing an account or document deletion request. Existing files and application records are not overwritten.
+
+If the database record was also deleted, first assess the deletion request and use the separate database recovery process in an isolated environment. Restoring a blob alone does not restore an account, application, CV row, authorisation or relationship. For a whole Supabase outage, preserve the Vercel store and encryption key, recover the database separately, configure the replacement project's service credentials and use the same authenticated recovery code against the retained manifests. Do not restore personal records contrary to an applicable deletion request.
+
+The Admin panel shows the last complete backup, file count, a failed latest attempt and a warning after 36 hours without a completed backup. Investigate failures before relying on recovery. Database state and audit functions have no anonymous/authenticated grants; only server-side service access can invoke them. The cron credential and optional backup-only job token do not allow arbitrary file downloads or restores through HTTP.
+
+This initial implementation is bounded to 5,000 source objects, 10 MB per object and a four-minute work window inside a five-minute function. A failed or interrupted run does not replace a completed snapshot; incomplete encrypted objects expire automatically. Review run duration and migrate to incremental/background processing before growth approaches these limits. Daily copies provide an approximately 24-hour recovery point, not continuous backup. A simultaneous loss of both provider accounts and the encryption key is outside this basic system's protection.
+
+Recovery checks operate on synthetic private bytes; no real user document is deleted to test restoration. Service storage calls must use the SDK, not direct writes to `storage.objects`.

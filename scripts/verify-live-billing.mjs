@@ -10,6 +10,7 @@ if (!/^(rk|sk)_live_/.test(key || ""))
 const stripe = new Stripe(key, { timeout: 8000, maxNetworkRetries: 0 });
 const plans = JSON.parse(process.env.STRIPE_LIVE_PLANS || "{}");
 const amounts = {
+  careers_plus: 2500,
   starter: 12900,
   growth: 24900,
   enterprise: 49900,
@@ -65,7 +66,7 @@ try {
     preview.total_taxes?.reduce((sum, tax) => sum + tax.amount, 0) || 0,
     0,
   );
-  for (const audience of ["EMPLOYER", "AGENCY", "RESTRICTED"]) {
+  for (const audience of ["EMPLOYER", "AGENCY", "RESTRICTED", "INDIVIDUAL"]) {
     const configuration = process.env[`STRIPE_LIVE_PORTAL_${audience}`];
     const portal =
       await stripe.billingPortal.configurations.retrieve(configuration);
@@ -75,7 +76,7 @@ try {
     assert.equal(portal.features.subscription_cancel.mode, "at_period_end");
     assert.equal(
       portal.features.subscription_update.enabled,
-      audience !== "RESTRICTED",
+      audience !== "RESTRICTED" && audience !== "INDIVIDUAL",
     );
     await stripe.billingPortal.sessions.create({
       customer: customer.id,
@@ -83,7 +84,7 @@ try {
       return_url: `${origin}/account?tab=billing`,
     });
   }
-  for (const code of ["starter", "agency_starter"]) {
+  for (const code of ["careers_plus", "starter", "agency_starter"]) {
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       mode: "subscription",
@@ -133,5 +134,5 @@ try {
 if (failed) process.exitCode = 1;
 else
   console.log(
-    "Live billing verified: six AUD monthly prices; restricted runtime key; customer, invoice preview and three portals; employer and agency checkout with zero tax; temporary sessions expired and empty customer deleted. No payment or subscription created.",
+    "Live billing verified: seven AUD monthly prices; restricted runtime key; customer, invoice preview and four portals; personal, employer and agency checkout with zero tax; temporary sessions expired and empty customer deleted. No payment or subscription created.",
   );

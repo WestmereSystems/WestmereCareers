@@ -41,6 +41,7 @@ import { useSession } from "./providers";
 import { PrivacyChoice } from "./privacy-choice";
 import { MarketingPreferences } from "./marketing-preferences";
 import { MarketingAdministration } from "./marketing-administration";
+import { FileRecovery } from "./file-recovery";
 
 const candidateTabs = [
   { id: "profile", label: "Profile", icon: UserRound },
@@ -263,6 +264,7 @@ export function ProfileHub({ source }: { source: "demo" | "live" }) {
             </div>
             <FoundingAdmin />
             <MarketingAdministration />
+            {session.staffRole === "admin" && <FileRecovery />}
             <ModerationWorkspace />
             <TestingControls />
             <AdminActivity />

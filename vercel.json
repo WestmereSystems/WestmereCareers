@@ -2,5 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["hnd1"],
-  "crons": [{ "path": "/api/billing/reconcile", "schedule": "*/15 * * * *" }]
+  "crons": [
+    { "path": "/api/billing/reconcile", "schedule": "*/15 * * * *" },
+    { "path": "/api/file-recovery/backup", "schedule": "10 15 * * *" }
+  ]
 }
