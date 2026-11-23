@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { requireSession } from "@/lib/server/auth";
 import { assertBusinessTerms } from "@/lib/server/business";
-import { apiError, assertSameOrigin, json, parseBody } from "@/lib/server/http";
+import {
+  ApiError,
+  apiError,
+  assertSameOrigin,
+  json,
+  parseBody,
+} from "@/lib/server/http";
 import { checkRpc } from "@/lib/server/trust";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -9,10 +15,22 @@ export async function GET(request: Request) {
     const { supabase } = await requireSession();
     const p = new URL(request.url).searchParams;
     const review = p.get("review") === "1";
-    const organisation = review ? null : z.uuid().parse(p.get("organisation"));
+    const organisation = z
+      .uuid()
+      .nullable()
+      .safeParse(review ? null : p.get("organisation"));
+    const offset = z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(100000)
+      .safeParse(p.get("offset") || 0);
+    if (!organisation.success || !offset.success)
+      throw new ApiError(400, "Choose a valid business and register page.");
     const r = await supabase.rpc("manage_agency", {
-      p_action: review ? "review_queue" : "list",
-      p_org: organisation,
+      p_action: review ? "relationship_register" : "list",
+      p_details: review ? { offset: offset.data } : {},
+      p_org: organisation.data,
     });
     checkRpc(r.error);
     return json(r.data);
@@ -26,6 +44,9 @@ const details = z
     publicLabel: z.string().trim().min(2).max(180).optional(),
     employerId: z.uuid().nullable().optional(),
     disclosed: z.boolean().optional(),
+    brandingConfirmed: z.boolean().optional(),
+    advertisingConfirmed: z.boolean().optional(),
+    declarationVersion: z.literal("agency-advertising-v1").optional(),
     representativeName: z.string().trim().min(2).max(180).optional(),
     representativeEmail: z.email().max(254).optional(),
     evidence: z.string().trim().min(30).max(6000).optional(),
@@ -35,7 +56,15 @@ const details = z
     canCommunicateDecisions: z.boolean().optional(),
     reason: z.string().trim().min(10).max(2000).optional(),
     version: z.string().max(100).optional(),
-    decision: z.enum(["approve", "reject", "request_information"]).optional(),
+    decision: z
+      .enum([
+        "approve",
+        "reject",
+        "request_information",
+        "clear_block",
+        "revoke",
+      ])
+      .optional(),
     identityChecked: z.boolean().optional(),
     authorityChecked: z.boolean().optional(),
     offerAuthorityChecked: z.boolean().optional(),
@@ -54,6 +83,11 @@ export async function POST(request: Request) {
           action: z.enum([
             "client_create",
             "request_authorisation",
+            "declare_client",
+            "dispute",
+            "submit_evidence",
+            "clear_block",
+            "request_offer",
             "client_approve",
             "revoke",
             "review",
@@ -69,7 +103,11 @@ export async function POST(request: Request) {
       10000,
     );
     const { supabase, business } = await requireSession();
-    if (!["review", "pilot"].includes(body.action))
+    if (
+      !["review", "pilot", "clear_block", "revoke", "dispute"].includes(
+        body.action,
+      )
+    )
       assertBusinessTerms(business);
     const r = await supabase.rpc("manage_agency", {
       p_action: body.action,

@@ -248,6 +248,7 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
           ...(data.get("agencyMode")
             ? {
                 agencyMode: data.get("agencyMode"),
+                advertisingConfirmed: data.get("advertisingConfirmed") === "on",
                 authorisationId: data.get("authorisationId") || null,
                 leadUserId: data.get("leadUserId"),
                 recruitmentLead: data.get("recruitmentLead"),
