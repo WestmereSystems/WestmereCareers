@@ -113,8 +113,10 @@ export default async function JobDetail({
                 <p className="notice">
                   <strong>Recruitment agency advertisement</strong>
                   <br />
-                  Hiring for {job.clientLabel || "Confidential client"}. Your
-                  application is first received by {job.company}.
+                  Hiring for {job.clientLabel || "Confidential client"}.{" "}
+                  {job.source === "external"
+                    ? "Applications are handled on the external application website."
+                    : `Your application is first received by ${job.company}.`}
                   {job.recruitmentLead &&
                     ` Recruitment lead: ${job.recruitmentLead}.`}
                 </p>

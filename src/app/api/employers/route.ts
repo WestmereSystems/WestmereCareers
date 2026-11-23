@@ -11,6 +11,7 @@ import {
   parseBody,
 } from "@/lib/server/http";
 import { moneyAmount } from "@/lib/server/validation";
+import { externalApplicationTarget } from "@/lib/external-applications";
 
 function businessKind(value: unknown) {
   const o = Array.isArray(value) ? value[0] : value;
@@ -50,11 +51,31 @@ const input = z
     requirements: z.array(z.string().trim().max(1000)).max(30).default([]),
     skills: z.array(z.string().trim().max(100)).max(30).default([]),
     contactEmail: z.union([z.email().max(254), z.literal("")]).default(""),
+    source: z.enum(["direct", "external"]).default("direct"),
+    externalUrl: z.string().trim().max(2000).default(""),
     publish: z.boolean().default(false),
     complianceConfirmed: z.boolean().default(false),
     expiresAt: z.iso.datetime({ offset: true }).nullable().optional(),
   })
   .strict()
+  .superRefine((value, context) => {
+    if (
+      value.source === "external" &&
+      !externalApplicationTarget(value.externalUrl)
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["externalUrl"],
+        message:
+          "Enter a full HTTPS application URL on an external website, without embedded credentials or a local address.",
+      });
+    if (value.source === "direct" && value.externalUrl)
+      context.addIssue({
+        code: "custom",
+        path: ["externalUrl"],
+        message: "Remove the external URL when candidates apply on Westmere.",
+      });
+  })
   .refine(
     (value) =>
       (value.salaryMin === null && value.salaryMax === null) ||
@@ -98,7 +119,7 @@ export async function GET() {
     const { data: jobs, error: jobsError } = await supabase
       .from("jobs")
       .select(
-        "id,organisation_id,agency_hiring_mode,client_label,recruitment_lead,title,status,location,city,state,category,work_mode,employment_type,content_labels,salary_min,salary_max,salary_period,super_included,description,responsibilities,requirements,skills,created_at,published_at,expires_at,moderation_status,publication_requested,contact_email,listing_documents(id,filename,bytes),listing_review_feedback(message)",
+        "id,organisation_id,agency_hiring_mode,client_label,recruitment_lead,title,status,location,city,state,category,work_mode,employment_type,content_labels,salary_min,salary_max,salary_period,super_included,description,responsibilities,requirements,skills,created_at,published_at,expires_at,moderation_status,publication_requested,contact_email,source,external_url,listing_documents(id,filename,bytes),listing_review_feedback(message)",
       )
       .in("organisation_id", organisationIds)
       .order("created_at", { ascending: false })
@@ -229,7 +250,11 @@ export async function POST(request: Request) {
       requirements: body.requirements,
       skills: body.skills,
       contact_email: body.contactEmail || null,
-      source: "direct",
+      source: body.source,
+      external_url:
+        body.source === "external"
+          ? externalApplicationTarget(body.externalUrl)!.href
+          : null,
       compliance_confirmed_at: body.complianceConfirmed
         ? new Date().toISOString()
         : null,
