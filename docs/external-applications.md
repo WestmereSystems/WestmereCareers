@@ -1,0 +1,9 @@
+# External application portals
+
+In **Profile → Roles → Create a role / Edit**, choose **Application method → Apply on an external website** and enter the role's full HTTPS application URL. The saved method and destination load again when editing. Choose **Apply on Westmere** to clear the external destination and collect future applications through Westmere. Existing applications are retained; changing methods does not migrate them.
+
+External listings display **Apply on employer website**, the destination hostname and an off-site privacy explanation. The link opens the configured portal in a new tab without a referrer. It does not require a Westmere login, including when a business account is signed in. Westmere sends no CV or account data to the portal and cannot confirm or count its submissions. Existing Westmere applications remain in the authorised hiring workspace and candidate history.
+
+The API requires a valid HTTPS portal URL for external mode and no URL in direct mode. Credentials, script URLs, local/literal-IP destinations and Westmere's own application pages are rejected; malformed stored URLs fail closed in the application panel. Query strings and fragments needed by an ATS are preserved. Do not put private access tokens or candidate information in a public listing URL. The application server does not fetch or validate a remote portal's contents.
+
+The existing database enforces source/URL pairing and prevents external roles from receiving Westmere applications. A destination edit clears prior launch release and uses the existing moderation workflow. Business ownership, agency authority and assignment, plan limits, fixture quarantine and the closed-marketplace gate remain unchanged. No employer portal is contacted and no application is submitted by publishing this feature.

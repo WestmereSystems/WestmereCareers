@@ -8,7 +8,6 @@ import {
   FileText,
   Mail,
   ShieldCheck,
-  ExternalLink,
   LogOut,
   Download,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import { CVHistory, ChangeEmail, SavedCVButton } from "./profile-tools";
 import { JobCard } from "./job-card";
 import { ResponseChoices } from "./trust-workflows";
 import { ListingCopy } from "./listing-copy";
+import { ExternalApplicationPanel } from "./application-method";
 import { EmptyState } from "./shell";
 import type { Job } from "@/lib/jobs";
 
@@ -37,7 +37,8 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
   const session = useSession();
   const notice = useNotice();
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  if (job.source === "external")
+    return <ExternalApplicationPanel url={job.externalUrl} isDemo={isDemo} />;
   if (session.business)
     return (
       <div className="application-personal-required">
@@ -66,43 +67,6 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
         Checking application access…
       </button>
     );
-  if (job.source === "external")
-    return (
-      <div>
-        {job.externalUrl && !isDemo ? (
-          <a
-            className="button primary"
-            href={job.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Apply on employer website
-            <ExternalLink size={16} />
-          </a>
-        ) : (
-          <button
-            className="button secondary"
-            onClick={() =>
-              setMessage(
-                "This fictional external role illustrates an off-site application. No employer website is linked.",
-              )
-            }
-          >
-            External listing preview
-            <ExternalLink size={16} />
-          </button>
-        )}
-        <p className="fineprint" style={{ marginTop: 12 }}>
-          You’ll apply outside Westmere. Application activity and submission
-          cannot be recorded here.
-        </p>
-        {message && (
-          <p className="message" role="status">
-            {message}
-          </p>
-        )}
-      </div>
-    );
   return (
     <div>
       <button
@@ -122,11 +86,6 @@ function ApplyPanelForUser({ job, isDemo }: { job: Job; isDemo: boolean }) {
           isDemo={isDemo}
           onClose={() => setOpen(false)}
         />
-      )}
-      {message && (
-        <p role="status" className="message">
-          {message}
-        </p>
       )}
     </div>
   );

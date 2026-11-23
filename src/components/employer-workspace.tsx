@@ -33,6 +33,8 @@ import {
 import { ListingTextEditor } from "./listing-text-editor";
 import { AgencyRoleFields } from "./agency-role-fields";
 import { EmployerInsights } from "./employer-insights";
+import { ApplicationMethodFields } from "./application-method";
+import { externalApplicationTarget } from "@/lib/external-applications";
 
 type Role = {
   id: string;
@@ -58,6 +60,8 @@ type Role = {
   requirements: string[];
   skills: string[];
   contact_email?: string | null;
+  source: "direct" | "external";
+  external_url?: string | null;
   agency_hiring_mode?: "internal" | "client";
   recruitment_lead?: string | null;
   listing_documents?: { id: string; filename: string; bytes: number }[];
@@ -286,6 +290,11 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
             .map((x) => x.trim())
             .filter(Boolean),
           contactEmail: String(data.get("contactEmail") || ""),
+          source: String(data.get("source") || "direct"),
+          externalUrl:
+            String(data.get("source")) === "external"
+              ? String(data.get("externalUrl") || "")
+              : "",
           publish: data.get("publish") === "on",
           complianceConfirmed: data.get("complianceConfirmed") === "on",
         }),
@@ -808,6 +817,10 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                   : editing?.super_included || false,
             }}
           />
+          <ApplicationMethodFields
+            source={editing?.source}
+            externalUrl={editing?.external_url}
+          />
           <label className="field-label">
             Contact email for this listing · optional
             <input
@@ -896,7 +909,7 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                       ? "Restricted"
                       : (overview.find((o) => o.id === role.id)?.applications ??
                         0)}{" "}
-                    active applications
+                    active Westmere applications
                   </span>
                   <span>
                     {role.expires_at
@@ -908,6 +921,15 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                   Views count visitors who allow optional analytics. Renewing
                   retains this role’s views and applications.
                 </p>
+                {role.source === "external" && (
+                  <p className="fineprint">
+                    External applications ·{" "}
+                    {externalApplicationTarget(role.external_url)?.hostname ||
+                      "Check the application URL"}
+                    . Submissions on that website are not counted here. Existing
+                    Westmere applications remain available.
+                  </p>
+                )}
                 <details className="role-activity">
                   <summary>Listing activity and renewals</summary>
                   <ul>

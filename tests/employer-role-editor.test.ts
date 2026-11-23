@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   scope: vi.fn(),
 }));
 vi.mock("@/lib/server/auth", () => ({ requireSession: mocks.session }));
-import { POST } from "../src/app/api/employers/route";
+import { GET, POST } from "../src/app/api/employers/route";
 const id = "30000000-0000-4000-8000-000000000001",
   organisationId = "20000000-0000-4000-8000-000000000001";
 const body = {
@@ -107,4 +107,125 @@ it("rejects partial salary ranges before checking permissions or saving", async 
   expect((await POST(request({ ...body, salaryMin: 50000 }))).status).toBe(400);
   expect(mocks.session).not.toHaveBeenCalled();
   expect(mocks.update).not.toHaveBeenCalled();
+});
+it("saves an external application destination on both new and edited roles", async () => {
+  const portal = "https://careers.example.com.au/vacancies/123?source=westmere";
+  for (const payload of [body, { ...body, id: undefined }]) {
+    expect(
+      (
+        await POST(
+          request({ ...payload, source: "external", externalUrl: portal }),
+        )
+      ).status,
+    ).toBe(201);
+  }
+  for (const write of [mocks.insert, mocks.update])
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "external",
+        external_url: portal,
+        status: "draft",
+        publication_requested: false,
+      }),
+    );
+});
+it("clears an old external URL when changing back to Westmere applications", async () => {
+  expect(
+    (await POST(request({ ...body, source: "direct", externalUrl: "" })))
+      .status,
+  ).toBe(201);
+  expect(mocks.update).toHaveBeenCalledWith(
+    expect.objectContaining({ source: "direct", external_url: null }),
+  );
+});
+it.each([
+  "",
+  "http://careers.example.com/apply",
+  "javascript:alert(1)",
+  "https://user:secret@careers.example.com/apply",
+  "https://localhost/apply",
+  "https://127.0.0.1/apply",
+  "https://westmere.com.au/account",
+  "https://careers.example.com/with space",
+])(
+  "rejects an invalid external portal before saving: %s",
+  async (externalUrl) => {
+    expect(
+      (await POST(request({ ...body, source: "external", externalUrl })))
+        .status,
+    ).toBe(400);
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.insert).not.toHaveBeenCalled();
+  },
+);
+it("rejects ambiguous direct-plus-external input and retains publication compliance checks", async () => {
+  expect(
+    (
+      await POST(
+        request({
+          ...body,
+          source: "direct",
+          externalUrl: "https://careers.example.com/apply",
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect(
+    (
+      await POST(
+        request({
+          ...body,
+          source: "external",
+          externalUrl: "https://careers.example.com/apply",
+          publish: true,
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+it("returns the saved application method and URL when loading roles for editing", async () => {
+  const role = {
+    id,
+    organisation_id: organisationId,
+    source: "external",
+    external_url: "https://careers.example.com/apply",
+  };
+  const selected = vi.fn();
+  const query = (data: unknown) => {
+    const q = {
+      select: (s: string) => {
+        selected(s);
+        return q;
+      },
+      eq: () => Promise.resolve({ data, error: null }),
+      in: () => q,
+      order: () => q,
+      limit: () => Promise.resolve({ data, error: null }),
+    };
+    return q;
+  };
+  mocks.session.mockResolvedValue({
+    user: { id: "owner" },
+    supabase: {
+      from: (t: string) =>
+        t === "organisation_members"
+          ? query([
+              {
+                organisation_id: organisationId,
+                role: "owner",
+                organisations: { kind: "employer" },
+              },
+            ])
+          : query([role]),
+      rpc: async () => ({ data: [], error: null }),
+    },
+  });
+  const response = await GET();
+  expect(response.status).toBe(200);
+  expect((await response.json()).jobs[0]).toMatchObject(role);
+  expect(selected).toHaveBeenCalledWith(
+    expect.stringContaining("source,external_url"),
+  );
 });
