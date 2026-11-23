@@ -3674,6 +3674,34 @@ describe("reviewed agency boundaries and pooled capacity", () => {
         )
       ).rows[0],
     ).toEqual({ can_offer: true });
+    const applicationId = (
+      await db.query<{ id: string }>(
+        "select id from public.applications where job_id=$1",
+        [roleB],
+      )
+    ).rows[0].id;
+    await db.query(
+      "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://careers.example.test','https://careers.example.test/unsubscribe',false)",
+    );
+    await asUser(employer);
+    await db.query(
+      "select public.update_application_stage($1,'offer','An authorised offer notification queued for this test.')",
+      [applicationId],
+    );
+    await asUser(otherEmployer);
+    await db.query("select public.manage_agency('client_approve',null,$1,$2)", [
+      d.id,
+      { version, canOffer: false },
+    ]);
+    version = await auditVersion(d.id);
+    expect(
+      (
+        await db.query(
+          "select status from private.alert_outbox b join public.application_events ev on b.event_key='application:'||ev.id where ev.application_id=$1 and ev.event_type='decision'",
+          [applicationId],
+        )
+      ).rows,
+    ).toEqual([{ status: "canceled" }]);
     await asUser(otherEmployer);
     await db.query("select public.manage_agency('dispute',null,$1,$2)", [
       d.id,

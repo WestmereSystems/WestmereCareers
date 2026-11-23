@@ -52,6 +52,13 @@ begin
   update private.alert_outbox b set status='canceled',error_code='agency_authority_revoked' where b.status in ('queued','leased') and b.kind='account'
   and exists(select 1 from public.applications a join private.agency_job_engagements e on e.job_id=a.job_id where e.authorisation_id=new.id and b.event_key like 'application:%' and exists(select 1 from public.application_events ev where ev.application_id=a.id and b.event_key='application:'||ev.id));
  end if;
+ if old.can_offer and not new.can_offer then
+  update private.alert_outbox b set status='canceled',error_code='agency_offer_authority_removed'
+  where b.status in ('queued','leased') and b.kind='account' and exists(
+   select 1 from public.application_events ev join public.applications ap on ap.id=ev.application_id
+   join private.agency_job_engagements en on en.job_id=ap.job_id
+   where en.authorisation_id=new.id and ev.event_type='decision' and b.event_key='application:'||ev.id);
+ end if;
  return new;
 end;$$;
 create or replace function private.agency_listing_guard() returns trigger language plpgsql security definer set search_path='' as $$
