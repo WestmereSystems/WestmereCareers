@@ -3470,6 +3470,428 @@ describe("reviewed agency boundaries and pooled capacity", () => {
       [roleB, org],
     );
   }
+  async function clientDeclaration(
+    linked = false,
+    extra: Record<string, unknown> = {},
+  ) {
+    await asUser(employer);
+    const c = (
+      await db.query<{ d: { id: string } }>(
+        "select public.manage_agency('client_create',$1,null,$2) d",
+        [
+          org,
+          {
+            name: "Declared employer client",
+            representativeName: "Hiring Manager",
+            representativeEmail: "manager@client.example",
+            employerId: linked ? otherOrg : null,
+          },
+        ],
+      )
+    ).rows[0].d.id;
+    const details = {
+      evidence:
+        "External agreement ABC authorises advertising current technology vacancies.",
+      validFrom: new Date(Date.now() - 86400000).toISOString(),
+      validUntil: new Date(Date.now() + 86400000 * 60).toISOString(),
+      advertisingConfirmed: true,
+      declarationVersion: "agency-advertising-v1",
+      ...extra,
+    };
+    const d = (
+      await db.query<{ d: { id: string; status: string } }>(
+        "select public.manage_agency('declare_client',$1,$2,$3) d",
+        [org, c, details],
+      )
+    ).rows[0].d;
+    return { ...d, client: c, details };
+  }
+  async function auditVersion(id: string) {
+    await db.exec("reset role");
+    return (
+      await db.query<{ updated_at: string }>(
+        "select updated_at from private.agency_authorisations where id=$1",
+        [id],
+      )
+    ).rows[0].updated_at;
+  }
+  async function reviewer() {
+    await db.exec("reset role");
+    await db.query(
+      "insert into private.staff_members(user_id,role) values($1,'reviewer') on conflict(user_id) do update set enabled=true",
+      [otherCandidate],
+    );
+    await asUser(otherCandidate);
+  }
+  it("activates declared clients without an account or routine approval and records each vacancy declaration", async () => {
+    await agency();
+    const d = await clientDeclaration(false);
+    await db.query(
+      "select public.manage_agency('request_offer',null,$1,'{}')",
+      [d.id],
+    );
+    expect(d.status).toBe("declared");
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select status,declared_by,declaration_version,reviewed_at,can_offer,offer_requested,private.agency_authority_valid(id,agency_id) valid from private.agency_authorisations where id=$1",
+          [d.id],
+        )
+      ).rows[0],
+    ).toMatchObject({
+      status: "declared",
+      declared_by: employer,
+      declaration_version: "agency-advertising-v1",
+      reviewed_at: null,
+      can_offer: false,
+      offer_requested: true,
+      valid: true,
+    });
+    await asUser(employer);
+    await expect(
+      db.query("select public.manage_agency('configure_job',$1,null,$2)", [
+        org,
+        {
+          jobId: roleB,
+          mode: "client",
+          authorisationId: d.id,
+          leadUserId: employer,
+          leadName: "Agency Lead",
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "22023" });
+    await db.query("select public.manage_agency('configure_job',$1,null,$2)", [
+      org,
+      {
+        jobId: roleB,
+        mode: "client",
+        authorisationId: d.id,
+        leadUserId: employer,
+        leadName: "Agency Lead",
+        advertisingConfirmed: true,
+      },
+    ]);
+    await expect(
+      db.query(
+        "select private.manage_agency_reviewed('configure_job',$1,null,'{}')",
+        [org],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select * from private.agency_relationship_events"),
+    ).rejects.toMatchObject({ code: "42501" });
+    await reviewer();
+    expect(
+      (
+        await db.query<{ d: { authorisations: { id: string }[] } }>(
+          "select public.manage_agency('relationship_register') d",
+        )
+      ).rows[0].d.authorisations.some((a) => a.id === d.id),
+    ).toBe(true);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::integer n from private.moderation_audit where subject_id=$1 and action='agency_advertising_declaration'",
+          [roleB],
+        )
+      ).rows[0],
+    ).toEqual({ n: 1 });
+  });
+  it("keeps employer confirmation optional, offer authority separate and applies an employer dispute immediately", async () => {
+    await agency();
+    const d = await clientDeclaration(true);
+    await db.query("select public.manage_agency('configure_job',$1,null,$2)", [
+      org,
+      {
+        jobId: roleB,
+        mode: "client",
+        authorisationId: d.id,
+        leadUserId: employer,
+        leadName: "Agency Lead",
+        advertisingConfirmed: true,
+      },
+    ]);
+    await db.exec("reset role");
+    await db.query(
+      "update public.jobs set status='published',published_at=now(),moderation_status='approved',expires_at=now()+interval '30 days' where id=$1",
+      [roleB],
+    );
+    await asUser(candidate);
+    await db.query(
+      "insert into public.applications(candidate_id,job_id,cv_text_snapshot) values($1,$2,repeat('Synthetic application experience and skills. ',10))",
+      [candidate, roleB],
+    );
+    await asUser(employer);
+    await expect(
+      db.query(
+        "insert into public.applications(candidate_id,job_id,cv_text_snapshot) values($1,$2,repeat('Synthetic application experience and skills. ',10))",
+        [employer, roleB],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    let version = await auditVersion(d.id);
+    expect(
+      (
+        await db.query("select private.agency_authority_valid($1,$2) valid", [
+          d.id,
+          org,
+        ])
+      ).rows[0],
+    ).toEqual({ valid: true });
+    await asUser(otherEmployer);
+    await db.query("select public.manage_agency('client_approve',null,$1,$2)", [
+      d.id,
+      { version, canOffer: true },
+    ]);
+    version = await auditVersion(d.id);
+    expect(
+      (
+        await db.query(
+          "select can_offer,client_approved_at is not null confirmed from private.agency_authorisations where id=$1",
+          [d.id],
+        )
+      ).rows[0],
+    ).toEqual({ can_offer: false, confirmed: true });
+    await reviewer();
+    await db.query("select public.manage_agency('review',null,$1,$2)", [
+      d.id,
+      {
+        version,
+        decision: "approve",
+        reason: "Independently verified separate explicit offer authority.",
+        identityChecked: true,
+        authorityChecked: true,
+        offerAuthorityChecked: true,
+      },
+    ]);
+    version = await auditVersion(d.id);
+    expect(
+      (
+        await db.query(
+          "select can_offer from private.agency_authorisations where id=$1",
+          [d.id],
+        )
+      ).rows[0],
+    ).toEqual({ can_offer: true });
+    await asUser(otherEmployer);
+    await db.query("select public.manage_agency('dispute',null,$1,$2)", [
+      d.id,
+      {
+        version,
+        reason:
+          "This agency is no longer authorised to advertise our positions.",
+      },
+    ]);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select status,can_offer,private.agency_authority_valid(id,agency_id) valid from private.agency_authorisations where id=$1",
+          [d.id],
+        )
+      ).rows[0],
+    ).toEqual({ status: "needs_information", can_offer: false, valid: false });
+    expect(
+      (await db.query("select status from public.jobs where id=$1", [roleB]))
+        .rows[0],
+    ).toEqual({ status: "closed" });
+    expect(
+      (
+        await db.query(
+          "select private.user_can_access_job($1,$2,'application') allowed",
+          [employer, roleB],
+        )
+      ).rows[0],
+    ).toEqual({ allowed: false });
+    expect(
+      (
+        await db.query(
+          "select recipient_snapshot from public.applications where job_id=$1",
+          [roleB],
+        )
+      ).rows,
+    ).toHaveLength(1);
+    await asUser(employer);
+    const duplicate = (
+      await db.query<{ d: { id: string } }>(
+        "select public.manage_agency('client_create',$1,null,$2) d",
+        [
+          org,
+          {
+            name: "Different label to bypass hold",
+            representativeName: "Another Rep",
+            representativeEmail: "other@client.example",
+            employerId: otherOrg,
+          },
+        ],
+      )
+    ).rows[0].d.id;
+    await expect(
+      db.query("select public.manage_agency('declare_client',$1,$2,$3)", [
+        org,
+        duplicate,
+        d.details,
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await db.query(
+      "select public.manage_agency('submit_evidence',null,$1,$2)",
+      [
+        d.id,
+        {
+          reason:
+            "Updated written agreement and representative confirmation supplied for independent verification.",
+        },
+      ],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select status from private.agency_authorisations where id=$1",
+          [d.id],
+        )
+      ).rows[0],
+    ).toEqual({ status: "needs_information" });
+    version = await auditVersion(d.id);
+    await reviewer();
+    await db.query("select public.manage_agency('review',null,$1,$2)", [
+      d.id,
+      {
+        version,
+        decision: "approve",
+        reason:
+          "Employer and agreement independently verified after dispute resolution.",
+        identityChecked: true,
+        authorityChecked: true,
+      },
+    ]);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query("select private.agency_authority_valid($1,$2) valid", [
+          d.id,
+          org,
+        ])
+      ).rows[0],
+    ).toEqual({ valid: true });
+    expect(
+      (await db.query("select status from public.jobs where id=$1", [roleB]))
+        .rows[0],
+    ).toEqual({ status: "closed" });
+  });
+  it("requires declarations and branding permission, rejects quota overflow and prevents self-clearing audited holds", async () => {
+    await agency();
+    await asUser(employer);
+    await expect(
+      db.query("select public.manage_agency('client_create',$1,null,$2)", [
+        org,
+        {
+          name: "Disclosed client",
+          representativeName: "Client Owner",
+          representativeEmail: "rep@client.example",
+          publicLabel: "Client Brand",
+          disclosed: true,
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "22023" });
+    const d = await clientDeclaration();
+    let version = await auditVersion(d.id);
+    await reviewer();
+    await expect(
+      db.query("select public.manage_agency('review',null,$1,$2)", [
+        d.id,
+        {
+          version: new Date(Date.now() + 999999).toISOString(),
+          decision: "request_information",
+          reason: "Need agreement evidence for this risk-based audit.",
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "40001" });
+    await db.query("select public.manage_agency('review',null,$1,$2)", [
+      d.id,
+      {
+        version,
+        decision: "request_information",
+        reason: "Need agreement evidence for this risk-based audit.",
+      },
+    ]);
+    version = await auditVersion(d.id);
+    await asUser(employer);
+    await expect(
+      db.query("select public.manage_agency('clear_block',null,$1,$2)", [
+        d.id,
+        {
+          version,
+          reason: "Attempt to clear my own advertising hold.",
+          identityChecked: true,
+          authorityChecked: true,
+        },
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      db.query("select public.manage_agency('declare_client',$1,$2,$3)", [
+        org,
+        d.client,
+        d.details,
+      ]),
+    ).rejects.toMatchObject({ code: "42501" });
+    await reviewer();
+    await db.query("select public.manage_agency('review',null,$1,$2)", [
+      d.id,
+      {
+        version,
+        decision: "approve",
+        reason: "Agreement and representative independently verified.",
+        identityChecked: true,
+        authorityChecked: true,
+      },
+    ]);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query("select private.agency_authority_valid($1,$2) valid", [
+          d.id,
+          org,
+        ])
+      ).rows[0],
+    ).toEqual({ valid: true });
+    await db.query(
+      "update public.business_subscriptions set tier='agency_starter' where organisation_id=$1",
+      [org],
+    );
+    await db.exec(
+      "update private.agency_plan_limits set clients=2 where tier='agency_starter'",
+    );
+    await asUser(employer);
+    const overflow = (
+      await db.query<{ d: { id: string } }>(
+        "select public.manage_agency('client_create',$1,null,$2) d",
+        [
+          org,
+          {
+            name: "Overflow client",
+            representativeName: "Client Owner",
+            representativeEmail: "overflow@client.example",
+          },
+        ],
+      )
+    ).rows[0].d.id;
+    await expect(
+      db.query("select public.manage_agency('declare_client',$1,$2,$3)", [
+        org,
+        overflow,
+        d.details,
+      ]),
+    ).rejects.toMatchObject({ code: "23514" });
+    await expect(
+      db.query("select public.manage_agency('declare_client',$1,$2,$3)", [
+        org,
+        overflow,
+        { ...d.details, advertisingConfirmed: false },
+      ]),
+    ).rejects.toMatchObject({ code: "22023" });
+  });
   it("discovers an agency's published category only while its client mandate is active", async () => {
     await agency();
     await db.query(

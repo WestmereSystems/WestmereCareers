@@ -1,3 +1,7 @@
+# Current agency advertising policy — 23 November 2026
+
+The declaration-based policy in [agency-advertising-declarations.md](agency-advertising-declarations.md) supersedes the routine client-approval gates described in the historical implementation plan below. Existing reviewed mandates remain recorded; new ordinary client advertising uses agency declarations, optional employer confirmation and targeted independent audits.
+
 # Agency account implementation plan
 
 19 November 2026 · Implementation plan

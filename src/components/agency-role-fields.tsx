@@ -87,7 +87,8 @@ export function AgencyRoleFields({
       <legend>Agency recruitment</legend>
       <p className="fineprint">
         The agency remains the advertiser and initial application recipient.
-        Client work requires a separately reviewed mandate.{" "}
+        Client work requires a current advertising declaration. The client does
+        not need a Westmere account.{" "}
         <Link href="/account?tab=clients">Manage clients →</Link>
       </p>
       <label className="field-label">
@@ -103,17 +104,17 @@ export function AgencyRoleFields({
       </label>
       {hiringMode === "client" && (
         <label className="field-label">
-          Current client authorisation
+          Current client advertising relationship
           <select
             name="authorisationId"
             required
             defaultValue={engagement?.authorisation_id || ""}
           >
-            <option value="">Choose a reviewed client</option>
+            <option value="">Choose a declared client</option>
             {scope.authorisations
               .filter(
                 (a) =>
-                  a.status === "approved" &&
+                  ["approved", "declared"].includes(a.status) &&
                   Date.parse(a.valid_from) <= Date.now() &&
                   Date.parse(a.valid_until) > Date.now(),
               )
@@ -124,6 +125,14 @@ export function AgencyRoleFields({
                 </option>
               ))}
           </select>
+        </label>
+      )}
+      {hiringMode === "client" && (
+        <label className="consent-row">
+          <input type="checkbox" name="advertisingConfirmed" required />I
+          confirm this is a genuine current vacancy we are authorised to
+          advertise, and that any client name or branding is used with
+          permission.
         </label>
       )}
       <label className="field-label">
