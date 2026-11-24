@@ -1,9 +1,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+const mode = vi.hoisted(() => ({ sandbox: false }));
+afterEach(() => {
+  mode.sandbox = false;
+});
 vi.mock("@/components/providers", () => ({
   useSession: () => ({
     user: { id: "test-agency-owner" },
+    billingSandbox: mode.sandbox,
     business: {
       kind: "agency",
       needsOnboarding: true,
@@ -30,7 +35,16 @@ it("renders agency subscription choices for WM Recruitment while requiring curre
   expect(html).not.toContain("Employer Starter");
   expect(html).toContain("disabled");
   expect(html).toContain("Accept Terms and enable plan changes");
+  expect(html).toContain("Choose plan");
+  expect(html).not.toContain("Choose test plan");
   expect(html).not.toContain(
     "Verify your business before starting a test subscription",
   );
+});
+
+it("labels only sandbox billing choices as test plans", () => {
+  mode.sandbox = true;
+  const html = renderToStaticMarkup(createElement(Billing));
+  expect(html).toContain("Sandbox");
+  expect(html).toContain("Choose test plan");
 });

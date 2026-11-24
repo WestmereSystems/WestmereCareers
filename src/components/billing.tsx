@@ -230,7 +230,7 @@ export function Billing() {
       {session.business &&
         (!org || !orgs.find((o) => o.id === org)?.verified) && (
           <p className="notice">
-            Verify your business before starting a test subscription. Payment
+            Verify your business before starting a subscription. Payment
             management is restricted to the billing owner; existing payment and
             cancellation controls remain available when verification is
             suspended.
@@ -374,7 +374,9 @@ export function Billing() {
                   ? "Current plan"
                   : data?.subscription
                     ? "Review plan change"
-                    : "Choose test plan"}
+                    : sandbox
+                      ? "Choose test plan"
+                      : "Choose plan"}
               </button>
             </article>
           ))}
