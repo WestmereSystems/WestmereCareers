@@ -29,7 +29,7 @@ export async function DELETE(request: Request) {
       throw new ApiError(error.code === "42501" ? 403 : 400, error.message);
     return json({
       message:
-        "Company removed from public view. Listings are archived; application and audit records are retained.",
+        "Company removed from public view. Listings are archived; application and audit records are retained. The removal is saved in Notifications.",
     });
   } catch (e) {
     return apiError(e);
