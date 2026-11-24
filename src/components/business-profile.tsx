@@ -13,6 +13,7 @@ import {
   Star,
 } from "lucide-react";
 import { useSession } from "./providers";
+import { useNotifications } from "./notifications";
 import { DashboardSkeleton } from "./skeleton";
 import { EmployerBranding } from "./employer-branding";
 import { AustraliaDiscovery, DiscoveryTables } from "./australia-discovery";
@@ -60,6 +61,7 @@ export function BusinessLinks({
 }
 export function BusinessProfile() {
   const session = useSession();
+  const notifications = useNotifications();
   type Org = {
     id: string;
     name: string;
@@ -405,7 +407,7 @@ export function BusinessProfile() {
             );
             setMessage(d.message);
             setRevision((n) => n + 1);
-            await session.refresh();
+            await Promise.all([session.refresh(), notifications.refresh()]);
           }}
         >
           <p>

@@ -44,6 +44,10 @@ const NotificationContext = createContext<NotificationState>({
   revision: 0,
 });
 
+export function useNotifications() {
+  return useContext(NotificationContext);
+}
+
 export function NotificationProvider({
   children,
 }: {

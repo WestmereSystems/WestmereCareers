@@ -3,13 +3,18 @@ import { sandboxPlans } from "@/lib/billing-plans";
 import { PremiumError } from "./http";
 
 export type BillingMode = "test" | "live";
-// Bound to the existing verified owner identity, never to user-editable metadata.
+// Additional testers are designated through privileged Auth app_metadata only.
+// Never read this flag from user_metadata, a request body or a browser preference.
 export const sandboxOwnerId = "563e67cd-32d5-4e8c-a70a-2c0b51195bb6";
 export function billingModeFor(
-  user: { id: string },
+  user: { id: string; app_metadata?: Record<string, unknown> },
   audience: string,
 ): BillingMode {
-  if (user.id === sandboxOwnerId) return "test";
+  if (
+    user.id === sandboxOwnerId ||
+    user.app_metadata?.westmere_billing_test === true
+  )
+    return "test";
   return process.env.NODE_ENV === "production" ||
     process.env.STRIPE_BUSINESS_LIVE_ENABLED === "true"
     ? "live"

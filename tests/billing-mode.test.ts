@@ -24,6 +24,33 @@ it("does not silently substitute sandbox credentials when live billing is missin
   vi.stubEnv("STRIPE_LIVE_SECRET_KEY", "rk_live_fixture");
   expect(stripeClient("live")).toBeDefined();
 });
+it("uses privileged Auth app metadata for an explicitly designated tester", () => {
+  vi.stubEnv("NODE_ENV", "production");
+  expect(
+    billingModeFor(
+      {
+        id: "designated-tester",
+        app_metadata: { westmere_billing_test: true },
+      },
+      "employer",
+    ),
+  ).toBe("test");
+  for (const value of [false, "true", 1, null])
+    expect(
+      billingModeFor(
+        {
+          id: "ordinary-business",
+          app_metadata: { westmere_billing_test: value },
+        },
+        "employer",
+      ),
+    ).toBe("live");
+  const forged = {
+    id: "ordinary-business",
+    user_metadata: { westmere_billing_test: true },
+  };
+  expect(billingModeFor(forged, "employer")).toBe("live");
+});
 it("keeps the live price catalogue separate and requires live portal configuration", () => {
   vi.stubEnv(
     "STRIPE_LIVE_PLANS",

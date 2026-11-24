@@ -91,6 +91,23 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("sandbox billing boundaries", () => {
+  it("recognises a verified test business for a designated tester in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const account = await m.session();
+    account.user.app_metadata = { westmere_billing_test: true };
+    account.business.needsOnboarding = false;
+    account.business.organisations[0].isTest = true;
+    m.session.mockResolvedValue(account);
+    expect(await billingScope(org)).toMatchObject({
+      mode: "test",
+      eligibleToPurchase: true,
+    });
+    account.user.app_metadata = {};
+    expect(await billingScope(org)).toMatchObject({
+      mode: "live",
+      eligibleToPurchase: false,
+    });
+  });
   it("shows only the three agency plans for the approved WM Recruitment test agency", async () => {
     m.session.mockResolvedValue({
       user: { id: "f5a9d75a-d982-4089-ba39-ec1d0b5d8e0c" },
