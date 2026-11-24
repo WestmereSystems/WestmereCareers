@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     if (error?.code === "22023")
       throw new ApiError(
         400,
-        "Release requires an open public marketplace, a genuine verified business, the owner’s publication permission and an approved current vacancy. Check the item and record a reason.",
+        "Restoring visibility requires an open marketplace, a genuine verified business with public visibility enabled and an eligible reviewed role. Closed or opted-out roles must be republished by the business. Check the item and record a reason.",
       );
     checkRpc(error);
     return json({

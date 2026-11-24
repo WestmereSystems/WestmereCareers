@@ -88,20 +88,32 @@ export function BusinessProfile() {
   const [coveredIds, setCoveredIds] = useState<string[]>([]);
   const [savingCoverage, setSavingCoverage] = useState(false);
   const [defaultBusy, setDefaultBusy] = useState("");
+  const [visibilityBusy, setVisibilityBusy] = useState("");
+  const [visibility, setVisibility] = useState<
+    {
+      id: string;
+      publicationAllowed: boolean;
+      public: boolean;
+      hiddenAt: string | null;
+    }[]
+  >([]);
   useEffect(() => {
     const c = new AbortController();
     setLoading(true);
     Promise.all(
-      ["/api/employers", "/api/employers/plan"].map(async (url) => {
-        const r = await fetch(url, { signal: c.signal, cache: "no-store" });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error);
-        return d;
-      }),
+      ["/api/employers", "/api/employers/plan", "/api/employers/launch"].map(
+        async (url) => {
+          const r = await fetch(url, { signal: c.signal, cache: "no-store" });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error);
+          return d;
+        },
+      ),
     )
-      .then(([workspace, billing]) => {
+      .then(([workspace, billing, launch]) => {
         if (c.signal.aborted) return;
         setMembers(workspace.memberships || []);
+        setVisibility(launch.profiles || []);
         setCoverage(billing.plan);
         setRegistrationCapacity(billing.registrationCapacity || null);
         setCoveredIds(
@@ -249,7 +261,11 @@ export function BusinessProfile() {
         </div>
       ) : (
         members.map(({ role, organisations: o }) => (
-          <section className="panel business-profile-card" key={o.id}>
+          <section
+            className="panel business-profile-card"
+            key={o.id}
+            id={`business-${o.id}`}
+          >
             {o.banner_path ? (
               <img
                 className="employer-banner"
@@ -319,11 +335,84 @@ export function BusinessProfile() {
                       ? "Saving…"
                       : "Use as default"}
                 </button>
-                <Link href={companyPath(o.name, o.id)} className="text-link">
-                  View public profile →
-                </Link>
+                {visibility.find((item) => item.id === o.id)?.public && (
+                  <Link href={companyPath(o.name, o.id)} className="text-link">
+                    View public profile →
+                  </Link>
+                )}
               </div>
             </div>
+            {(() => {
+              const preference = visibility.find((item) => item.id === o.id);
+              return (
+                <div className="notice" aria-label={`Visibility for ${o.name}`}>
+                  <h4>Business visibility</h4>
+                  <p>
+                    {!preference
+                      ? "Visibility could not be loaded. Refresh before changing it."
+                      : !preference.publicationAllowed
+                        ? "Private · this business profile and all its listings are hidden."
+                        : preference.public
+                          ? "Public · this business profile and its active eligible listings are visible."
+                          : preference.hiddenAt
+                            ? "Public visibility enabled · currently held for Westmere review."
+                            : session.marketplaceOpen
+                              ? "Public visibility enabled · verification and publication checks still apply."
+                              : "Public at launch by default · private during founding onboarding."}
+                  </p>
+                  <p>
+                    Making this business private hides all its listings without
+                    closing them. Making it public again restores previously
+                    published listings that are still active. Roles closed or
+                    removed while private stay closed; expiry dates continue.
+                  </p>
+                  {role === "owner" ? (
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      disabled={!!visibilityBusy || !preference || o.is_test}
+                      aria-label={`Make ${o.name} ${preference?.publicationAllowed ? "private" : "public"}`}
+                      onClick={async () => {
+                        if (!preference) return;
+                        setVisibilityBusy(o.id);
+                        try {
+                          const result = await sendJson(
+                            "/api/employers/launch",
+                            {
+                              id: o.id,
+                              kind: "profile",
+                              action: preference.publicationAllowed
+                                ? "withdraw"
+                                : "consent",
+                            },
+                          );
+                          setMessage(result.message);
+                          setRevision((value) => value + 1);
+                        } catch (error) {
+                          setMessage(
+                            error instanceof Error
+                              ? error.message
+                              : "Business visibility could not be saved.",
+                          );
+                        } finally {
+                          setVisibilityBusy("");
+                        }
+                      }}
+                    >
+                      {visibilityBusy === o.id
+                        ? "Saving visibility…"
+                        : preference?.publicationAllowed
+                          ? "Make private"
+                          : "Make public"}
+                    </button>
+                  ) : (
+                    <p className="fineprint">
+                      The business owner can change this visibility setting.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
             {(() => {
               const billing = coverage?.organisations.find(
                 (item) => item.id === o.id,

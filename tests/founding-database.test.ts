@@ -17,6 +17,7 @@ const owner = "71000000-0000-4000-8000-000000000001",
   job = "73000000-0000-4000-8000-000000000001";
 let db: PGlite;
 let historicalWithdrawalPreserved = false;
+let migratedPreferences: Record<string, unknown> = {};
 async function as(id: string, role = "authenticated") {
   await db.exec(
     `reset role;select set_config('request.jwt.claim.sub','${id}',false);set role ${role};`,
@@ -55,7 +56,37 @@ beforeAll(async () => {
         [job],
       );
     }
+    if (f.includes("default_launch_visibility_and_closed_role_opt_outs")) {
+      await db.query(
+        "insert into private.launch_profiles(organisation_id,jobs_publication_enabled) values($1,false)",
+        [org],
+      );
+      await db.query(
+        "insert into private.moderation_audit(subject_type,subject_id,action,reason) values('launch_profile',$1,'withdraw','Synthetic existing profile opt-out'),('launch_profile',$1,'hide','Synthetic existing profile staff hold'),('launch_job',$2,'hide','Synthetic existing job staff hold')",
+        [org, job],
+      );
+    }
     await db.exec(await readFile(new URL(f, dir), "utf8"));
+    if (f.includes("default_launch_visibility_and_closed_role_opt_outs")) {
+      migratedPreferences = (
+        await db.query<Record<string, unknown>>(
+          "select p.profile_publication_enabled,p.hidden_at is not null profile_held,j.publication_opted_out,j.hidden_at is not null job_held,r.status from private.launch_profiles p cross join private.launch_jobs j join public.jobs r on r.id=j.job_id where p.organisation_id=$1 and j.job_id=$2",
+          [org, job],
+        )
+      ).rows[0];
+      await db.query(
+        "delete from private.launch_profiles where organisation_id=$1",
+        [org],
+      );
+      await db.query("delete from private.launch_jobs where job_id=$1", [job]);
+      await db.query(
+        "delete from private.moderation_audit where subject_id in($1,$2)",
+        [org, job],
+      );
+      await db.query("update public.jobs set status='draft' where id=$1", [
+        job,
+      ]);
+    }
     if (f.includes("default_launch_job_publication")) {
       historicalWithdrawalPreserved = (
         await db.query<{ publication_opted_out: boolean }>(
@@ -89,154 +120,231 @@ describe("founding launch privacy and release", () => {
   it("preserves a historical explicit withdrawal using audit time rather than random UUID order", () => {
     expect(historicalWithdrawalPreserved).toBe(true);
   });
-  it("defaults genuine job publication on without recording fabricated owner consent or releasing content", async () => {
+  it("migrates existing privacy choices and staff holds without opting withdrawn content back in", () => {
+    expect(migratedPreferences).toEqual({
+      profile_publication_enabled: false,
+      profile_held: true,
+      publication_opted_out: true,
+      job_held: true,
+      status: "closed",
+    });
+  });
+  it("includes verified profiles and reviewed roles by default without fabricating owner consent", async () => {
     await as(owner);
     const result = (
       await db.query<{
         data: {
-          profiles: { jobsPublicationEnabled: boolean }[];
-          jobs: {
-            publicationAllowed: boolean;
-            consentedAt: string | null;
-            releasedAt: string | null;
-          }[];
+          profiles: { publicationAllowed: boolean; consentedAt: null }[];
+          jobs: { publicationAllowed: boolean; consentedAt: null }[];
         };
       }>("select public.my_launch_content() data")
     ).rows[0].data;
-    expect(result.profiles[0].jobsPublicationEnabled).toBe(true);
+    expect(result.profiles[0]).toMatchObject({
+      publicationAllowed: true,
+      consentedAt: null,
+    });
     expect(result.jobs[0]).toMatchObject({
       publicationAllowed: true,
       consentedAt: null,
-      releasedAt: null,
     });
-    await as(admin);
-    await decision("mode", null, null, true);
     await as("", "anon");
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toHaveLength(0);
     expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
-  });
-  it("allows reviewed job release under the default after separate profile permission and release", async () => {
-    await as(owner);
-    await db.query(
-      "select public.manage_launch_content('profile',$1,'consent')",
-      [org],
-    );
     await as(admin);
     await decision("mode", null, null, true);
-    await decision("release", org, "profile");
-    await decision("release", job, "job");
     await as("", "anon");
-    expect((await db.query("select id from public.jobs")).rows).toEqual([
-      { id: job },
-    ]);
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toEqual([{ id: org }]);
+    expect(
+      (
+        await db.query(
+          "select id,expires_at>now()+interval '29 days' fresh from public.jobs",
+        )
+      ).rows,
+    ).toEqual([{ id: job, fresh: true }]);
   });
-  it("business opt-out covers current and future jobs and rejects individual consent while disabled", async () => {
-    await as(owner);
-    await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'withdraw')",
-      [org],
-    );
-    await db.exec("reset role");
-    const second = "73000000-0000-4000-8000-000000000002";
-    await db.query(
-      "insert into public.jobs(id,organisation_id,title,company,location,city,state,work_mode,employment_type,description,status,moderation_status) values($1,$2,'Future private job','Real Melbourne Employer','Melbourne VIC','Melbourne','VIC','On-site','Full time','Synthetic future listing for isolated preference tests.','draft','approved')",
-      [second, org],
-    );
-    await as(owner);
-    const result = (
-      await db.query<{ data: { jobs: { publicationAllowed: boolean }[] } }>(
-        "select public.my_launch_content() data",
-      )
-    ).rows[0].data;
-    expect(result.jobs).toHaveLength(2);
-    expect(result.jobs.every((j) => !j.publicationAllowed)).toBe(true);
-    await db.exec("savepoint individual_consent");
-    await expect(
-      db.query("select public.manage_launch_content('job',$1,'consent')", [
-        job,
-      ]),
-    ).rejects.toMatchObject({ code: "22023" });
-    await db.exec("rollback to individual_consent");
-  });
-  it("retains an individual job opt-out across edits and business preference changes", async () => {
+  it("lets staff review default launch inclusion without claiming explicit employer approval", async () => {
+    await as(admin);
+    const listing = (await decision("list")).rows[0] as {
+      result: {
+        jobs: {
+          id: string;
+          organisationName: string;
+          publicationAllowed: boolean;
+          consentedAt: null;
+        }[];
+      };
+    };
+    expect(listing.result.jobs[0]).toMatchObject({
+      id: job,
+      organisationName: "Real Melbourne Employer",
+      publicationAllowed: true,
+      consentedAt: null,
+    });
     await as(owner);
     await db.query("select public.manage_launch_content('job',$1,'withdraw')", [
       job,
     ]);
-    await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'withdraw')",
-      [org],
-    );
-    await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'consent')",
-      [org],
-    );
-    await db.exec("reset role");
-    await db.query(
-      "update public.jobs set title='Updated private vacancy' where id=$1",
-      [job],
-    );
-    await as(owner);
-    const result = (
-      await db.query<{
-        data: {
-          jobs: { publicationAllowed: boolean; publicationOptedOut: boolean }[];
-        };
-      }>("select public.my_launch_content() data")
-    ).rows[0].data;
-    expect(result.jobs[0]).toMatchObject({
+    await as(admin);
+    const closed = (await decision("list")).rows[0] as {
+      result: { jobs: { status: string; publicationAllowed: boolean }[] };
+    };
+    expect(closed.result.jobs[0]).toMatchObject({
+      status: "closed",
       publicationAllowed: false,
-      publicationOptedOut: true,
     });
-    await db.query("select public.manage_launch_content('job',$1,'consent')", [
-      job,
-    ]);
-    expect(
-      (
-        await db.query<{ data: { jobs: { publicationAllowed: boolean }[] } }>(
-          "select public.my_launch_content() data",
-        )
-      ).rows[0].data.jobs[0].publicationAllowed,
-    ).toBe(true);
   });
-  it("business opt-out immediately hides released jobs and re-enabling does not restore an old release", async () => {
+  it("hides every listing with its profile and restores active listings without restarting their clocks", async () => {
+    await as(admin);
+    await decision("mode", null, null, true);
+    await db.exec("reset role");
+    const original = (
+      await db.query(
+        "select status,published_at,expires_at from public.jobs where id=$1",
+        [job],
+      )
+    ).rows[0];
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await as("", "anon");
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toHaveLength(0);
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
     await as(owner);
     await db.query(
       "select public.manage_launch_content('profile',$1,'consent')",
       [org],
     );
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select status,published_at,expires_at from public.jobs where id=$1",
+          [job],
+        )
+      ).rows[0],
+    ).toEqual(original);
+  });
+  it("does not restore a listing manually closed while its business was private", async () => {
     await as(admin);
     await decision("mode", null, null, true);
-    await decision("release", org, "profile");
-    await decision("release", job, "job");
     await as(owner);
     await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'withdraw')",
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await db.query(
+      "update public.jobs set status='closed',publication_requested=false where id=$1",
+      [job],
+    );
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'consent')",
       [org],
     );
     await as("", "anon");
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toEqual([{ id: org }]);
     expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
     await as(owner);
+    expect(
+      (await db.query("select status from public.jobs where id=$1", [job]))
+        .rows[0],
+    ).toEqual({ status: "closed" });
+  });
+  it("keeps a business private at launch and restores its included roles when the owner makes it public", async () => {
+    await as(owner);
     await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'consent')",
+      "select public.manage_launch_content('profile',$1,'withdraw')",
       [org],
     );
-    await as("", "anon");
-    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
     await as(admin);
-    await decision("release", job, "job");
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'consent')",
+      [org],
+    );
     await as("", "anon");
     expect((await db.query("select id from public.jobs")).rows).toEqual([
       { id: job },
     ]);
   });
-  it("does not allow another account or anonymous access to control business publication", async () => {
+  it("moves an excluded launch vacancy to Closed and lets the standard renewal workflow republish it", async () => {
+    await as(owner);
+    await db.query("select public.manage_launch_content('job',$1,'withdraw')", [
+      job,
+    ]);
+    expect(
+      (await db.query("select status from public.jobs where id=$1", [job]))
+        .rows[0],
+    ).toEqual({ status: "closed" });
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+    await as(owner);
+    await db.query("select public.renew_listing($1)", [job]);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
+  });
+  it("retains the Closed state across edits until the employer explicitly republishes", async () => {
+    await as(owner);
+    await db.query("select public.manage_launch_content('job',$1,'withdraw')", [
+      job,
+    ]);
+    await db.exec("reset role");
+    await db.query(
+      "update public.jobs set title='Updated closed vacancy' where id=$1",
+      [job],
+    );
+    await as(owner);
+    const data = (
+      await db.query<{
+        data: {
+          jobs: {
+            status: string;
+            publicationAllowed: boolean;
+            publicationOptedOut: boolean;
+          }[];
+        };
+      }>("select public.my_launch_content() data")
+    ).rows[0].data;
+    expect(data.jobs[0]).toMatchObject({
+      status: "closed",
+      publicationAllowed: false,
+      publicationOptedOut: true,
+    });
+    await db.query("select public.renew_listing($1)", [job]);
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
+  });
+  it("restricts visibility controls to the business owner and keeps private publication helpers inaccessible", async () => {
     await as(other);
     await db.exec("savepoint preference_access");
     await expect(
-      db.query(
-        "select public.manage_launch_content('business_jobs',$1,'withdraw')",
-        [org],
-      ),
+      db.query("select public.manage_launch_content('profile',$1,'withdraw')", [
+        org,
+      ]),
     ).rejects.toMatchObject({ code: "42501" });
     await db.exec("rollback to preference_access");
     await as("", "anon");
@@ -244,19 +352,189 @@ describe("founding launch privacy and release", () => {
       db.query("select private.launch_job_permission($1)", [job]),
     ).rejects.toMatchObject({ code: "42501" });
   });
-  it("default publication never makes fixture jobs eligible", async () => {
+  it("never includes fictional fixture content by default", async () => {
     await db.exec("update public.organisations set is_test=true");
     await as(owner);
-    await db.query(
-      "select public.manage_launch_content('business_jobs',$1,'consent')",
-      [org],
-    );
     const result = (
       await db.query<{ data: { jobs: { publicationAllowed: boolean }[] } }>(
         "select public.my_launch_content() data",
       )
     ).rows[0].data;
-    expect(result.jobs.every((j) => !j.publicationAllowed)).toBe(true);
+    expect(result.jobs.every((item) => !item.publicationAllowed)).toBe(true);
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toHaveLength(0);
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+  });
+  it("preserves staff holds when the owner restores profile visibility or renews a role", async () => {
+    await as(admin);
+    await decision("mode", null, null, true);
+    await decision("hide", org, "profile");
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'consent')",
+      [org],
+    );
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+    await as(admin);
+    await decision("release", org, "profile");
+    await decision("hide", job, "job");
+    await as(owner);
+    await db.query("select public.renew_listing($1)", [job]);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+  });
+  it("keeps each business visibility preference independent within the same owner account", async () => {
+    const secondOrg = "72000000-0000-4000-8000-000000000002";
+    await db.query(
+      "insert into public.organisations(id,name,slug,is_verified) values($1,'Second owned business','second-owned-business',true)",
+      [secondOrg],
+    );
+    await db.query(
+      "insert into public.organisation_members(organisation_id,user_id,role) values($1,$2,'owner')",
+      [secondOrg, owner],
+    );
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect(
+      (await db.query("select id from public.organisations")).rows,
+    ).toEqual([{ id: secondOrg }]);
+  });
+  it("excludes private businesses from new digests and cancels a queued digest if its business becomes private", async () => {
+    await db.exec(
+      "insert into private.alert_settings(singleton,site_origin,unsubscribe_origin,sending_enabled) values(true,'https://westmere.test','https://westmere.test/api/alerts/unsubscribe',true)",
+    );
+    await as(other);
+    const search = (
+      await db.query<{ id: string }>(
+        `select public.save_search(null,'Synthetic launch roles','{"keyword":"office","location":"Melbourne VIC"}',true,'daily',true) id`,
+      )
+    ).rows[0].id;
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await db.exec("reset role");
+    await db.query(
+      "update public.saved_searches set next_run_at=now()-interval '1 minute',consent_at=now()-interval '1 day' where id=$1",
+      [search],
+    );
+    expect(
+      (await db.query("select public.prepare_job_alerts() n")).rows[0],
+    ).toEqual({ n: 0 });
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'consent')",
+      [org],
+    );
+    await db.exec("reset role");
+    await db.query(
+      "update public.saved_searches set next_run_at=now()-interval '1 minute' where id=$1",
+      [search],
+    );
+    expect(
+      (await db.query("select public.prepare_job_alerts() n")).rows[0],
+    ).toEqual({ n: 1 });
+    const claimed = (
+      await db.query<{ items: { id: string; lease_token: string }[] }>(
+        "select public.claim_job_alerts() items",
+      )
+    ).rows[0].items[0];
+    await as(owner);
+    await db.query(
+      "select public.manage_launch_content('profile',$1,'withdraw')",
+      [org],
+    );
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query("select public.freeze_job_alert($1,$2,'{}') request", [
+          claimed.id,
+          claimed.lease_token,
+        ])
+      ).rows[0],
+    ).toEqual({ request: null });
+    expect(
+      (
+        await db.query(
+          "select status,error_code from private.alert_outbox where id=$1",
+          [claimed.id],
+        )
+      ).rows[0],
+    ).toEqual({ status: "canceled", error_code: "VACANCY_CHANGED" });
+  });
+  it("leaves excess roles private without blocking launch and retains the active-role allowance", async () => {
+    const second = "73000000-0000-4000-8000-000000000002";
+    await db.query(
+      "insert into public.jobs(id,organisation_id,title,company,location,city,state,work_mode,employment_type,description,status,moderation_status) values($1,$2,'Second reviewed role','Real Melbourne Employer','Melbourne VIC','Melbourne','VIC','On-site','Full time','Synthetic current role used to check the launch publication allowance.','draft','approved')",
+      [second, org],
+    );
+    await as(admin);
+    await decision("mode", null, null, true);
+    await db.exec("reset role");
+    expect(
+      (
+        await db.query(
+          "select count(*)::int n from public.jobs where status='published'",
+        )
+      ).rows[0],
+    ).toEqual({ n: 1 });
+    expect(
+      (
+        await db.query(
+          "select count(*)::int n from private.moderation_audit where action='launch_deferred'",
+        )
+      ).rows[0],
+    ).toEqual({ n: 1 });
+  });
+  it("keeps unreviewed roles private at launch", async () => {
+    await db.query(
+      "update public.jobs set moderation_status='pending' where id=$1",
+      [job],
+    );
+    await as(admin);
+    await decision("mode", null, null, true);
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+  });
+  it("does not let an agency role with missing authority block the marketplace opening", async () => {
+    await db.query(
+      "update public.organisations set kind='agency' where id=$1",
+      [org],
+    );
+    await as(admin);
+    await decision("mode", null, null, true);
+    expect(
+      (await db.query("select public.launch_status() open")).rows[0],
+    ).toEqual({ open: true });
+    await as("", "anon");
+    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+  });
+  it("keeps automatic launch publication and private visibility tables inaccessible to browser roles", async () => {
+    expect(
+      (
+        await db.query(
+          "select has_function_privilege('anon','private.publish_default_launch_roles()','execute') anonymous,has_function_privilege('authenticated','private.publish_default_launch_roles()','execute') signed_in,has_table_privilege('authenticated','private.launch_profiles','UPDATE') direct_update",
+        )
+      ).rows[0],
+    ).toEqual({ anonymous: false, signed_in: false, direct_update: false });
   });
   it("keeps consented profiles private and blocks reviewer release before public launch", async () => {
     await as(owner);
@@ -528,14 +806,16 @@ describe("founding launch privacy and release", () => {
       code: "42501",
     });
   });
-  it("opening registration does not release unconsented content", async () => {
+  it("opening the marketplace publishes eligible default-included roles", async () => {
     await as(admin);
     await decision("mode", null, null, true);
     await as("", "anon");
     expect(
       (await db.query("select public.launch_status() open")).rows[0],
     ).toEqual({ open: true });
-    expect((await db.query("select * from public.jobs")).rows).toHaveLength(0);
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
   });
   it("does not let an unverified-email identity enter employer onboarding through the direct Data API", async () => {
     await db.query(
@@ -595,7 +875,7 @@ describe("founding launch privacy and release", () => {
       code: "23514",
     });
   });
-  it("closing a role withdraws its release so an employer cannot reopen it publicly", async () => {
+  it("allows the employer to republish a closed role using standard renewal", async () => {
     await as(owner);
     await db.query(
       "select public.manage_launch_content('profile',$1,'consent')",
@@ -615,6 +895,8 @@ describe("founding launch privacy and release", () => {
     );
     await db.query("select public.renew_listing($1)", [job]);
     await as("", "anon");
-    expect((await db.query("select id from public.jobs")).rows).toHaveLength(0);
+    expect((await db.query("select id from public.jobs")).rows).toEqual([
+      { id: job },
+    ]);
   });
 });

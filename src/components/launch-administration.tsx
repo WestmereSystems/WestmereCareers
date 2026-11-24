@@ -117,8 +117,9 @@ export function LaunchAdministration() {
         Open Westmere Careers across Australia and send one launch announcement
         to verified registered accounts and homepage launch-update subscribers.
         Duplicate addresses receive one email. Removed, restricted and
-        suppressed addresses are excluded. Profiles and vacancies retain their
-        individual publication controls.
+        suppressed addresses are excluded. Verified business profiles and
+        eligible reviewed roles are included by default, subject to each
+        business’s visibility and closed-role choices.
       </p>
       {message && (
         <p className="notice" role="status">
@@ -136,8 +137,9 @@ export function LaunchAdministration() {
             Westmere Careers has launched across Australia. Explore
             opportunities, prepare your next application or open your business
             workspace. Your private account details remain private. Business
-            profiles and vacancies appear only after their separate publication
-            approvals.
+            profiles and eligible reviewed vacancies are public by default.
+            Businesses can change profile visibility or close individual roles
+            in their account.
           </blockquote>
           <p>
             The email links to the production website and includes a

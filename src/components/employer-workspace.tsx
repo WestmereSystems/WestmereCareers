@@ -566,8 +566,8 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
           {editing && (
             <p className="notice">
               {session.marketplaceOpen
-                ? "Saving without publishing keeps a private draft. Select Publish to submit your changes; owner permission and Westmere’s release remain required."
-                : "Your business details and vacancies are not public. Save a private draft or submit it for review ahead of launch. Verification and review do not make it public."}
+                ? "Saving without publishing keeps a private draft. Select Publish to submit your changes. Review requirements and your business’s visibility setting still apply."
+                : "Your business details and vacancies are private until launch. Eligible reviewed roles are included by default. Close roles in Launch preparation to exclude them, or make your business private in Profile to hide all its listings."}
             </p>
           )}
           <label className="field-label">
@@ -950,7 +950,7 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                 </details>
                 <p>
                   {role.location} ·{" "}
-                  {role.status === "closed" ? "Archived" : role.status} ·{" "}
+                  {role.status === "closed" ? "Closed" : role.status} ·{" "}
                   {role.publication_requested
                     ? "Moderation review"
                     : role.moderation_status}
@@ -1004,7 +1004,7 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                       className="button secondary role-option-button"
                       onClick={() => setArchiveRole(role)}
                     >
-                      Archive listing
+                      Close role
                     </button>
                   )}
                   {role.moderation_status === "approved" &&
@@ -1033,7 +1033,9 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
                           }
                         }}
                       >
-                        Renew for 40 days
+                        {role.status === "closed"
+                          ? "Republish role"
+                          : "Renew for 40 days"}
                       </button>
                     )}
                   <Link
@@ -1475,8 +1477,8 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
       )}
       {archiveRole && (
         <ConfirmAction
-          title={`Archive ${archiveRole.title}?`}
-          confirmLabel="Archive listing"
+          title={`Close ${archiveRole.title}?`}
+          confirmLabel="Close role"
           onClose={() => setArchiveRole(null)}
           onConfirm={async () => {
             const d = await sendJson(
@@ -1491,7 +1493,7 @@ function EmployerWorkspaceForUser({ view }: { view: "roles" | "applicants" }) {
           <p>
             This removes the listing from search and stops new applications.
             Existing applications, documents and statistics remain in your Roles
-            tab. You can renew it later.
+            tab. You can republish it later.
           </p>
         </ConfirmAction>
       )}

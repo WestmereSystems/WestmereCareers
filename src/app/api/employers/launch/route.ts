@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       request,
       z
         .object({
-          kind: z.enum(["profile", "job", "business_jobs"]),
+          kind: z.enum(["profile", "job"]),
           id: z.uuid(),
           action: z.enum(["consent", "withdraw"]),
         })
@@ -35,13 +35,13 @@ export async function POST(request: Request) {
     checkRpc(error);
     return json({
       message:
-        b.kind === "business_jobs"
+        b.kind === "profile"
           ? b.action === "consent"
-            ? "Job publication enabled for this business. Current and future listings are eligible for launch review; Westmere must release each approved listing."
-            : "Job publication disabled for this business. Its current and future listings remain private until you enable publication again and Westmere reviews and releases them."
+            ? "Public business visibility enabled. After launch, previously published listings that are still active are visible again; closed roles stay closed. Review requirements still apply."
+            : "Business profile is private. All its listings are hidden without closing them. You can restore public visibility in Profile."
           : b.action === "consent"
-            ? "Permission saved. Westmere will review this content before releasing it publicly."
-            : "Permission withdrawn. This content is private.",
+            ? "Role reopened. Normal review, business visibility and publication requirements still apply."
+            : "Role closed and excluded from launch. Applications and statistics are retained. You can republish it from Roles.",
     });
   } catch (e) {
     return apiError(e);

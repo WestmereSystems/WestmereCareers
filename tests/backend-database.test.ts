@@ -926,7 +926,7 @@ describe("independent trust review", () => {
         .rows,
     ).toHaveLength(0);
   });
-  it("stages verified listings privately, notifies staff after owner consent and preserves quarantine", async () => {
+  it("publishes verified submitted listings after launch and preserves quarantine", async () => {
     await staff();
     await asUser(employer);
     await db.query(
@@ -947,13 +947,10 @@ describe("independent trust review", () => {
         )
       ).rows[0],
     ).toEqual({
-      status: "draft",
+      status: "published",
       moderation_status: "approved",
       publication_requested: false,
     });
-    await db.query("select public.manage_launch_content('job',$1,'consent')", [
-      inserted,
-    ]);
     await db.exec("reset role");
     expect(
       (
@@ -2131,7 +2128,7 @@ describe("launch listing and candidate workflows", () => {
       )
     ).rows[0].id;
   }
-  it("enforces the active free listing quota and holds a closed role’s renewal for release", async () => {
+  it("enforces the active free listing quota when republishing closed roles", async () => {
     await asUser(employer);
     const second = (
       await db.query<{ id: string }>(
@@ -2153,11 +2150,18 @@ describe("launch listing and candidate workflows", () => {
       "update public.jobs set publication_requested=true where id=$1",
       [second],
     );
+    await expect(
+      db.query("select public.renew_listing($1)", [job]),
+    ).rejects.toMatchObject({ code: "23514" });
+    await db.query(
+      "update public.jobs set status='closed',publication_requested=false where id=$1",
+      [second],
+    );
     const renewal = await db.query<{ renew_listing: { status: string } }>(
       "select public.renew_listing($1)",
       [job],
     );
-    expect(renewal.rows[0].renew_listing.status).toBe("draft");
+    expect(renewal.rows[0].renew_listing.status).toBe("published");
   });
   it("renews the same job for forty days and retains applications, original publication and audit attribution", async () => {
     await applicationFor(candidate);
