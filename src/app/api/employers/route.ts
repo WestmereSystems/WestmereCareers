@@ -341,7 +341,9 @@ export async function PATCH(request: Request) {
       return json({
         job: data,
         message:
-          "Listing renewed for 40 days. Its ID, applications and statistics are unchanged. This renewal is logged.",
+          data?.status === "published"
+            ? "Role published for 40 days, subject to your business profile’s visibility. Its ID, applications and statistics are unchanged."
+            : "Role reopened for launch, subject to review and business visibility. Its ID, applications and statistics are unchanged.",
       });
     }
     const { data, error } = await supabase
@@ -363,7 +365,7 @@ export async function PATCH(request: Request) {
       job: data,
       message:
         body.action === "close"
-          ? "Listing archived. Applications and statistics are retained."
+          ? "Role closed. Applications and statistics are retained. You can republish it later."
           : data.status === "published"
             ? "Listing published. The moderation team has been notified."
             : "This listing is restricted by moderation. Review its feedback.",

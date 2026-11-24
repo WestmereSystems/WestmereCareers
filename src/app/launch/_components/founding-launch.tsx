@@ -96,10 +96,10 @@ export function FoundingHome() {
           </p>
           <p>
             During the founding phase, your business profile and vacancies
-            remain private. Job publication is enabled by default, and you can
-            opt out in Launch preparation. Business profiles need separate
-            permission. Westmere reviews and releases content separately after
-            the public marketplace opens.
+            remain private. Verified business profiles and eligible reviewed
+            roles are included when the marketplace opens. Make each business
+            public or private in Profile, or close individual roles in Launch
+            preparation to exclude them. You can republish closed roles later.
           </p>
           <div className="hero-actions">
             <Link href="/launch/plans" className="button secondary">
@@ -175,35 +175,36 @@ export function FoundingEmployerPage() {
               privately.
             </li>
             <li>
-              Review optional subscriptions in Billing and record content
-              permission in Launch preparation.
+              Review optional subscriptions in Billing, choose business
+              visibility in Profile and manage roles in Launch preparation.
             </li>
           </ol>
           <p>
             Agency identity, hiring authority and client permissions follow the
             usual independent review process.
           </p>
-          <Link href="/launch/employers" className="text-link">
-            How employer onboarding works →
-          </Link>
         </section>
         <section className="panel">
-          <h2>Your content is not public yet.</h2>
+          <h2>Choose what appears at launch.</h2>
           <ul className="check-list">
             <li>
               <Check /> Business profiles and vacancies remain private during
               founding onboarding.
             </li>
             <li>
-              <Check /> Verification does not publish a profile or vacancy.
+              <Check /> Verified business profiles and eligible reviewed roles
+              are included at public launch by default.
             </li>
             <li>
-              <Check /> Subscribing does not bypass verification or publication
-              controls.
+              <Check /> Set each business to Public or Private in Profile at any
+              time. A private profile hides all its listings; making it public
+              again restores listings that are still active, while roles closed
+              or removed in the meantime stay closed.
             </li>
             <li>
-              <Check /> Public release requires your permission and Westmere’s
-              review after launch opens.
+              <Check /> Exclude a role in Launch preparation to move it to
+              Closed. You can republish it from Roles later, subject to the
+              usual review and plan limits.
             </li>
           </ul>
           <p className="fineprint">

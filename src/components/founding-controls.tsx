@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { launchPath } from "@/lib/launch-paths";
 import { LaunchAdministration } from "./launch-administration";
 import { useSession } from "./providers";
 import { sendJson } from "./trust-workflows";
@@ -18,9 +20,11 @@ type Content = {
   review?: string;
   status?: string;
   organisationId?: string;
-  jobsPublicationEnabled?: boolean;
+  organisationName?: string;
   publicationAllowed?: boolean;
   publicationOptedOut?: boolean;
+  public?: boolean;
+  hiddenAt?: string | null;
   consentedAt: string | null;
   releasedAt: string | null;
 };
@@ -122,17 +126,26 @@ export function FoundingAdmin() {
         <p>
           {item.test
             ? "Fictional test content · public release blocked"
-            : item.releasedAt && data?.marketplaceOpen
-              ? "Released publicly"
-              : item.releasedAt
-                ? "Private · public launch is closed"
-                : (kind === "job" ? item.publicationAllowed : item.consentedAt)
-                  ? kind === "job" && !item.consentedAt
-                    ? "Default job publication enabled · awaiting release"
-                    : "Owner permission recorded · awaiting release"
-                  : "Private · owner permission required"}
+            : item.public
+              ? "Public"
+              : item.hiddenAt
+                ? "Private · held by Westmere"
+                : item.publicationAllowed
+                  ? "Included by default · normal publication checks apply"
+                  : item.status === "closed"
+                    ? "Closed · not included at launch"
+                    : "Private · business opted out"}
           {item.review && ` · Review: ${item.review}`}
         </p>
+        {kind === "job" && (
+          <p>
+            Business: {item.organisationName}
+            {data?.profiles.find(
+              (profile) => profile.id === item.organisationId,
+            )?.publicationAllowed === false &&
+              " · private profile, listings hidden"}
+          </p>
+        )}
         {kind === "profile" && (
           <details>
             <summary>Review profile content</summary>
@@ -158,15 +171,10 @@ export function FoundingAdmin() {
             <p>Public careers email: {item.careersEmail || "Not supplied"}</p>
           </details>
         )}
-        {!item.test && (
+        {!item.test && (kind !== "job" || item.status !== "closed") && (
           <form
             onSubmit={(e) =>
-              void decide(
-                e,
-                item.releasedAt ? "hide" : "release",
-                item.id,
-                kind,
-              )
+              void decide(e, item.hiddenAt ? "release" : "hide", item.id, kind)
             }
           >
             {reason()}
@@ -174,24 +182,29 @@ export function FoundingAdmin() {
               className="button secondary small"
               disabled={
                 busy ||
-                (!item.releasedAt && !data?.marketplaceOpen) ||
-                (!item.releasedAt &&
-                  (!(kind === "job"
-                    ? item.publicationAllowed
-                    : item.consentedAt) ||
-                    (kind === "profile" && !item.verified) ||
-                    (kind === "job" && item.review !== "approved")))
+                (kind === "profile" && !item.verified) ||
+                (!!item.hiddenAt && !data?.marketplaceOpen) ||
+                (!!item.hiddenAt &&
+                  (!item.publicationAllowed ||
+                    (kind === "job" &&
+                      (item.review !== "approved" ||
+                        !data?.profiles.find(
+                          (profile) => profile.id === item.organisationId,
+                        )?.public))))
               }
             >
-              {item.releasedAt
-                ? "Make private"
-                : `Release ${kind === "job" ? "vacancy" : "profile"} publicly`}
+              {item.hiddenAt
+                ? `Restore ${kind === "job" ? "vacancy" : "profile"} visibility`
+                : "Hold from public view"}
             </button>
           </form>
         )}
       </article>
     ));
   }
+  const launchJobs =
+    data?.jobs.filter((item) => item.publicationAllowed && !item.hiddenAt) ??
+    [];
   return (
     <>
       <LaunchAdministration />
@@ -201,9 +214,11 @@ export function FoundingAdmin() {
         <p>
           Businesses and agencies register directly and submit the normal
           verification form in their account. No separate founding-access
-          approval or consultation is needed. Profiles and vacancies stay
-          private until the public marketplace opens, the owner permits
-          publication and Westmere releases each item.
+          approval or consultation is needed. Verified business profiles and
+          eligible reviewed vacancies are included at launch by default.
+          Businesses can make each profile private in Profile or close
+          individual roles in Launch preparation. A private profile hides all
+          its listings.
         </p>
         {message && (
           <p role="status" className="notice">
@@ -280,6 +295,21 @@ export function FoundingAdmin() {
                 </button>
               </div>
             </details>
+            <details open>
+              <summary>
+                Vacancies included at launch ({launchJobs.length})
+              </summary>
+              <p>
+                These roles are included by default or have been republished by
+                the business. Review and plan limits still apply. Roles under a
+                private business profile remain hidden until that profile is
+                public.
+              </p>
+              {content(launchJobs, "job")}
+              {!launchJobs.length && (
+                <p>No vacancies are currently included at launch.</p>
+              )}
+            </details>
             <details>
               <summary>Business profiles ({data.profiles.length})</summary>
               {!data.marketplaceOpen && (
@@ -291,12 +321,12 @@ export function FoundingAdmin() {
               {content(data.profiles, "profile")}
             </details>
             <details>
-              <summary>Vacancies ({data.jobs.length})</summary>
+              <summary>All vacancies ({data.jobs.length})</summary>
               <p>
                 Inspect the full listing in the Listings review queue (include
-                reviewed items), and check its accuracy before release. Release
-                the business profile before its vacancy. Publication starts a
-                fresh 30-day listing period.
+                reviewed items), and check its accuracy. Closed roles are
+                excluded from launch. Eligible roles receive a fresh 30-day
+                listing period when first published at launch.
               </p>
               {content(data.jobs, "job")}
             </details>
@@ -305,7 +335,7 @@ export function FoundingAdmin() {
                 <summary>Public marketplace opening</summary>
                 <p>
                   {data.marketplaceOpen
-                    ? "Public job browsing and the employer directory are open. Only individually released content is visible."
+                    ? "Public job browsing and the employer directory are open. Profile visibility, role status and review requirements control what is visible."
                     : "Founding launch is active at /launch. Business registration and optional verified-business subscriptions are available. All business profiles and vacancies remain private; public browsing is closed."}
                 </p>
                 <form
@@ -345,123 +375,86 @@ export function FoundingAdmin() {
 export function FoundingContent() {
   const session = useSession();
   const [data, setData] = useState<{
-      profiles: Content[];
-      jobs: Content[];
-    } | null>(null),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    profiles: Content[];
+    jobs: Content[];
+  } | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const r = await fetch("/api/employers/launch", {
+      const response = await fetch("/api/employers/launch", {
         cache: "no-store",
         signal,
       });
-      const d = await r.json();
-      if (!r.ok) throw Error(d.error);
-      if (!signal?.aborted) setData(d);
-    } catch (e) {
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error);
+      if (!signal?.aborted) setData(result);
+    } catch (error) {
       if (!signal?.aborted)
         setMessage(
-          e instanceof Error ? e.message : "Launch content unavailable.",
+          error instanceof Error
+            ? error.message
+            : "Launch preparation unavailable.",
         );
     }
   }, []);
   useEffect(() => {
-    const c = new AbortController();
-    void load(c.signal);
-    return () => c.abort();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
-  async function change(
-    e: React.FormEvent<HTMLFormElement>,
+  async function closeRole(
+    event: React.FormEvent<HTMLFormElement>,
     item: Content,
-    kind: string,
   ) {
-    e.preventDefault();
+    event.preventDefault();
     setBusy(true);
+    setMessage("");
     try {
-      const d = await sendJson("/api/employers/launch", {
+      const result = await sendJson("/api/employers/launch", {
+        kind: "job",
         id: item.id,
-        kind,
-        action: (
-          kind === "business_jobs"
-            ? item.jobsPublicationEnabled
-            : kind === "job"
-              ? item.publicationAllowed
-              : item.consentedAt
-        )
-          ? "withdraw"
-          : "consent",
+        action: "withdraw",
       });
-      setMessage(d.message);
+      setMessage(result.message);
       await load();
-    } catch (e) {
+    } catch (error) {
       setMessage(
-        e instanceof Error ? e.message : "Permission could not be saved.",
+        error instanceof Error
+          ? error.message
+          : "This role could not be closed.",
       );
     } finally {
       setBusy(false);
     }
   }
-  function list(items: Content[], kind: string) {
-    return items.map((item) => (
-      <article key={item.id}>
-        <h3>{item.name || item.title}</h3>
-        <p>
-          {item.releasedAt && session.marketplaceOpen
-            ? "Released publicly"
-            : item.releasedAt
-              ? "Private · public launch is closed"
-              : (kind === "job" ? item.publicationAllowed : item.consentedAt)
-                ? kind === "job" && !item.consentedAt
-                  ? "Default publication enabled · awaiting Westmere’s release"
-                  : "Permission recorded · awaiting Westmere’s release"
-                : "Private · publication permission is off"}
-          {item.review && ` · Review: ${item.review}`}
-        </p>
-        {item.owner && (
-          <form onSubmit={(e) => void change(e, item, kind)}>
-            {!(kind === "job" ? item.publicationAllowed : item.consentedAt) && (
-              <label className="checkbox-label">
-                <input type="checkbox" required />I approve this{" "}
-                {kind === "job" ? "vacancy" : "business profile"} for public
-                release after the public marketplace opens and Westmere’s
-                review. I have checked it is current and authorised.
-              </label>
-            )}
-            <button
-              className="button secondary small"
-              disabled={
-                busy ||
-                item.test ||
-                (kind === "job" &&
-                  !data?.profiles.find((p) => p.id === item.organisationId)
-                    ?.jobsPublicationEnabled)
-              }
-            >
-              {(kind === "job" ? item.publicationAllowed : item.consentedAt)
-                ? "Withdraw permission and make private"
-                : "Approve for launch"}
-            </button>
-          </form>
-        )}
-      </article>
-    ));
-  }
+  const profilePath = launchPath(
+    "/account?tab=profile",
+    session.marketplaceOpen,
+  );
+  const rolesPath = launchPath("/account?tab=roles", session.marketplaceOpen);
   return (
     <section className="panel founding-content">
       <p className="eyebrow">Your launch preparation</p>
-      <h2>Choose what can become public.</h2>
+      <h2>Choose what appears at launch.</h2>
       <p>
-        Your business details and vacancies are not public during founding
-        onboarding. They can only become public after the public marketplace
-        opens and Westmere releases them. Job publication is enabled by default
-        for each business. Turn it off below to keep that business’s current and
-        future job listings private. You can also withdraw permission for an
-        individual vacancy. Business profiles still need separate approval.
-        Verification, payment and this preference do not bypass listing review.
-        Content or document changes require Westmere to release the updated
-        version again; your opt-out remains in place.
+        Your business profiles and vacancies remain private until the public
+        marketplace opens. Verified business profiles and eligible reviewed
+        roles are included at launch by default. Normal review, hiring authority
+        and plan limits still apply; payment does not bypass these checks.
       </p>
+      <h3>Business visibility</h3>
+      <p>
+        Choose Public or Private separately for each business in the Profile
+        tab, before or after launch. Making a business private hides its profile
+        and all its job listings without closing those roles. Making it public
+        again restores listings that are still active. Roles closed or removed
+        while the profile was private stay closed; expiry dates continue as
+        usual.
+      </p>
+      <Link href={profilePath} className="button secondary small">
+        Manage business visibility in Profile →
+      </Link>
       {message && (
         <p role="status" className="notice">
           {message}
@@ -469,50 +462,71 @@ export function FoundingContent() {
       )}
       {data ? (
         <>
-          <h3>Job publication at launch</h3>
-          {data.profiles.map((item) => (
+          {data.profiles.map((profile) => (
+            <p key={profile.id}>
+              <strong>{profile.name}</strong> ·{" "}
+              {profile.publicationAllowed
+                ? "Public visibility enabled"
+                : "Private · all listings hidden"}
+              {profile.hiddenAt ? " · held for Westmere review" : ""}
+            </p>
+          ))}
+          <h3>Roles at launch</h3>
+          <p>
+            Keep the roles you want to advertise included below. Choose “Close
+            and exclude from launch” for a role you do not want published. It
+            moves to Closed in Roles and retains its applications and
+            statistics. To include it again, use “Republish role” in Roles, just
+            as you would for a vacancy closed after recruitment. A private
+            business profile continues to hide its roles, even when they are
+            included at launch.
+          </p>
+          {data.jobs.map((item) => (
             <article key={item.id}>
-              <h4>{item.name}</h4>
+              <h4>{item.title}</h4>
+              <p>{item.organisationName}</p>
               <p>
-                {item.test
-                  ? "Test business · public release remains blocked"
-                  : item.jobsPublicationEnabled
-                    ? "On by default · reviewed listings may be published after launch and Westmere’s release."
-                    : "Off · this business’s current and future job listings remain private."}
+                {item.status === "closed"
+                  ? "Closed · excluded from launch"
+                  : item.hiddenAt
+                    ? "Private · held for Westmere review"
+                    : item.public
+                      ? "Published"
+                      : item.publicationAllowed
+                        ? "Included at launch · subject to review and business visibility"
+                        : "Excluded from launch"}
+                {item.review && ` · Review: ${item.review}`}
               </p>
-              {item.owner ? (
-                <form onSubmit={(e) => void change(e, item, "business_jobs")}>
+              {item.owner && item.status !== "closed" && (
+                <form onSubmit={(event) => void closeRole(event, item)}>
                   <button
-                    type="submit"
                     className="button secondary small"
                     disabled={busy || item.test}
-                    aria-label={`${item.jobsPublicationEnabled ? "Turn off" : "Enable"} job publication for ${item.name}`}
+                    aria-label={`Close ${item.title} and exclude from launch`}
                   >
-                    {item.jobsPublicationEnabled
-                      ? "Turn off job publication"
-                      : "Enable job publication"}
+                    Close and exclude from launch
                   </button>
                 </form>
-              ) : (
-                <p className="fineprint">
-                  The business owner can change this preference.
-                </p>
+              )}
+              {item.status === "closed" && (
+                <Link href={rolesPath} className="text-link">
+                  Manage closed role in Roles →
+                </Link>
               )}
             </article>
           ))}
-          <h3>Business profiles</h3>
-          {list(data.profiles, "profile")}
-          <h3>Vacancies</h3>
-          {list(data.jobs, "job")}
           {!data.jobs.length && (
             <p>
               Prepare a vacancy in Roles. It will appear here when it is
               available to your account.
             </p>
           )}
+          <Link href={rolesPath} className="text-link">
+            Manage roles →
+          </Link>
         </>
       ) : (
-        <p>Loading your launch preparation…</p>
+        <p role="status">Loading your launch preparation…</p>
       )}
     </section>
   );
