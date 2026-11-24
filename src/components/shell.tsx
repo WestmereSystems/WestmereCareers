@@ -67,7 +67,9 @@ export function Header() {
             className={pathname.startsWith("/companies") ? "active" : ""}
             onClick={() => setMenu(false)}
           >
-            {session.marketplaceOpen ? "Explore employers" : "Employer onboarding"}
+            {session.marketplaceOpen
+              ? "Explore employers"
+              : "Employer onboarding"}
           </Link>
           <Link
             href={
@@ -159,6 +161,44 @@ export function Header() {
 }
 export function Footer() {
   const session = useSession();
+  const hasStudio = Boolean(session.user && session.isPremium);
+  const accountLink = (tab: string) =>
+    launchPath(`/account?tab=${tab}`, session.marketplaceOpen);
+  const nextStep = {
+    label: session.marketplaceOpen ? "Find a job" : "Get a launch update",
+    href: session.marketplaceOpen ? "/jobs" : "/launch#candidate-updates",
+  };
+  const workspaceLinks = session.business
+    ? [
+        { label: "Business profiles", href: accountLink("profile") },
+        { label: "Manage roles", href: accountLink("roles") },
+        ...(!session.marketplaceOpen
+          ? [{ label: "Launch preparation", href: accountLink("launch") }]
+          : []),
+        { label: "Applicants", href: accountLink("applicants") },
+        { label: "Hiring dashboard", href: accountLink("dashboard") },
+      ]
+    : session.user
+      ? [
+          nextStep,
+          { label: "My profile", href: accountLink("profile") },
+          { label: "My applications", href: accountLink("applications") },
+          { label: "Saved roles", href: accountLink("saved") },
+          { label: "Searches and alerts", href: accountLink("alerts") },
+          { label: "My trust activity", href: accountLink("trust") },
+        ]
+      : session.marketplaceOpen
+        ? [
+            nextStep,
+            { label: "Explore employers", href: "/companies" },
+            { label: "Saved roles", href: "/saved" },
+            { label: "Sign in or create an account", href: "/account" },
+          ]
+        : [
+            nextStep,
+            { label: "Register your business", href: "/launch/register" },
+            { label: "Business sign in", href: "/launch/sign-in" },
+          ];
   return (
     <footer className="site-footer">
       <div className="container footer-top">
@@ -176,56 +216,49 @@ export function Footer() {
         </div>
         <div className="footer-links">
           <div>
-            <h3>Your next step</h3>
-            <Link
-              href={
-                session.marketplaceOpen ? "/jobs" : "/launch#candidate-updates"
-              }
-            >
-              {session.marketplaceOpen ? "Find a job" : "Get a launch update"}
-            </Link>
-            {session.marketplaceOpen || session.user ? (
-              <>
-                <Link href="/account?tab=saved">Saved roles</Link>
-                <Link href="/account?tab=alerts">Saved searches & alerts</Link>
-                <Link href="/account?tab=trust">My trust activity</Link>
-                <Link href="/account?tab=applications">My applications</Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href={launchPath(
-                    "/employers",
-                    session.marketplaceOpen,
-                  )}
-                >
-                  How employer onboarding works
-                </Link>
-                <Link href="/launch/register">Register your business</Link>
-                <Link href="/launch/sign-in">Already registered? Sign in</Link>
-              </>
-            )}
-            {(session.marketplaceOpen || session.user) &&
-              (!session.business || session.isPremium) && (
-                <Link href="/studio">Careers+ Studio</Link>
-              )}
+            <h3>
+              {session.business
+                ? "Your business"
+                : session.user
+                  ? "Your account"
+                  : "Get started"}
+            </h3>
+            {workspaceLinks.map(({ label, href }) => (
+              <Link key={href} href={href}>
+                {label}
+              </Link>
+            ))}
+            {hasStudio && <Link href="/studio">Careers+ Studio</Link>}
           </div>
           <div>
-            <h3>A better experience</h3>
+            <h3>Explore Westmere</h3>
+            <Link href={launchPath("/employers", session.marketplaceOpen)}>
+              {session.marketplaceOpen
+                ? "For employers"
+                : "Employer onboarding"}
+            </Link>
             <Link
-              href={launchPath(
-                session.business ? "/account?tab=dashboard" : "/employers",
-                session.marketplaceOpen,
-              )}
+              href={
+                session.marketplaceOpen ? "/employers#plans" : "/launch/plans"
+              }
             >
-              For employers
+              Employer and agency plans
             </Link>
-            <Link href={launchPath("/careers-plus", session.marketplaceOpen)}>
-              Careers+
-            </Link>
+            {!hasStudio && (
+              <Link href={launchPath("/careers-plus", session.marketplaceOpen)}>
+                Careers+
+              </Link>
+            )}
             <Link href="/about">About Westmere</Link>
-            <Link href="/transparency">Our transparency promise</Link>
-            <Link href="/privacy">Your privacy</Link>
+            <a
+              href="https://www.linkedin.com/company/westmerecareers"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Westmere Careers on LinkedIn (opens in a new tab)"
+            >
+              LinkedIn
+            </a>
+            <a href="mailto:hello@westmere.com.au">Contact Westmere</a>
             <StaffLink />
           </div>
         </div>
@@ -243,7 +276,7 @@ export function Footer() {
         <div>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
-          <Link href="/transparency">How response insights work</Link>
+          <Link href="/transparency">Transparency</Link>
         </div>
         <span className="footer-signoff">
           Your career starts with Westmere.
@@ -283,6 +316,8 @@ export function EmptyState({
 function StaffLink() {
   const session = useSession();
   return session.staffRole ? (
-    <Link href="/admin">Trust review workspace</Link>
+    <Link href={launchPath("/account?tab=admin", session.marketplaceOpen)}>
+      Admin workspace
+    </Link>
   ) : null;
 }
