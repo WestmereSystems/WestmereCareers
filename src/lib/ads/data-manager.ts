@@ -50,7 +50,10 @@ export function importPayload(
         eventSource: "WEB",
         conversionValue: event.valueMinor / 100,
         currency: "AUD",
-        consent: { adUserData: "GRANTED", adPersonalization: "DENIED" },
+        consent: {
+          adUserData: "CONSENT_GRANTED",
+          adPersonalization: "CONSENT_DENIED",
+        },
         ...(Object.keys(event.identifiers).length
           ? { adIdentifiers: event.identifiers }
           : {}),

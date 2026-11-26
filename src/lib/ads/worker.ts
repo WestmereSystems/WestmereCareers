@@ -280,6 +280,21 @@ export async function runMeasurementWorker() {
           else if (processed.state === "permanent_failure") result.failed++;
           continue;
         }
+        const eligible = checked(
+          await db.rpc("ads_delivery_eligible", {
+            p_employer: event.employer_id,
+          }),
+        );
+        if (eligible.data !== true) {
+          await saveState(
+            db,
+            event.id,
+            "suppressed",
+            "CURRENT_EMPLOYER_INELIGIBLE",
+          );
+          result.suppressed++;
+          continue;
+        }
         if (Date.parse(event.occurred_at) < config.start) {
           await saveState(
             db,

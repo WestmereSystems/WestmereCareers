@@ -438,6 +438,12 @@ describe("Data Manager processing", () => {
       conversionValue: 100,
       currency: "AUD",
       eventTimestamp: "2026-11-26T01:00:00Z",
+      // Data Manager ConsentStatus differs from the Google Ads API enum.
+      // https://developers.google.com/data-manager/api/reference/rest/v1/Consent
+      consent: {
+        adUserData: "CONSENT_GRANTED",
+        adPersonalization: "CONSENT_DENIED",
+      },
     });
     expect(body.destinations[0].productDestinationId).toBe("987654321");
   });

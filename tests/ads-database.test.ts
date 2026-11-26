@@ -155,6 +155,92 @@ describe("durable employer acquisition boundaries", () => {
     expect(again[0].transaction_id).toBe(original.transaction_id);
     expect(again[0].employer_id).toBe(id);
   });
+  it.each([
+    [
+      "agency",
+      "update public.business_accounts set kind='agency' where user_id=$1",
+    ],
+    [
+      "staff",
+      "insert into private.staff_members(user_id,role) values($1,'reviewer')",
+    ],
+    [
+      "test account",
+      "insert into private.test_account_allowlist(email) select lower(email) from auth.users where id=$1",
+    ],
+    [
+      "removed business",
+      "delete from public.business_accounts where user_id=$1",
+    ],
+  ])(
+    "blocks current %s binding and delivery while preserving lifetime payment history",
+    async (_reason, change) => {
+      const id = await account();
+      await complete(await lease(), first());
+      expect(
+        (
+          await db.query<{ ok: boolean }>(
+            "select public.ads_delivery_eligible($1) ok",
+            [id],
+          )
+        ).rows[0].ok,
+      ).toBe(true);
+      if (_reason === "agency") {
+        // Respect the existing independent-review boundary for a billed account.
+        await db.query(
+          "insert into private.business_type_corrections(organisation_id,user_id,previous_kind,requested_kind,evidence,status,reviewer_id,completed_at) values($1,$2,'employer','agency','Synthetic independently reviewed account-type correction.','completed',$3,transaction_timestamp())",
+          [id, owner, other],
+        );
+      }
+      await db.query(change, [owner]);
+      expect(
+        (
+          await db.query<{ ok: boolean }>(
+            "select public.ads_delivery_eligible($1) ok",
+            [id],
+          )
+        ).rows[0].ok,
+      ).toBe(false);
+      const contextId = (
+        await db.query<{ id: string }>(
+          "insert into public.ads_contexts(consent_version,measurement,ad_user_data,granted_at,user_data_granted_at) values('2026-11-26.1',true,true,clock_timestamp(),clock_timestamp()) returning id",
+        )
+      ).rows[0].id;
+      expect(
+        (
+          await db.query<{ id: string | null }>(
+            "select public.ads_bind_context($1,$2) id",
+            [contextId, owner],
+          )
+        ).rows[0].id,
+      ).toBeNull();
+      expect(
+        (
+          await db.query<{ first_invoice_id: string }>(
+            "select first_invoice_id from public.ads_employers where id=$1",
+            [id],
+          )
+        ).rows[0].first_invoice_id,
+      ).toBe("in_first");
+      expect(
+        (
+          await db.query(
+            "select id from public.ads_conversion_events where employer_id=$1 and kind='purchase'",
+            [id],
+          )
+        ).rows,
+      ).toHaveLength(1);
+    },
+  );
+  it("keeps the current eligibility check restricted to the service role", async () => {
+    expect(
+      (
+        await db.query(
+          "select has_function_privilege('anon','public.ads_delivery_eligible(uuid)','execute') anon,has_function_privilege('authenticated','public.ads_delivery_eligible(uuid)','execute') authenticated,has_function_privilege('service_role','public.ads_delivery_eligible(uuid)','execute') service",
+        )
+      ).rows[0],
+    ).toEqual({ anon: false, authenticated: false, service: true });
+  });
   it("serializes concurrent claims and fences a stale worker", async () => {
     await account();
     const claim = await lease();
