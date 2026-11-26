@@ -1,6 +1,11 @@
+import { publicPageMetadata } from "@/lib/search-metadata";
 import Link from "next/link";
 import { ArrowRight, Eye, MessageCircle, ShieldCheck } from "lucide-react";
-export const metadata = { title: "Our transparency promise" };
+export const metadata = publicPageMetadata(
+  "/transparency",
+  "Our transparency promise",
+  "How Westmere Careers records application activity and response insights, and the limits of what those signals can tell job seekers and hiring teams.",
+);
 export default function Transparency() {
   return (
     <main id="main" className="container legal">

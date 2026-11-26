@@ -3,14 +3,14 @@ import "./globals.css";
 import "./refresh.css";
 import "./employer.css";
 import { marketplaceOpen } from "@/lib/server/launch";
+import { searchIndexingEnabled, SITE_ORIGIN } from "@/lib/search-metadata";
 import { Providers } from "@/components/providers";
 import { Header, Footer } from "@/components/shell";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const indexed =
-    process.env.ALLOW_INDEXING === "true" && (await marketplaceOpen());
+  const indexed = searchIndexingEnabled() && (await marketplaceOpen());
   return {
     title: {
       default: "Westmere Careers — Your career starts with Westmere",
@@ -21,6 +21,12 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     ),
+    verification: { google: "nAiOBN5xyG8bYzneXhCzHJJElcUBWQ_WrjPo8tvy3Vc" },
+    openGraph: {
+      type: "website",
+      locale: "en_AU",
+      siteName: "Westmere Careers",
+    },
     robots: {
       index: indexed,
       follow: indexed,
@@ -46,6 +52,33 @@ export default async function Layout({
     <html lang="en-AU" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": `${SITE_ORIGIN}/#organization`,
+                  name: "Westmere Careers",
+                  url: SITE_ORIGIN,
+                  logo: `${SITE_ORIGIN}/brand/westmere-email-logo.png`,
+                  email: "hello@westmere.com.au",
+                  sameAs: ["https://www.linkedin.com/company/westmerecareers"],
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${SITE_ORIGIN}/#website`,
+                  name: "Westmere Careers",
+                  url: SITE_ORIGIN,
+                  inLanguage: "en-AU",
+                  publisher: { "@id": `${SITE_ORIGIN}/#organization` },
+                },
+              ],
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
       </head>
       <body>
         <Providers launchOpen={launchOpen}>
