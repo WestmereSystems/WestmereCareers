@@ -5,6 +5,7 @@ import { premiumError, PremiumError } from "@/lib/premium/http";
 import { premiumAdmin, stripeClient } from "@/lib/premium/providers";
 import { billingEventNotice } from "@/lib/premium/billing-notices";
 import type { BillingMode } from "@/lib/premium/billing-mode";
+import { prioritiseAdsCustomer } from "@/lib/ads/signals";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -136,6 +137,7 @@ export async function POST(request: Request) {
       const customer =
         "customer" in object ? stripeCustomerId(object.customer) : null;
       if (customer) await reconcileCustomer(customer, event.created, mode);
+      if(customer && mode==="live" && event.type==="invoice.paid") await prioritiseAdsCustomer(customer);
     }
     if (
       [
@@ -171,6 +173,7 @@ export async function POST(request: Request) {
               503,
             );
           await reconcileCustomer(customer, event.created, mode);
+          if(mode==="live") await prioritiseAdsCustomer(customer);
         }
       }
     }

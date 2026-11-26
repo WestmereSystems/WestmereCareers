@@ -4,6 +4,7 @@
   "regions": ["hnd1"],
   "crons": [
     { "path": "/api/billing/reconcile", "schedule": "*/15 * * * *" },
+    { "path": "/api/ads/reconcile", "schedule": "7,22,37,52 * * * *" },
     { "path": "/api/file-recovery/backup", "schedule": "10 15 * * *" }
   ]
 }
