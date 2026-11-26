@@ -1,6 +1,7 @@
 "use client";
 import { launchPath } from "@/lib/launch-paths";
 import { PrivacyChoice } from "./privacy-choice";
+import { AdvertisingMeasurement } from "./advertising-measurement";
 import { AustraliaIcon } from "@/components/australia-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -205,6 +206,7 @@ export function Footer() {
         <div>
           <Brand />
           <PrivacyChoice />
+          <AdvertisingMeasurement />
           <p>
             A little clarity.
             <br />A world of possibility.

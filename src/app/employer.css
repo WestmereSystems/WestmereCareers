@@ -699,6 +699,27 @@
 .privacy-choice-panel button {
   font-size: 13px;
 }
+.advertising-choice .privacy-choice-panel {
+  width: min(440px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  text-align: left;
+}
+.advertising-choice label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.advertising-choice input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--green);
+}
 .sample-jobs-switch {
   display: flex;
   gap: 18px;

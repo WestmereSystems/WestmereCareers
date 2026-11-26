@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+const adsCsp =
+  process.env.GOOGLE_ADS_DELIVERY_ENABLED === "true" &&
+  process.env.VERCEL_ENV === "production";
+
 const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -55,11 +59,12 @@ const config: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+              `script-src 'self' 'unsafe-inline'${adsCsp ? " https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com" : ""}${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://auth.westmere.com.au",
+              `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://auth.westmere.com.au${adsCsp ? " https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://www.google.com.au https://ad.doubleclick.net" : ""}`,
+              ...(adsCsp ? ["frame-src https://www.googletagmanager.com"] : []),
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
