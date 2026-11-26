@@ -15,6 +15,7 @@ let stripe: ReturnType<typeof stripeFixture>;
 let sent: unknown[];
 let failFirstUpload = false;
 let processing = "SUCCESS";
+let currentEmployerEligible = true;
 const employer = "91000000-0000-4000-8000-000000000001",
   owner = "91000000-0000-4000-8000-000000000002",
   context = "91000000-0000-4000-8000-000000000003";
@@ -124,93 +125,83 @@ class Query implements PromiseLike<Reply> {
 function stripeFixture() {
   return {
     invoices: {
-      list: vi
-        .fn()
-        .mockResolvedValue({
-          has_more: false,
-          data: [
-            {
-              id: "in_fixture",
-              livemode: true,
-              status: "paid",
-              amount_remaining: 0,
-              amount_paid: 11000,
-              total: 11000,
-              total_excluding_tax: 10000,
-              currency: "aud",
-              starting_balance: 0,
-              pre_payment_credit_notes_amount: 0,
-              post_payment_credit_notes_amount: 0,
-              customer: "cus_fixture",
-              parent: {
-                type: "subscription_details",
-                subscription_details: { subscription: "sub_fixture" },
-              },
-              lines: {
-                has_more: false,
-                data: [{ parent: { type: "subscription_item_details" } }],
-              },
-              status_transitions: { paid_at: paid },
-              total_taxes: [
-                { amount: 1000, tax_rate_details: { tax_rate: "txr_fixture" } },
-              ],
+      list: vi.fn().mockResolvedValue({
+        has_more: false,
+        data: [
+          {
+            id: "in_fixture",
+            livemode: true,
+            status: "paid",
+            amount_remaining: 0,
+            amount_paid: 11000,
+            total: 11000,
+            total_excluding_tax: 10000,
+            currency: "aud",
+            starting_balance: 0,
+            pre_payment_credit_notes_amount: 0,
+            post_payment_credit_notes_amount: 0,
+            customer: "cus_fixture",
+            parent: {
+              type: "subscription_details",
+              subscription_details: { subscription: "sub_fixture" },
             },
-          ],
-        }),
+            lines: {
+              has_more: false,
+              data: [{ parent: { type: "subscription_item_details" } }],
+            },
+            status_transitions: { paid_at: paid },
+            total_taxes: [
+              { amount: 1000, tax_rate_details: { tax_rate: "txr_fixture" } },
+            ],
+          },
+        ],
+      }),
     },
     invoicePayments: {
-      list: vi
-        .fn()
-        .mockResolvedValue({
-          has_more: false,
-          data: [
-            {
-              livemode: true,
-              invoice: "in_fixture",
-              currency: "aud",
-              status: "paid",
-              amount_paid: 11000,
-              payment: { type: "payment_intent", payment_intent: "pi_fixture" },
-              status_transitions: { paid_at: paid },
-            },
-          ],
-        }),
+      list: vi.fn().mockResolvedValue({
+        has_more: false,
+        data: [
+          {
+            livemode: true,
+            invoice: "in_fixture",
+            currency: "aud",
+            status: "paid",
+            amount_paid: 11000,
+            payment: { type: "payment_intent", payment_intent: "pi_fixture" },
+            status_transitions: { paid_at: paid },
+          },
+        ],
+      }),
     },
     paymentIntents: {
-      retrieve: vi
-        .fn()
-        .mockResolvedValue({
-          livemode: true,
-          status: "succeeded",
-          customer: "cus_fixture",
-          currency: "aud",
-          amount_received: 11000,
-          latest_charge: "ch_fixture",
-        }),
+      retrieve: vi.fn().mockResolvedValue({
+        livemode: true,
+        status: "succeeded",
+        customer: "cus_fixture",
+        currency: "aud",
+        amount_received: 11000,
+        latest_charge: "ch_fixture",
+      }),
     },
     charges: {
-      retrieve: vi
-        .fn()
-        .mockResolvedValue({
-          livemode: true,
-          paid: true,
-          captured: true,
-          status: "succeeded",
-          customer: "cus_fixture",
-          currency: "aud",
-          amount_captured: 11000,
-          amount_refunded: 0,
-          disputed: false,
-        }),
+      retrieve: vi.fn().mockResolvedValue({
+        livemode: true,
+        paid: true,
+        captured: true,
+        status: "succeeded",
+        customer: "cus_fixture",
+        currency: "aud",
+        amount_captured: 11000,
+        amount_refunded: 0,
+        disputed: false,
+      }),
     },
     taxRates: {
-      retrieve: vi
-        .fn()
-        .mockResolvedValue({
-          id: "txr_fixture",
-          country: "AU",
-          tax_type: "gst",
-        }),
+      retrieve: vi.fn().mockResolvedValue({
+        id: "txr_fixture",
+        country: "AU",
+        tax_type: "gst",
+      }),
     },
   };
 }
@@ -220,6 +211,7 @@ beforeEach(() => {
   leaseHeld = false;
   failFirstUpload = false;
   processing = "SUCCESS";
+  currentEmployerEligible = true;
   const settings = {
     NODE_ENV: "production",
     VERCEL_ENV: "production",
@@ -289,6 +281,8 @@ beforeEach(() => {
       }
       if (name === "ads_claim_employers")
         return { data: tables.ads_employers, error: null };
+      if (name === "ads_delivery_eligible")
+        return { data: currentEmployerEligible, error: null };
       if (name === "ads_complete_history" && args.p_first) {
         const first = args.p_first as Row;
         if (!tables.ads_conversion_events.length)
@@ -368,6 +362,7 @@ describe("asynchronous purchase delivery without a browser", () => {
       ],
     });
     readyAgain();
+    currentEmployerEligible = false;
     await runMeasurementWorker();
     expect(tables.ads_conversion_events[0].status).toBe("processed");
     await runMeasurementWorker();
@@ -401,6 +396,18 @@ describe("asynchronous purchase delivery without a browser", () => {
     await runMeasurementWorker();
     expect(tables.ads_conversion_events[0].status).toBe("suppressed");
     expect(sent).toHaveLength(0);
+  });
+  it("retains the acquisition but sends nothing after current employer eligibility is withdrawn", async () => {
+    currentEmployerEligible = false;
+    await runMeasurementWorker();
+    expect(tables.ads_conversion_events[0]).toMatchObject({
+      invoice_id: "in_fixture",
+      transaction_id: "wm-fixture-stable",
+      status: "suppressed",
+      error_code: "CURRENT_EMPLOYER_INELIGIBLE",
+    });
+    expect(sent).toHaveLength(0);
+    expect(stripe.invoices.list).toHaveBeenCalled();
   });
   it("quarantines refunds against the same acquisition instead of sending negative revenue", async () => {
     stripe.charges.retrieve.mockResolvedValue({

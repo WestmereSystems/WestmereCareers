@@ -315,6 +315,11 @@ export async function browserAdsState(
     .maybeSingle();
   if (employer.error) throw new Error("MEASUREMENT_IDENTITY_UNAVAILABLE");
   if (!employer.data) return state;
+  const eligible = await admin.rpc("ads_delivery_eligible", {
+    p_employer: employer.data.id,
+  });
+  if (eligible.error) throw new Error("MEASUREMENT_IDENTITY_UNAVAILABLE");
+  if (eligible.data !== true) return state;
   const event = await admin
     .from("ads_conversion_events")
     .select("id,transaction_id,occurred_at,context_id")
