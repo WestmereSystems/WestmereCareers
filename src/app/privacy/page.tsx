@@ -1,11 +1,12 @@
+import { publicPageMetadata } from "@/lib/search-metadata";
 import Link from "next/link";
 import { Fragment } from "react";
 import policy from "@/content/privacy-policy.json";
-export const metadata = {
-  title: "Privacy policy",
-  description:
-    "How Westmere Careers handles accounts, CVs, applications, employer information and optional career tools.",
-};
+export const metadata = publicPageMetadata(
+  "/privacy",
+  "Privacy policy",
+  "How Westmere Careers handles accounts, CVs, applications, employer information and optional advertising measurement.",
+);
 function linked(text: string) {
   return text.split(/(\[[^\]]+\]\(https:\/\/[^\s)]+\))/g).map((s, i) => {
     const match = s.match(/^\[([^\]]+)\]\((https:\/\/[^\s)]+)\)$/);

@@ -1,10 +1,11 @@
+import { publicPageMetadata } from "@/lib/search-metadata";
 import Link from "next/link";
 import { ArrowRight, Heart, ShieldCheck, MessagesSquare } from "lucide-react";
-export const metadata = {
-  title: "About Westmere",
-  description:
-    "A more human way to find work in Australia. Why Westmere Careers exists, and the experience we are building for candidates and employers.",
-};
+export const metadata = publicPageMetadata(
+  "/about",
+  "About Westmere Careers",
+  "Why Westmere Careers is building a more human Australian careers marketplace, with clearer information for job seekers, employers and recruitment agencies.",
+);
 export default function About() {
   return (
     <main id="main">
@@ -35,9 +36,7 @@ export default function About() {
             width="1920"
             height="1280"
           />
-          <figcaption>
-            Every next step begins with a person.
-          </figcaption>
+          <figcaption>Every next step begins with a person.</figcaption>
         </figure>
       </section>
       <section className="container section">

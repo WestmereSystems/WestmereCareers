@@ -1,12 +1,13 @@
+import { publicPageMetadata } from "@/lib/search-metadata";
 import Link from "next/link";
 import { Fragment } from "react";
 import terms from "@/content/terms-and-conditions.json";
 
-export const metadata = {
-  title: "Terms and conditions",
-  description:
-    "The terms for Westmere Careers accounts, job listings, applications, employer services, transparency features and optional Careers+ tools.",
-};
+export const metadata = publicPageMetadata(
+  "/terms",
+  "Terms and conditions",
+  "The terms for Westmere Careers accounts, job listings, applications, employer services and optional Careers+ tools.",
+);
 
 function linked(text: string) {
   return text
